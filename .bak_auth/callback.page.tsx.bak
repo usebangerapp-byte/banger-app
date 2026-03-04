@@ -1,0 +1,25 @@
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { createSupabaseBrowser } from "@/lib/supabase/client";
+
+export default function AuthCallbackPage() {
+  const router = useRouter();
+  const supabase = createSupabaseBrowser();
+
+  useEffect(() => {
+    (async () => {
+      // Supabase-js récupère la session automatiquement depuis l’URL après OAuth
+      const { data } = await supabase.auth.getSession();
+      if (data.session) router.replace("/");
+      else router.replace("/");
+    })();
+  }, [router, supabase]);
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#0b0b0c", color: "#fff", display: "grid", placeItems: "center" }}>
+      Connexion...
+    </div>
+  );
+}
