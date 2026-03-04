@@ -1,152 +1,148 @@
-'use client';
+"use client";
 
-import Image from 'next/image';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { createSupabaseBrowser } from '@/lib/supabase/client';
+import Image from "next/image";
+import BottomNav from "@/components/BottomNav";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createSupabaseBrowser } from "@/lib/supabase/client";
 
-type Status = 'idle' | 'listening' | 'recognizing';
-type Tag = 'UNRELEASED' | 'RELEASED' | 'NOT FOUND';
+type Status = "idle" | "listening" | "recognizing";
+type Tag = "UNRELEASED" | "RELEASED" | "NOT FOUND";
 
-type Particle = {
-  id: number;
-  x: number;
-  y: number;
-  s: number;
-  o: number;
-  d: number;
-};
-
-const CYAN = '#00E5FF';
-
-// Keep strings short to avoid nano wrap issues
-const GRAD_TITLE =
-  'linear-gradient(180deg,' +
-  ' rgba(245,245,245,0.98),' +
-  ' rgba(160,160,160,0.62))';
-
-const GRAD_SUB =
-  'linear-gradient(180deg,' +
-  ' rgba(235,235,235,0.92),' +
-  ' rgba(150,150,150,0.70))';
+const CYAN = "#00E5FF";
 
 const PAGE_BG =
-  'radial-gradient(900px 700px at 50% 18%,' +
-  ' rgba(18,18,18,1) 0%,' +
-  ' rgba(8,8,8,1) 42%,' +
-  ' rgba(5,5,5,1) 70%,' +
-  ' rgba(2,2,2,1) 100%)';
+  "radial-gradient(900px 700px at 50% 18%, " +
+  "rgba(18,18,18,1) 0%, rgba(8,8,8,1) 42%, " +
+  "rgba(5,5,5,1) 70%, rgba(2,2,2,1) 100%)";
 
-const BTN_BG =
-  'radial-gradient(220px 220px at 30% 25%,' +
-  ' rgba(255,255,255,0.10) 0%,' +
-  ' rgba(255,255,255,0.04) 18%,' +
-  ' rgba(0,0,0,0.18) 60%,' +
-  ' rgba(0,0,0,0.55) 100%),' +
-  ' linear-gradient(145deg, #0b0b0b, #040404)';
-
-const SPECULAR_BG =
-  'linear-gradient(135deg,' +
-  ' rgba(255,255,255,0.20) 0%,' +
-  ' rgba(255,255,255,0.08) 20%,' +
-  ' rgba(255,255,255,0.02) 55%,' +
-  ' rgba(255,255,255,0) 70%)';
+const PARTICLES = [
+  { x: -120, y: -70, s: 1.0, o: 0.70, d: 0 },
+  { x: 115, y: -60, s: 0.9, o: 0.55, d: 120 },
+  { x: -140, y: 35, s: 0.8, o: 0.50, d: 260 },
+  { x: 130, y: 42, s: 1.1, o: 0.65, d: 380 },
+  { x: -75, y: 120, s: 0.9, o: 0.45, d: 520 },
+  { x: 75, y: 118, s: 1.0, o: 0.55, d: 640 },
+  { x: -10, y: -145, s: 0.7, o: 0.40, d: 780 },
+  { x: 12, y: 150, s: 0.8, o: 0.40, d: 860 },
+];
 
 export default function Home() {
-  // -------------------------
-  // AUTH (Supabase)
-  // -------------------------
-  const supabase = useMemo(() => createSupabaseBrowser(), []);
-  const [sessionChecked, setSessionChecked] = useState(false);
-  const [isAuthed, setIsAuthed] = useState(false);
+  const supabase = createSupabaseBrowser();
+
+  const [sessionOk, setSessionOk] = useState(false);
+  const [sessionLoading, setSessionLoading] = useState(true);
   const [loginLoading, setLoginLoading] = useState(false);
 
-  useEffect(() => {
-    let mounted = true;
-
-    (async () => {
-      try {
-        const { data } = await supabase.auth.getSession();
-        if (!mounted) return;
-        setIsAuthed(!!data.session);
-        setSessionChecked(true);
-      } catch {
-        if (!mounted) return;
-        setIsAuthed(false);
-        setSessionChecked(true);
-      }
-    })();
-
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      setIsAuthed(!!session);
-      setSessionChecked(true);
-    });
-
-    return () => {
-      mounted = false;
-      try {
-        sub?.subscription?.unsubscribe();
-      } catch {}
-    };
-  }, [supabase]);
-
-  const signInWithGoogle = async () => {
-    setLoginLoading(true);
-    try {
-      await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo:
-            typeof window !== 'undefined'
-              ? `${window.location.origin}/auth/callback`
-              : undefined,
-        },
-      });
-    } finally {
-      // Redirect happens; no need to reset loading
-    }
-  };
-
-  // -------------------------
-  // APP STATE
-  // -------------------------
-  const [status, setStatus] = useState<Status>('idle');
-  const [title, setTitle] = useState('Adam Ten - Beat Goes On');
-  const [subtitle, setSubtitle] = useState('(Maccabi Records)');
-  const [tag, setTag] = useState<Tag>('UNRELEASED');
+  const [status, setStatus] = useState<Status>("idle");
+  const [title, setTitle] = useState("—");
+  const [subtitle, setSubtitle] = useState("");
+  const [tag, setTag] = useState<Tag>("NOT FOUND");
 
   const [success, setSuccess] = useState(false);
   const [failPulse, setFailPulse] = useState(false);
-
-  const [successWaveKey, setSuccessWaveKey] = useState(0);
-  const [searchWaveTick, setSearchWaveTick] = useState(0);
-
   const [audioLevel, setAudioLevel] = useState(0);
-
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const audioSrcRef = useRef<MediaStreamAudioSourceNode | null>(null);
-  const levelTimerRef = useRef<number | null>(null);
-
-  const [particles, setParticles] = useState<Particle[]>([]);
-  const particleTimerRef = useRef<number | null>(null);
-  const particleIdRef = useRef(1);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const timerRef = useRef<number | null>(null);
 
-  const listening = status === 'listening';
-  const recognizing = status === 'recognizing';
-  const busy = status !== 'idle';
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const meterRef = useRef<number | null>(null);
+
+  const busy = status !== "idle";
+  const listening = status === "listening";
+  const recognizing = status === "recognizing";
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (!mounted) return;
+        setSessionOk(!!data.session);
+      } catch {
+        if (!mounted) return;
+        setSessionOk(false);
+      } finally {
+        if (!mounted) return;
+        setSessionLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [supabase]);
+
+  async function signInWithGoogle() {
+    setLoginLoading(true);
+    try {
+      await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo:
+            typeof window !== "undefined"
+              ? `${window.location.origin}/auth/callback`
+              : undefined,
+        },
+      });
+    } finally {
+      setLoginLoading(false);
+    }
+  }
 
   function vib(pattern: number | number[]) {
     try {
-      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-        // @ts-ignore
-        navigator.vibrate(pattern);
-      }
+      // @ts-ignore
+      if (navigator && "vibrate" in navigator) navigator.vibrate(pattern);
     } catch {}
+  }
+
+  function stopMeters() {
+    try {
+      if (meterRef.current) window.clearInterval(meterRef.current);
+    } catch {}
+    meterRef.current = null;
+    setAudioLevel(0);
+
+    try {
+      if (audioCtxRef.current) audioCtxRef.current.close();
+    } catch {}
+    audioCtxRef.current = null;
+    analyserRef.current = null;
+  }
+
+  async function startMeters(stream: MediaStream) {
+    stopMeters();
+
+    const AudioCtx =
+      (window.AudioContext || (window as any).webkitAudioContext) as typeof AudioContext;
+    const ctx = new AudioCtx();
+    audioCtxRef.current = ctx;
+
+    const source = ctx.createMediaStreamSource(stream);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 1024;
+    analyser.smoothingTimeConstant = 0.55;
+    analyserRef.current = analyser;
+    source.connect(analyser);
+
+    const buf = new Uint8Array(analyser.fftSize);
+
+    meterRef.current = window.setInterval(() => {
+      try {
+        analyser.getByteTimeDomainData(buf);
+        let sum = 0;
+        for (let i = 0; i < buf.length; i++) {
+          const v = (buf[i] - 128) / 128;
+          sum += v * v;
+        }
+        const rms = Math.sqrt(sum / buf.length);
+        const lvl = Math.max(0, Math.min(1, (rms - 0.01) / 0.18));
+        setAudioLevel(lvl);
+      } catch {}
+    }, 80);
   }
 
   function stopRecording() {
@@ -156,151 +152,36 @@ export default function Home() {
     timerRef.current = null;
 
     try {
-      const mr = mediaRecorderRef.current;
-      if (mr && mr.state !== 'inactive') mr.stop();
+      if (
+        mediaRecorderRef.current &&
+        mediaRecorderRef.current.state !== "inactive"
+      ) {
+        mediaRecorderRef.current.stop();
+      }
     } catch {}
   }
 
-  function stopAudioPulse() {
-    try {
-      if (levelTimerRef.current) window.clearInterval(levelTimerRef.current);
-    } catch {}
-    levelTimerRef.current = null;
-
-    try {
-      audioSrcRef.current?.disconnect();
-    } catch {}
-    audioSrcRef.current = null;
-
-    try {
-      analyserRef.current?.disconnect();
-    } catch {}
-    analyserRef.current = null;
-
-    try {
-      audioCtxRef.current?.close();
-    } catch {}
-    audioCtxRef.current = null;
-
-    setAudioLevel(0);
-  }
-
-  function startAudioPulse(stream: MediaStream) {
-    stopAudioPulse();
-    try {
-      const AudioCtx = (window.AudioContext ||
-        (window as any).webkitAudioContext) as typeof AudioContext;
-
-      const ctx = new AudioCtx();
-      audioCtxRef.current = ctx;
-
-      const source = ctx.createMediaStreamSource(stream);
-      audioSrcRef.current = source;
-
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 1024;
-      analyser.smoothingTimeConstant = 0.6;
-      analyserRef.current = analyser;
-
-      source.connect(analyser);
-
-      const buf = new Uint8Array(analyser.fftSize);
-
-      levelTimerRef.current = window.setInterval(() => {
-        try {
-          analyser.getByteTimeDomainData(buf);
-          let sum = 0;
-          let peak = 0;
-
-          for (let i = 0; i < buf.length; i++) {
-            const v = (buf[i] - 128) / 128;
-            sum += v * v;
-            const av = Math.abs(v);
-            if (av > peak) peak = av;
-          }
-
-          const rms = Math.sqrt(sum / buf.length);
-          const lvl = Math.max(0, Math.min(1, (rms - 0.01) / 0.18));
-          const peakFeel = Math.min(1, peak / 0.7) * 0.35;
-          setAudioLevel(Math.max(lvl, peakFeel));
-        } catch {}
-      }, 90);
-    } catch {
-      setAudioLevel(0);
-    }
-  }
-
-  function stopParticles() {
-    try {
-      if (particleTimerRef.current) window.clearInterval(particleTimerRef.current);
-    } catch {}
-    particleTimerRef.current = null;
-    setParticles([]);
-  }
-
-  function startParticles(mode: 'listening' | 'recognizing') {
-    stopParticles();
-    const every = mode === 'listening' ? 220 : 170;
-
-    particleTimerRef.current = window.setInterval(() => {
-      setParticles((prev) => {
-        const id = particleIdRef.current++;
-        const a = Math.random() * Math.PI * 2;
-        const r = 150 + Math.random() * 24;
-
-        const x = Math.cos(a) * r;
-        const y = Math.sin(a) * r;
-
-        const s = 2 + Math.random() * 3.5;
-        const o = mode === 'recognizing' ? 0.55 : 0.38;
-        const d =
-          mode === 'recognizing'
-            ? 1400 + Math.random() * 900
-            : 1700 + Math.random() * 1100;
-
-        const p: Particle = { id, x, y, s, o, d };
-
-        const next = [...prev, p];
-        if (next.length > 24) next.splice(0, next.length - 24);
-        return next;
-      });
-    }, every);
+  function triggerFail() {
+    setFailPulse(true);
+    window.setTimeout(() => setFailPulse(false), 520);
   }
 
   useEffect(() => {
     if (!success) return;
-    setSuccessWaveKey((k) => k + 1);
-    const t = window.setTimeout(() => setSuccess(false), 1100);
+    const t = window.setTimeout(() => setSuccess(false), 900);
     return () => window.clearTimeout(t);
   }, [success]);
-
-  useEffect(() => {
-    if (!failPulse) return;
-    const t = window.setTimeout(() => setFailPulse(false), 700);
-    return () => window.clearTimeout(t);
-  }, [failPulse]);
-
-  useEffect(() => {
-    if (!recognizing) return;
-    setSearchWaveTick(0);
-    const id = window.setInterval(() => setSearchWaveTick((t) => t + 1), 900);
-    return () => window.clearInterval(id);
-  }, [recognizing]);
-
-  useEffect(() => {
-    if (listening) startParticles('listening');
-    else if (recognizing) startParticles('recognizing');
-    else stopParticles();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [listening, recognizing]);
 
   async function startListening() {
     if (busy) return;
 
+    setTitle("—");
+    setSubtitle("");
+    setTag("NOT FOUND");
+
     try {
-      vib([10, 15, 10]);
-      setFailPulse(false);
-      setStatus('listening');
+      vib(25);
+      setStatus("listening");
 
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -311,253 +192,192 @@ export default function Home() {
       });
       streamRef.current = stream;
 
-      startAudioPulse(stream);
+      await startMeters(stream);
 
-      const mr = new MediaRecorder(stream);
+      const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : "audio/webm";
+
+      const mr = new MediaRecorder(stream, { mimeType: mime });
       mediaRecorderRef.current = mr;
       chunksRef.current = [];
 
-      mr.ondataavailable = (e: BlobEvent) => {
+      mr.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
       };
 
       mr.onstop = async () => {
         try {
-          const tracks = streamRef.current ? streamRef.current.getTracks() : [];
-          for (let i = 0; i < tracks.length; i++) tracks[i].stop();
+          const s = streamRef.current;
+          if (s) s.getTracks().forEach((t) => t.stop());
         } catch {}
         streamRef.current = null;
 
-        setStatus('recognizing');
+        stopMeters();
+        setStatus("recognizing");
 
         try {
-          const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+          const blob = new Blob(chunksRef.current, { type: mime });
           const fd = new FormData();
-          fd.append('audio', blob, 'sample.webm');
+          fd.append("audio", blob, "sample.webm");
 
-          const res = await fetch('/api/recognize', {
-            method: 'POST',
-            body: fd,
-          });
+          const res = await fetch("/api/recognize", { method: "POST", body: fd });
           const data = await res.json();
 
-          const custom =
-            data && data.metadata && data.metadata.custom_files
-              ? data.metadata.custom_files[0]
-              : null;
+          const custom = data?.metadata?.custom_files?.[0] || null;
+          const music = data?.metadata?.music?.[0] || null;
 
-          const music =
-            data && data.metadata && data.metadata.music
-              ? data.metadata.music[0]
-              : null;
-
-          if (custom && custom.title) {
+          if (custom?.title) {
             setTitle(custom.title);
-            setSubtitle('(Private DB)');
-            setTag('UNRELEASED');
+            setSubtitle("(Private DB)");
+            setTag("UNRELEASED");
             setSuccess(true);
             vib([40, 30, 80]);
-          } else if (music && music.title) {
-            const a =
-              music.artists && music.artists[0] ? music.artists[0].name : '';
-            setTitle(a ? `${a} - ${music.title}` : music.title);
-            setSubtitle('(Released)');
-            setTag('RELEASED');
+          } else if (music?.title) {
+            const a = music?.artists?.[0]?.name || "";
+            const t = a ? `${a} - ${music.title}` : music.title;
+            setTitle(t);
+            setSubtitle("(Released)");
+            setTag("RELEASED");
             setSuccess(true);
             vib([40, 30, 80]);
           } else {
-            setTitle('Not found');
-            setSubtitle('Try again');
-            setTag('NOT FOUND');
-            setFailPulse(true);
+            setTitle("Not found");
+            setSubtitle("Try again");
+            setTag("NOT FOUND");
             vib([15, 40, 15]);
+            triggerFail();
           }
         } catch {
-          setTitle('Not found');
-          setSubtitle('Server error');
-          setTag('NOT FOUND');
-          setFailPulse(true);
+          setTitle("Not found");
+          setSubtitle("Server error");
+          setTag("NOT FOUND");
           vib([15, 40, 15]);
+          triggerFail();
         }
 
-        setStatus('idle');
-        stopAudioPulse();
+        setStatus("idle");
       };
 
       mr.start();
-
-      timerRef.current = window.setTimeout(() => {
-        stopRecording();
-      }, 10000);
+      timerRef.current = window.setTimeout(() => stopRecording(), 10_000);
     } catch {
-      setStatus('idle');
-      stopAudioPulse();
+      stopMeters();
+      setStatus("idle");
       alert("Micro non autorisé. Active l'accès micro dans le navigateur.");
     }
   }
 
   const badgeBg =
-    tag === 'UNRELEASED'
-      ? 'rgba(225,225,225,0.14)'
-      : tag === 'RELEASED'
-      ? 'rgba(225,225,225,0.10)'
-      : 'rgba(225,225,225,0.08)';
+    tag === "UNRELEASED"
+      ? "rgba(225,225,225,0.14)"
+      : tag === "RELEASED"
+      ? "rgba(225,225,225,0.10)"
+      : "rgba(225,225,225,0.08)";
 
   const headerTitleStyle = useMemo(() => {
     return {
       ...styles.title,
-      background: GRAD_TITLE,
-      WebkitBackgroundClip: 'text',
-      backgroundClip: 'text',
-      color: 'transparent',
-      textShadow: '0 1px 0 rgba(255,255,255,0.08)',
+      background:
+        "linear-gradient(180deg, rgba(245,245,245,0.98), rgba(160,160,160,0.62))",
+      WebkitBackgroundClip: "text",
+      backgroundClip: "text",
+      color: "transparent",
+      textShadow: "0 1px 0 rgba(255,255,255,0.08)",
     };
   }, []);
 
   const subStyle = useMemo(() => {
     return {
       ...styles.sub,
-      background: GRAD_SUB,
-      WebkitBackgroundClip: 'text',
-      backgroundClip: 'text',
-      color: 'transparent',
+      background:
+        "linear-gradient(180deg, rgba(235,235,235,0.92), rgba(150,150,150,0.70))",
+      WebkitBackgroundClip: "text",
+      backgroundClip: "text",
+      color: "transparent",
     };
   }, []);
 
-  const ringOpacityBase = recognizing ? (success ? 0.26 : 0.16) : 0;
-  const ringBorderA = `1px solid rgba(235,235,235,${success ? 0.30 : 0.18})`;
-  const ringBorderB = `1px solid rgba(235,235,235,${success ? 0.18 : 0.12})`;
+  const bFilter = success
+    ? "brightness(2.35) contrast(1.15) " +
+      "drop-shadow(0 0 34px rgba(255,255,255,0.62))"
+    : listening
+    ? `brightness(${1.10 + audioLevel * 1.05}) contrast(1.08) ` +
+      `drop-shadow(0 0 ${10 + audioLevel * 26}px rgba(0,229,255,0.28))`
+    : recognizing
+    ? "brightness(1.20) contrast(1.08) " +
+      "drop-shadow(0 0 14px rgba(0,229,255,0.18))"
+    : "brightness(1) contrast(1)";
 
-  // -------------------------
-  // AUTH GATE
-  // -------------------------
-  if (!sessionChecked) {
+  if (sessionLoading) {
     return (
-      <div style={styles.page}>
-        <div style={styles.phone}>
-          <div style={{ ...styles.center, justifyContent: 'center' }}>
-            <div style={styles.loading}>LOADING…</div>
-          </div>
-        </div>
-      </div>
+      <main style={styles.page}>
+        <div style={styles.loading}>Loading…</div>
+      </main>
     );
   }
 
-  if (!isAuthed) {
+  if (!sessionOk) {
     return (
-      <div style={styles.page}>
-        <div style={styles.phone}>
-          <div style={styles.top}>
-            <div style={headerTitleStyle}>BANGER</div>
-            <div style={subStyle}>Find your Un/Released</div>
-          </div>
-
-          <div style={{ ...styles.center, justifyContent: 'center', gap: 18 }}>
+      <main style={{ ...styles.page, background: "#0b0b0c" }}>
+        <div style={{ ...styles.phone, justifyContent: "center" }}>
+          <div style={{ ...styles.center, justifyContent: "center", gap: 18 }}>
             <div style={styles.logoWrap}>
               <Image src="/B-logo.png" alt="BANGER" width={78} height={78} priority />
             </div>
-
-            <button
-              onClick={signInWithGoogle}
-              disabled={loginLoading}
-              style={styles.googleBtn}
-            >
-              {loginLoading ? 'Connexion…' : 'Continue with Google'}
+            <button onClick={signInWithGoogle} disabled={loginLoading} style={styles.googleBtn}>
+              {loginLoading ? "Connexion…" : "Continue with Google"}
             </button>
-
             <div style={styles.loginHint}>
-              Labels & pros: go to <span style={{ opacity: 0.9 }}>Bpro</span>
+              Après login → Home (Scan) + onglets.
             </div>
           </div>
-
-          <div style={styles.nav}>
-            <div style={styles.navOn}>Home</div>
-            <div style={styles.navOff}>Library</div>
-            <div style={styles.navOff}>Concerts</div>
-            <div style={styles.navOff}>Bpro</div>
-          </div>
         </div>
-      </div>
+      </main>
     );
   }
-
-  // -------------------------
-  // MAIN UI
-  // -------------------------
-  const bFilter = success
-    ? 'brightness(2.35) contrast(1.15) drop-shadow(0 0 34px rgba(255,255,255,0.62))'
-    : listening
-    ? `brightness(${1.25 + audioLevel * 0.95}) contrast(1.08) ` +
-      `drop-shadow(0 0 ${10 + audioLevel * 22}px rgba(0,229,255,0.22))`
-    : recognizing
-    ? 'brightness(1.20) contrast(1.08) drop-shadow(0 0 14px rgba(0,229,255,0.18))'
-    : 'brightness(1) contrast(1)';
 
   return (
     <div style={styles.page}>
       <style>{`
-        @keyframes successOutwardWave {
-          0% { transform: translate(-50%,-50%) scale(1); opacity: 0.55; }
-          100% { transform: translate(-50%,-50%) scale(2.55); opacity: 0; }
-        }
-
         @keyframes techBreath {
-          0% { transform: translate(-50%,-50%) scale(0.98); opacity: 0.18; }
-          50% { transform: translate(-50%,-50%) scale(1.095); opacity: 0.40; }
-          100% { transform: translate(-50%,-50%) scale(0.98); opacity: 0.18; }
+          0% { transform: translate(-50%,-50%) scale(0.98); opacity: .18; }
+          50% { transform: translate(-50%,-50%) scale(1.10); opacity: .44; }
+          100% { transform: translate(-50%,-50%) scale(0.98); opacity: .18; }
         }
-
-        @keyframes dissolveRing {
-          0% { transform: translate(-50%,-50%) scale(1); opacity: ${ringOpacityBase}; }
-          100% { transform: translate(-50%,-50%) scale(2.55); opacity: 0; }
-        }
-
-        @keyframes floatSpecular {
-          0% { transform: translate(-50%,-50%) rotate(0deg); opacity: 0.14; }
-          100% { transform: translate(-50%,-50%) rotate(14deg); opacity: 0.10; }
-        }
-
         @keyframes k2000 {
           0% { transform: translate(-50%,-50%) rotate(-86deg); opacity: .55; }
           50% { transform: translate(-50%,-50%) rotate(86deg); opacity: 1; }
           100% { transform: translate(-50%,-50%) rotate(-86deg); opacity: .55; }
         }
-
         @keyframes radarWave {
           0% { transform: translate(-50%,-50%) scale(0.86); opacity: 0; }
           12% { opacity: 1; }
-          100% { transform: translate(-50%,-50%) scale(2.05); opacity: 0; }
+          100% { transform: translate(-50%,-50%) scale(2.10); opacity: 0; }
         }
-
         @keyframes scanLine {
-          0% { transform: translate(-50%,-50%) translateY(-120px); opacity: 0; }
-          20% { opacity: .55; }
-          50% { opacity: .22; }
-          100% { transform: translate(-50%,-50%) translateY(120px); opacity: 0; }
+          0% { transform: translate(-50%,-50%) translateY(-118px); opacity: 0; }
+          18% { opacity: .52; }
+          55% { opacity: .18; }
+          100% { transform: translate(-50%,-50%) translateY(118px); opacity: 0; }
         }
-
         @keyframes particleFloat {
-          0% { transform: translate(var(--x),var(--y)) scale(0.8); opacity: var(--o); }
+          0% { transform: translate(var(--x),var(--y)) scale(var(--s)); opacity: var(--o); }
           100% {
-            transform: translate(calc(var(--x)*1.08),calc(var(--y)*1.08)) scale(1.12);
+            transform: translate(calc(var(--x)*1.08), calc(var(--y)*1.08))
+              scale(calc(var(--s) + 0.22));
             opacity: 0;
           }
         }
-
-        @keyframes failDim {
+        @keyframes pop {
           0% { opacity: 0; }
-          30% { opacity: .65; }
+          20% { opacity: .85; }
           100% { opacity: 0; }
         }
       `}</style>
 
-      {success ? (
-        <div style={styles.successFlash} />
-      ) : null}
-
-      {failPulse ? (
-        <div style={styles.failFlash} />
-      ) : null}
+      {success ? <div style={styles.successFlash} /> : null}
+      {failPulse ? <div style={styles.failFlash} /> : null}
 
       <div style={styles.phone}>
         <div style={styles.top}>
@@ -571,97 +391,73 @@ export default function Home() {
               style={{
                 ...styles.haloOuter,
                 opacity: listening ? 1 : 0,
-                transform: listening ? 'scale(1.14)' : 'scale(0.85)',
+                transform: listening ? "scale(1.14)" : "scale(0.85)",
               }}
             />
             <div
               style={{
                 ...styles.haloInner,
                 opacity: listening ? 1 : 0,
-                transform: listening ? 'scale(1.08)' : 'scale(0.92)',
+                transform: listening ? "scale(1.08)" : "scale(0.92)",
               }}
             />
 
+            {/* LISTENING: K2000 + 3 WAVES + PARTICLES + SCAN LINE */}
             {listening ? (
-              <div
-                style={{
-                  ...styles.aiHalo,
-                  opacity: 0.45 + audioLevel * 0.55,
-                }}
-              />
-            ) : null}
-
-            {listening ? <div style={styles.breathHalo} /> : null}
-
-            {(listening || recognizing) ? (
               <>
-                <div style={styles.radar1} />
-                <div style={styles.radar2} />
-                <div style={styles.radar3} />
-              </>
-            ) : null}
+                <div
+                  style={{
+                    ...styles.k2000Ring,
+                    animation: "k2000 1.05s ease-in-out infinite",
+                    boxShadow:
+                      "0 0 22px rgba(0,229,255,0.18), " +
+                      "0 0 44px rgba(0,229,255,0.08)",
+                  }}
+                />
+                <div style={{ ...styles.wave1, animation: "radarWave 1.55s ease-out infinite" }} />
+                <div style={{ ...styles.wave2, animation: "radarWave 1.55s ease-out infinite", animationDelay: "280ms" }} />
+                <div style={{ ...styles.wave3, animation: "radarWave 1.55s ease-out infinite", animationDelay: "560ms" }} />
 
-            {recognizing ? <div style={styles.scanLine} /> : null}
+                <div style={{ ...styles.scanLine, animation: "scanLine 1.25s ease-in-out infinite" }} />
 
-            {recognizing ? (
-              <div style={styles.k2000Wrap}>
-                <div style={styles.k2000Ring} />
-              </div>
-            ) : null}
+                <div
+                  style={{
+                    ...styles.listenBreath,
+                    opacity: 0.18 + audioLevel * 0.52,
+                    animation: "techBreath 1.9s ease-in-out infinite",
+                  }}
+                />
 
-            {(listening || recognizing) ? (
-              <div style={styles.particlesWrap}>
-                {particles.map((p) => (
+                {PARTICLES.map((p, i) => (
                   <div
-                    key={p.id}
+                    key={i}
                     style={{
                       ...styles.particle,
-                      width: p.s,
-                      height: p.s,
-                      background: recognizing
-                        ? 'rgba(0,229,255,0.55)'
-                        : 'rgba(235,235,235,0.28)',
-                      filter: recognizing
-                        ? 'blur(0.2px) drop-shadow(0 0 8px rgba(0,229,255,0.35))'
-                        : 'blur(0.4px)',
-                      '--x': `${p.x}px`,
-                      '--y': `${p.y}px`,
-                      '--o': `${p.o}`,
-                      animation: `particleFloat ${p.d}ms ease-out forwards`,
-                    } as any}
+                      ["--x" as any]: `${p.x}px`,
+                      ["--y" as any]: `${p.y}px`,
+                      ["--s" as any]: `${p.s}`,
+                      ["--o" as any]: `${p.o}`,
+                      animationDelay: `${p.d}ms`,
+                      animation: "particleFloat 1.15s ease-out infinite",
+                    }}
                   />
                 ))}
-              </div>
-            ) : null}
-
-            {recognizing ? (
-              <>
-                <div
-                  key={`dr-a-${searchWaveTick}`}
-                  style={{
-                    ...styles.dissolveRingA,
-                    border: ringBorderA,
-                    filter: success ? 'blur(0.6px)' : 'blur(1.0px)',
-                    boxShadow: success ? '0 0 26px rgba(255,255,255,0.08)' : 'none',
-                  }}
-                />
-                <div
-                  key={`dr-b-${searchWaveTick}`}
-                  style={{
-                    ...styles.dissolveRingB,
-                    border: ringBorderB,
-                    filter: success ? 'blur(1.2px)' : 'blur(1.7px)',
-                    boxShadow: success ? '0 0 34px rgba(255,255,255,0.06)' : 'none',
-                  }}
-                />
               </>
             ) : null}
 
-            {success ? (
-              <div
-                key={successWaveKey}
-                style={styles.successRing}
-              />
+            {/* SEARCHING: keep scanner + subtle rings */}
+            {recognizing ? (
+              <>
+                <div
+                  style={{
+                    ...styles.k2000Ring,
+                    animation: "k2000 1.05s ease-in-out infinite",
+                    opacity: 0.88,
+                  }}
+                />
+                <div style={{ ...styles.radarRing, animation: "radarWave 1.75s ease-out infinite" }} />
+                <div style={{ ...styles.radarRing2, animation: "radarWave 1.75s ease-out infinite", animationDelay: "360ms" }} />
+              </>
             ) : null}
 
             <button
@@ -670,29 +466,25 @@ export default function Home() {
               style={{
                 ...styles.button3D,
                 opacity: busy ? 0.92 : 1,
-                transform: busy
-                  ? 'translateY(1px)'
-                  : listening
-                  ? 'translateY(0px) scale(1.02)'
-                  : 'translateY(0px)',
-                boxShadow: success
-                  ? '0 0 92px rgba(255,255,255,0.82), 0 18px 60px rgba(0,0,0,0.78)'
-                  : recognizing
-                  ? '0 0 60px rgba(0,229,255,0.12), 0 18px 60px rgba(0,0,0,0.76),' +
-                    ' inset 0 1px 0 rgba(255,255,255,0.08)'
-                  : listening
-                  ? `0 0 ${38 + audioLevel * 60}px rgba(255,255,255,0.10),` +
-                    ' 0 18px 60px rgba(0,0,0,0.76), inset 0 1px 0 rgba(255,255,255,0.08)'
-                  : '0 18px 60px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.08)',
-                border: success ? '1px solid rgba(245,245,245,0.34)' : styles.button3D.border,
-                transition: 'all 0.22s ease',
+                transform: busy ? "translateY(1px)" : "translateY(0px)",
+                boxShadow: listening
+                  ? "0 0 68px rgba(0,229,255,0.16), " +
+                    "0 18px 60px rgba(0,0,0,0.78)"
+                  : success
+                  ? "0 0 84px rgba(255,255,255,0.78), " +
+                    "0 18px 60px rgba(0,0,0,0.78)"
+                  : "0 18px 60px rgba(0,0,0,0.75), " +
+                    "inset 0 1px 0 rgba(255,255,255,0.08)",
+                border: success
+                  ? "1px solid rgba(245,245,245,0.34)"
+                  : styles.button3D.border,
+                transition: "all 0.22s ease",
               }}
             >
               <div
                 style={{
                   ...styles.specular,
                   opacity: busy ? 0.07 : 0.14,
-                  animation: 'floatSpecular 1.05s ease-in-out infinite alternate',
                 }}
               />
 
@@ -702,7 +494,7 @@ export default function Home() {
                 <div
                   style={{
                     ...styles.listenGlow,
-                    opacity: 0.18 + audioLevel * 0.55,
+                    opacity: 0.16 + audioLevel * 0.62,
                   }}
                 />
               ) : null}
@@ -713,16 +505,16 @@ export default function Home() {
                 style={{
                   ...styles.bLogo,
                   filter: bFilter,
-                  transition: 'filter 0.12s linear',
+                  transition: "filter 0.12s linear",
                 }}
               />
             </button>
           </div>
 
           <div style={styles.status}>
-            {status === 'idle' ? 'DROP IT' : null}
-            {status === 'listening' ? 'Listening... (10s)' : null}
-            {status === 'recognizing' ? 'Searching...' : null}
+            {status === "idle" ? "DROP IT" : null}
+            {status === "listening" ? "Listening... (10s)" : null}
+            {status === "recognizing" ? "Searching..." : null}
           </div>
         </div>
 
@@ -737,12 +529,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div style={styles.nav}>
-          <div style={styles.navOn}>Home</div>
-          <div style={styles.navOff}>Library</div>
-          <div style={styles.navOff}>Concerts</div>
-          <div style={styles.navOff}>Bpro</div>
-        </div>
+        <BottomNav />
       </div>
     </div>
   );
@@ -750,482 +537,379 @@ export default function Home() {
 
 const styles: any = {
   page: {
-    minHeight: '100vh',
+    minHeight: "100vh",
     background: PAGE_BG,
-    color: '#fff',
-    display: 'flex',
-    justifyContent: 'center',
+    color: "#fff",
+    display: "flex",
+    justifyContent: "center",
   },
   phone: {
-    width: '100%',
+    width: "100%",
     maxWidth: 420,
-    minHeight: '100vh',
-    display: 'flex',
-    flexDirection: 'column',
+    minHeight: "100vh",
+    display: "flex",
+    flexDirection: "column",
   },
   top: {
     paddingTop: 44,
     paddingLeft: 24,
     paddingRight: 24,
-    textAlign: 'center',
+    textAlign: "center",
   },
-
   title: {
     marginTop: 6,
     fontSize: 44,
     fontWeight: 800,
-    letterSpacing: '0.10em',
+    letterSpacing: "0.10em",
   },
   sub: {
     marginTop: 12,
     fontSize: 16,
     opacity: 0.82,
-    letterSpacing: '0.08em',
+    letterSpacing: "0.08em",
     fontWeight: 800,
   },
-
   center: {
     flex: 1,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'column',
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "column",
     gap: 18,
     paddingLeft: 24,
     paddingRight: 24,
   },
-
   haloWrap: {
-    position: 'relative',
+    position: "relative",
     width: 320,
     height: 320,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
   },
-
   haloOuter: {
-    position: 'absolute',
+    position: "absolute",
     width: 300,
     height: 300,
     borderRadius: 9999,
-    background: 'rgba(230,230,230,0.08)',
-    filter: 'blur(42px)',
-    transition: 'all 0.55s ease',
-    pointerEvents: 'none',
+    background: "rgba(230,230,230,0.08)",
+    filter: "blur(42px)",
+    transition: "all 0.55s ease",
+    pointerEvents: "none",
   },
-
   haloInner: {
-    position: 'absolute',
+    position: "absolute",
     width: 240,
     height: 240,
     borderRadius: 9999,
-    background: 'rgba(230,230,230,0.10)',
-    filter: 'blur(26px)',
-    transition: 'all 0.55s ease',
-    pointerEvents: 'none',
+    background: "rgba(230,230,230,0.10)",
+    filter: "blur(26px)",
+    transition: "all 0.55s ease",
+    pointerEvents: "none",
   },
 
-  aiHalo: {
-    position: 'absolute',
-    left: '50%',
-    top: '50%',
-    width: 330,
-    height: 330,
+  listenBreath: {
+    position: "absolute",
+    left: "50%",
+    top: "50%",
+    width: 280,
+    height: 280,
     borderRadius: 9999,
     background:
-      'radial-gradient(circle at 50% 50%,' +
-      ' rgba(235,235,235,0.14) 0%,' +
-      ' rgba(235,235,235,0.04) 38%,' +
-      ' rgba(0,0,0,0) 72%)',
-    filter: 'blur(26px)',
-    pointerEvents: 'none',
+      "radial-gradient(circle at 50% 50%, rgba(0,229,255,0.22) 0%, " +
+      "rgba(0,229,255,0.08) 36%, rgba(0,0,0,0) 72%)",
+    filter: "blur(12px)",
+    pointerEvents: "none",
     zIndex: 1,
-    mixBlendMode: 'screen',
-    transform: 'translate(-50%,-50%)',
-  },
-
-  breathHalo: {
-    position: 'absolute',
-    left: '50%',
-    top: '50%',
-    width: 292,
-    height: 292,
-    borderRadius: 9999,
-    background:
-      'radial-gradient(circle at 50% 50%,' +
-      ' rgba(235,235,235,0.18) 0%,' +
-      ' rgba(235,235,235,0.06) 36%,' +
-      ' rgba(0,0,0,0) 72%)',
-    filter: 'blur(12px)',
-    pointerEvents: 'none',
-    zIndex: 1,
-    animation: 'techBreath 1.85s ease-in-out infinite',
-    mixBlendMode: 'screen',
-    transform: 'translate(-50%,-50%)',
-  },
-
-  radar1: {
-    position: 'absolute',
-    left: '50%',
-    top: '50%',
-    width: 220,
-    height: 220,
-    borderRadius: 9999,
-    border: '2px solid rgba(0,229,255,0.25)',
-    pointerEvents: 'none',
-    zIndex: 1,
-    animation: 'radarWave 1.75s ease-out infinite',
-    mixBlendMode: 'screen',
-    filter: 'blur(0.2px) drop-shadow(0 0 10px rgba(0,229,255,0.18))',
-    transform: 'translate(-50%,-50%)',
-  },
-
-  radar2: {
-    position: 'absolute',
-    left: '50%',
-    top: '50%',
-    width: 220,
-    height: 220,
-    borderRadius: 9999,
-    border: '2px solid rgba(0,229,255,0.15)',
-    pointerEvents: 'none',
-    zIndex: 1,
-    animation: 'radarWave 1.75s ease-out infinite',
-    animationDelay: '320ms',
-    mixBlendMode: 'screen',
-    filter: 'blur(0.4px)',
-    transform: 'translate(-50%,-50%)',
-  },
-
-  radar3: {
-    position: 'absolute',
-    left: '50%',
-    top: '50%',
-    width: 220,
-    height: 220,
-    borderRadius: 9999,
-    border: '2px solid rgba(0,229,255,0.08)',
-    pointerEvents: 'none',
-    zIndex: 1,
-    animation: 'radarWave 1.75s ease-out infinite',
-    animationDelay: '640ms',
-    mixBlendMode: 'screen',
-    filter: 'blur(0.7px)',
-    transform: 'translate(-50%,-50%)',
-  },
-
-  scanLine: {
-    position: 'absolute',
-    left: '50%',
-    top: '50%',
-    width: 260,
-    height: 12,
-    borderRadius: 9999,
-    background:
-      'linear-gradient(90deg,' +
-      ' rgba(0,229,255,0) 0%,' +
-      ' rgba(0,229,255,0.35) 25%,' +
-      ' rgba(0,229,255,0.9) 50%,' +
-      ' rgba(0,229,255,0.35) 75%,' +
-      ' rgba(0,229,255,0) 100%)',
-    filter: 'blur(6px) drop-shadow(0 0 16px rgba(0,229,255,0.55))',
-    pointerEvents: 'none',
-    zIndex: 2,
-    animation: 'scanLine 1.25s ease-in-out infinite',
-    mixBlendMode: 'screen',
-    transform: 'translate(-50%,-50%)',
-  },
-
-  k2000Wrap: {
-    position: 'absolute',
-    left: '50%',
-    top: '50%',
-    width: 260,
-    height: 260,
-    borderRadius: 9999,
-    pointerEvents: 'none',
-    zIndex: 2,
-    transformOrigin: '50% 50%',
-    animation: 'k2000 2.0s ease-in-out infinite',
-    filter:
-      `drop-shadow(0 0 10px ${CYAN}) ` +
-      'drop-shadow(0 0 28px rgba(0,229,255,0.55))',
+    mixBlendMode: "screen",
+    transform: "translate(-50%,-50%)",
   },
 
   k2000Ring: {
-    position: 'absolute',
-    inset: 0,
+    position: "absolute",
+    left: "50%",
+    top: "50%",
+    width: 252,
+    height: 252,
     borderRadius: 9999,
     background:
-      'conic-gradient(from 0deg,' +
-      ' rgba(0,0,0,0) 0deg,' +
-      ' rgba(0,0,0,0) 315deg,' +
-      ' rgba(0,229,255,0.0) 330deg,' +
-      ' rgba(0,229,255,0.95) 350deg,' +
-      ' rgba(0,229,255,0.0) 360deg)',
-    WebkitMask: 'radial-gradient(circle, transparent 63%, #000 64%)',
-    mask: 'radial-gradient(circle, transparent 63%, #000 64%)',
+      "conic-gradient(from 0deg, transparent 0deg, " +
+      "rgba(0,229,255,0.00) 14deg, " +
+      "rgba(0,229,255,0.30) 22deg, " +
+      "rgba(0,229,255,0.95) 35deg, " +
+      "rgba(0,229,255,0.35) 52deg, " +
+      "rgba(0,229,255,0.10) 70deg, " +
+      "transparent 92deg)",
+    filter: "blur(0.3px)",
+    transform: "translate(-50%,-50%)",
+    opacity: 0.95,
+    pointerEvents: "none",
+    zIndex: 2,
+    boxShadow: "0 0 26px rgba(0,229,255,0.12)",
+    maskImage:
+      "radial-gradient(circle, transparent 62%, #000 66%, #000 100%)",
+    WebkitMaskImage:
+      "radial-gradient(circle, transparent 62%, #000 66%, #000 100%)",
   },
 
-  particlesWrap: {
-    position: 'absolute',
-    inset: 0,
-    pointerEvents: 'none',
-    zIndex: 2,
-    left: '50%',
-    top: '50%',
-    transform: 'translate(-50%,-50%)',
+  wave1: {
+    position: "absolute",
+    left: "50%",
+    top: "50%",
+    width: 220,
+    height: 220,
+    borderRadius: 9999,
+    border: "1px solid rgba(0,229,255,0.25)",
+    filter: "blur(0.8px)",
+    pointerEvents: "none",
+    zIndex: 1,
+    transform: "translate(-50%,-50%)",
+  },
+  wave2: {
+    position: "absolute",
+    left: "50%",
+    top: "50%",
+    width: 220,
+    height: 220,
+    borderRadius: 9999,
+    border: "1px solid rgba(0,229,255,0.15)",
+    filter: "blur(1.2px)",
+    pointerEvents: "none",
+    zIndex: 1,
+    transform: "translate(-50%,-50%)",
+  },
+  wave3: {
+    position: "absolute",
+    left: "50%",
+    top: "50%",
+    width: 220,
+    height: 220,
+    borderRadius: 9999,
+    border: "1px solid rgba(0,229,255,0.08)",
+    filter: "blur(1.8px)",
+    pointerEvents: "none",
+    zIndex: 1,
+    transform: "translate(-50%,-50%)",
+  },
+
+  radarRing: {
+    position: "absolute",
+    left: "50%",
+    top: "50%",
+    width: 220,
+    height: 220,
+    borderRadius: 9999,
+    border: "1px solid rgba(0,229,255,0.22)",
+    filter: "blur(1.1px)",
+    pointerEvents: "none",
+    zIndex: 1,
+    transform: "translate(-50%,-50%)",
+  },
+  radarRing2: {
+    position: "absolute",
+    left: "50%",
+    top: "50%",
+    width: 220,
+    height: 220,
+    borderRadius: 9999,
+    border: "1px solid rgba(0,229,255,0.12)",
+    filter: "blur(1.7px)",
+    pointerEvents: "none",
+    zIndex: 1,
+    transform: "translate(-50%,-50%)",
+  },
+
+  scanLine: {
+    position: "absolute",
+    left: "50%",
+    top: "50%",
+    width: 210,
+    height: 10,
+    borderRadius: 9999,
+    background:
+      "linear-gradient(90deg, rgba(0,0,0,0), " +
+      "rgba(0,229,255,0.55), rgba(0,0,0,0))",
+    filter: "blur(1px)",
+    pointerEvents: "none",
+    zIndex: 3,
+    transform: "translate(-50%,-50%)",
+    mixBlendMode: "screen",
   },
 
   particle: {
-    position: 'absolute',
-    left: '50%',
-    top: '50%',
+    position: "absolute",
+    left: "50%",
+    top: "50%",
+    width: 6,
+    height: 6,
     borderRadius: 9999,
-    mixBlendMode: 'screen',
-  },
-
-  dissolveRingA: {
-    position: 'absolute',
-    left: '50%',
-    top: '50%',
-    width: 220,
-    height: 220,
-    borderRadius: 9999,
-    pointerEvents: 'none',
-    zIndex: 1,
-    animation: 'dissolveRing 1.6s cubic-bezier(.2,.8,.2,1) forwards',
-    mixBlendMode: 'screen',
-    transform: 'translate(-50%,-50%)',
-  },
-
-  dissolveRingB: {
-    position: 'absolute',
-    left: '50%',
-    top: '50%',
-    width: 220,
-    height: 220,
-    borderRadius: 9999,
-    pointerEvents: 'none',
-    zIndex: 1,
-    animation: 'dissolveRing 1.95s cubic-bezier(.2,.8,.2,1) forwards',
-    animationDelay: '260ms',
-    mixBlendMode: 'screen',
-    transform: 'translate(-50%,-50%)',
-  },
-
-  successRing: {
-    position: 'absolute',
-    left: '50%',
-    top: '50%',
-    width: 220,
-    height: 220,
-    borderRadius: 9999,
-    border: '2px solid rgba(255,255,255,0.90)',
-    pointerEvents: 'none',
-    zIndex: 4,
-    animation: 'successOutwardWave 0.62s ease-out forwards',
-    mixBlendMode: 'screen',
-    transform: 'translate(-50%,-50%)',
+    background: CYAN,
+    boxShadow:
+      "0 0 10px rgba(0,229,255,0.22), 0 0 18px rgba(0,229,255,0.10)",
+    pointerEvents: "none",
+    zIndex: 2,
+    filter: "blur(0.2px)",
+    opacity: 0,
   },
 
   button3D: {
     width: 220,
     height: 220,
     borderRadius: 9999,
-    border: '1px solid rgba(220,220,220,0.14)',
-    background: BTN_BG,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    zIndex: 3,
-    position: 'relative',
-    overflow: 'hidden',
+    border: "1px solid rgba(220,220,220,0.14)",
+    background:
+      "radial-gradient(220px 220px at 30% 25%, rgba(255,255,255,0.10) 0%, " +
+      "rgba(255,255,255,0.04) 18%, rgba(0,0,0,0.18) 60%, rgba(0,0,0,0.55) 100%), " +
+      "linear-gradient(145deg, #0b0b0b, #040404)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer",
+    zIndex: 4,
+    position: "relative",
+    overflow: "hidden",
   },
 
   specular: {
-    position: 'absolute',
-    left: '50%',
-    top: '50%',
+    position: "absolute",
+    left: "50%",
+    top: "50%",
     width: 280,
     height: 180,
     borderRadius: 9999,
-    background: SPECULAR_BG,
-    filter: 'blur(10px)',
-    pointerEvents: 'none',
-    zIndex: 1,
-    transform: 'translate(-50%,-50%)',
-  },
-
-  successGlow: {
-    position: 'absolute',
-    inset: -40,
-    borderRadius: 9999,
-    pointerEvents: 'none',
-    zIndex: 1,
     background:
-      'radial-gradient(circle at 50% 50%,' +
-      ' rgba(255,255,255,0.30) 0%,' +
-      ' rgba(255,255,255,0.10) 28%,' +
-      ' rgba(0,0,0,0) 62%)',
-    filter: 'blur(14px)',
-    mixBlendMode: 'screen',
+      "linear-gradient(135deg, rgba(255,255,255,0.20) 0%, " +
+      "rgba(255,255,255,0.08) 20%, rgba(255,255,255,0.02) 55%, " +
+      "rgba(255,255,255,0) 70%)",
+    filter: "blur(10px)",
+    pointerEvents: "none",
+    zIndex: 1,
+    transform: "translate(-50%,-50%)",
   },
 
   listenGlow: {
-    position: 'absolute',
-    inset: -34,
+    position: "absolute",
+    inset: -36,
     borderRadius: 9999,
-    pointerEvents: 'none',
-    zIndex: 1,
     background:
-      'radial-gradient(circle at 50% 50%,' +
-      ' rgba(0,229,255,0.22) 0%,' +
-      ' rgba(0,229,255,0.08) 28%,' +
-      ' rgba(0,0,0,0) 62%)',
-    filter: 'blur(18px)',
-    mixBlendMode: 'screen',
+      "radial-gradient(circle at 50% 50%, rgba(0,229,255,0.30) 0%, " +
+      "rgba(0,229,255,0.12) 28%, rgba(0,0,0,0) 62%)",
+    filter: "blur(14px)",
+    mixBlendMode: "screen",
+    pointerEvents: "none",
+    zIndex: 1,
+  },
+
+  successGlow: {
+    position: "absolute",
+    inset: -44,
+    borderRadius: 9999,
+    background:
+      "radial-gradient(circle at 50% 50%, rgba(255,255,255,0.38) 0%, " +
+      "rgba(255,255,255,0.14) 28%, rgba(0,0,0,0) 62%)",
+    filter: "blur(16px)",
+    mixBlendMode: "screen",
+    pointerEvents: "none",
+    zIndex: 1,
   },
 
   bLogo: {
     width: 168,
     height: 168,
-    objectFit: 'contain',
-    display: 'block',
+    objectFit: "contain",
+    display: "block",
     zIndex: 2,
   },
 
   status: {
     fontSize: 15,
     opacity: 0.85,
-    letterSpacing: '0.16em',
+    letterSpacing: "0.16em",
     fontWeight: 900,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
 
-  recent: {
-    paddingLeft: 24,
-    paddingRight: 24,
-    paddingBottom: 22,
-  },
-
-  recentTitle: {
-    fontSize: 11,
-    letterSpacing: '0.30em',
-    opacity: 0.55,
-    marginBottom: 10,
-  },
+  recent: { paddingLeft: 24, paddingRight: 24, paddingBottom: 22 },
+  recentTitle: { fontSize: 11, letterSpacing: "0.30em", opacity: 0.55, marginBottom: 10 },
 
   card: {
     borderRadius: 18,
-    border: '1px solid rgba(235,235,235,0.08)',
-    background: 'rgba(10,10,10,0.55)',
+    border: "1px solid rgba(235,235,235,0.08)",
+    background: "rgba(10,10,10,0.55)",
     padding: 14,
-    boxShadow: '0 18px 60px rgba(0,0,0,0.65)',
-    backdropFilter: 'blur(10px)',
+    boxShadow: "0 18px 60px rgba(0,0,0,0.65)",
+    backdropFilter: "blur(10px)",
   },
-
-  cardRow: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-
+  cardRow: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 },
   cardMain: {
     fontSize: 14,
     fontWeight: 700,
-    background: GRAD_SUB,
-    WebkitBackgroundClip: 'text',
-    backgroundClip: 'text',
-    color: 'transparent',
+    background:
+      "linear-gradient(180deg, rgba(235,235,235,0.95), rgba(160,160,160,0.65))",
+    WebkitBackgroundClip: "text",
+    backgroundClip: "text",
+    color: "transparent",
   },
-
   badge: {
     fontSize: 10,
-    padding: '6px 10px',
+    padding: "6px 10px",
     borderRadius: 9999,
-    border: '1px solid rgba(235,235,235,0.10)',
+    border: "1px solid rgba(235,235,235,0.10)",
     opacity: 0.9,
-    letterSpacing: '0.12em',
+    letterSpacing: "0.12em",
+    whiteSpace: "nowrap",
   },
-
   cardSub: { marginTop: 8, fontSize: 12, opacity: 0.58 },
 
-  nav: {
-    borderTop: '1px solid rgba(235,235,235,0.08)',
-    padding: '14px 24px',
-    display: 'flex',
-    justifyContent: 'space-between',
-    fontSize: 12,
-    opacity: 0.82,
-    background: 'rgba(0,0,0,0.25)',
-    backdropFilter: 'blur(10px)',
+  successFlash: {
+    position: "fixed",
+    inset: 0,
+    pointerEvents: "none",
+    background:
+      "radial-gradient(circle, rgba(255,255,255,0.22), transparent 62%)",
+    animation: "pop .35s ease-out forwards",
+    opacity: 0,
   },
-
-  navOn: { opacity: 1, letterSpacing: '0.08em' },
-  navOff: { opacity: 0.58, letterSpacing: '0.08em' },
-
-  loading: {
-    opacity: 0.72,
-    letterSpacing: '0.18em',
-    fontWeight: 900,
+  failFlash: {
+    position: "fixed",
+    inset: 0,
+    pointerEvents: "none",
+    background:
+      "radial-gradient(circle, rgba(0,0,0,0.65), transparent 70%)",
+    animation: "pop .45s ease-out forwards",
+    opacity: 0,
   },
 
   logoWrap: {
-    width: 120,
-    height: 120,
+    width: 88,
+    height: 88,
     borderRadius: 9999,
-    display: 'grid',
-    placeItems: 'center',
-    background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.08)',
-    boxShadow: '0 18px 60px rgba(0,0,0,0.55)',
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    filter: "drop-shadow(0 0 18px rgba(255,255,255,0.18))",
   },
-
   googleBtn: {
-    width: 'min(360px, 100%)',
-    padding: '14px 16px',
+    width: "min(340px, 100%)",
+    padding: "14px 16px",
     borderRadius: 14,
-    background: 'rgba(255,255,255,0.08)',
-    border: '1px solid rgba(255,255,255,0.14)',
-    color: '#fff',
-    cursor: 'pointer',
-    fontSize: 15,
-    fontWeight: 800,
+    background: "rgba(255,255,255,0.08)",
+    border: "1px solid rgba(255,255,255,0.14)",
+    color: "#fff",
+    cursor: "pointer",
+    fontSize: 16,
+    fontWeight: 700,
     letterSpacing: 0.4,
-    boxShadow: '0 18px 60px rgba(0,0,0,0.55)',
   },
-
   loginHint: {
+    opacity: 0.7,
     fontSize: 12,
-    opacity: 0.58,
-    letterSpacing: '0.12em',
+    letterSpacing: "0.06em",
   },
-
-  successFlash: {
-    position: 'fixed',
-    inset: 0,
-    pointerEvents: 'none',
-    background:
-      'radial-gradient(circle at 50% 45%,' +
-      ' rgba(255,255,255,0.16) 0%,' +
-      ' rgba(0,0,0,0) 62%)',
-    animation: 'failDim 0.35s ease-out forwards',
-    zIndex: 30,
-  },
-
-  failFlash: {
-    position: 'fixed',
-    inset: 0,
-    pointerEvents: 'none',
-    background:
-      'radial-gradient(circle at 50% 45%,' +
-      ' rgba(0,0,0,0.62) 0%,' +
-      ' rgba(0,0,0,0) 70%)',
-    animation: 'failDim 0.7s ease-out forwards',
-    zIndex: 30,
+  loading: {
+    opacity: 0.8,
+    letterSpacing: "0.14em",
+    fontWeight: 900,
+    marginTop: 44,
   },
 };

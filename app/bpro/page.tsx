@@ -1,26 +1,24 @@
-import AuthGate from "@/components/AuthGate";
+"use client";
 import BottomNav from "@/components/BottomNav";
-
-export default function BproPage() {
+export default function Bpro() {
   return (
-    <AuthGate>
-      <main style={S.page}>
-        <div style={S.phone}>
-          <div style={S.center}>
-            <h1 style={S.h}>Bpro</h1>
-            <p style={S.p}>Espace labels & pros (placeholder).</p>
-          </div>
-          <BottomNav />
+    <main style={s.page}>
+      <div style={s.phone}>
+        <div style={s.body}>
+          <div style={s.h}>BPRO</div>
+          <div style={s.p}>Labels & professionals.</div>
+          <div style={s.p2}>Coming soon.</div>
         </div>
-      </main>
-    </AuthGate>
+        <BottomNav />
+      </div>
+    </main>
   );
 }
-
-const S: any = {
+const s: any = {
   page: { minHeight: "100vh", background: "#0b0b0c", color: "#fff", display: "flex", justifyContent: "center" },
   phone: { width: "100%", maxWidth: 420, minHeight: "100vh", display: "flex", flexDirection: "column" },
-  center: { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", padding: 24 },
-  h: { letterSpacing: "0.10em" },
-  p: { opacity: 0.75, marginTop: 10 },
+  body: { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", padding: 24 },
+  h: { letterSpacing: "0.12em", fontWeight: 900, opacity: 0.9 },
+  p: { marginTop: 10, opacity: 0.78, textAlign: "center" },
+  p2: { marginTop: 8, opacity: 0.55, fontSize: 12, textAlign: "center" },
 };
