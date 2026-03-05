@@ -1,26 +1,22 @@
 import crypto from "crypto"
 
 type ACRCfg = {
-host: string
-key: string
-secret: string
+host:string
+key:string
+secret:string
 }
 
-function cfg(): ACRCfg {
-
+function cfg():ACRCfg{
 const host = process.env.ACR_HOST || ""
 const key = process.env.ACR_ACCESS_KEY || ""
 const secret = process.env.ACR_ACCESS_SECRET || ""
-
-if (!host || !key || !secret) {
+if(!host || !key || !secret){
 throw new Error("Missing ACR env")
 }
-
 return { host, key, secret }
-
 }
 
-export async function acrIdentify(audio: Uint8Array) {
+export async function acrIdentify(audio:Uint8Array){
 
 const c = cfg()
 
@@ -28,7 +24,7 @@ const httpMethod = "POST"
 const httpUri = "/v1/identify"
 const dataType = "audio"
 const signatureVersion = "1"
-const timestamp = Math.floor(Date.now() / 1000).toString()
+const timestamp = Math.floor(Date.now()/1000).toString()
 
 const stringToSign =
 httpMethod + "\n" +
@@ -40,7 +36,7 @@ timestamp
 
 const signature = crypto
 .createHmac("sha1", c.secret)
-.update(stringToSign, "utf8")
+.update(stringToSign,"utf8")
 .digest("base64")
 
 const form = new FormData()
@@ -51,18 +47,11 @@ form.append("signature", signature)
 form.append("timestamp", timestamp)
 form.append("sample_bytes", String(audio.byteLength))
 
-const blob = new Blob([Buffer.from(audio)], { type: "application/octet-stream" })
-form.append("sample", blob, "sample.bin")
+const file = new File([audio], "sample.bin", { type:"application/octet-stream" })
+form.append("sample", file)
 
 const url = "https://" + c.host + httpUri
-
-const res = await fetch(url, {
-method: "POST",
-body: form
-})
-
-const json = await res.json()
-
-return json
+const res = await fetch(url,{ method:"POST", body:form })
+return await res.json()
 
 }
