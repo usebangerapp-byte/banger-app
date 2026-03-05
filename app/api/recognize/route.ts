@@ -11,8 +11,15 @@ function signRequest(params: {
   signatureVersion: string;
   timestamp: string;
 }) {
-  const { httpMethod, httpUri, accessKey, accessSecret, dataType, 
-signatureVersion, timestamp } = params;
+  const {
+    httpMethod,
+    httpUri,
+    accessKey,
+    accessSecret,
+    dataType,
+    signatureVersion,
+    timestamp,
+  } = params;
 
   const stringToSign =
     httpMethod + "\n" +
@@ -77,8 +84,9 @@ export async function POST(req: Request) {
     outForm.append("timestamp", timestamp);
     outForm.append("sample_bytes", String(sampleBytes));
 
-    const blob = new Blob([arrayBuffer], { type: file.type || 
-"application/octet-stream" });
+    const blob = new Blob([arrayBuffer], {
+      type: file.type || "application/octet-stream",
+    });
     outForm.append("sample", blob, "sample.webm");
 
     const acrRes = await fetch(`https://${host}${httpUri}`, {
