@@ -1,23 +1,23 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 
-/**
- * Alias endpoint kept for backward compatibility.
- * Some UI calls /api/bpro/recent. We proxy to /api/bpro/scan.
- */
-export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const base = `${url.protocol}//${url.host}`;
-  const target = new URL("/api/bpro/scan", base);
+export const runtime = "nodejs";
 
-  // forward query params
-  url.searchParams.forEach((v, k) => target.searchParams.set(k, v));
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
-  const res = await fetch(target.toString(), {
-    method: "GET",
-    headers: { "content-type": "application/json" },
-    cache: "no-store",
-  });
+export async function GET() {
+  const { data, error } = await supabase
+    .from("unreleased_tracks")
+    .select("id,title,artist,label,created_at")
+    .order("created_at", { ascending: false })
+    .limit(25);
 
-  const text = await res.text();
-  return new NextResponse(text, { status: res.status, headers: res.headers });
+  if (error) {
+    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true, data: data ?? [] }, { status: 200 });
 }
