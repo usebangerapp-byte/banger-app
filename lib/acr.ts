@@ -44,7 +44,8 @@ export async function acrIdentify(audio: Uint8Array) {
   form.append("signature", sign);
   form.append("timestamp", timestamp);
 
-  const blob = new Blob([audio], { type: "application/octet-stream" });
+  const bytes = Uint8Array.from(audio);
+  const blob = new Blob([bytes.buffer], { type: "application/octet-stream" });
   form.append("sample", blob, "sample.bin");
   form.append("sample_bytes", String(audio.byteLength));
 
