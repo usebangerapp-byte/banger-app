@@ -171,12 +171,23 @@ export default function BproPage() {
     setHover(false);
     if (!canPick) return;
     const f = e.dataTransfer.files?.[0];
-    if (f) setPickedFile(f);
+    if (!f) return;
+    setPickedFile(f);
+    if (mode && name.trim() && agreeRights) {
+      void analyze(f);
+    }
   }
 
   function onPick(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
-    if (f) setPickedFile(f);
+    if (!f) {
+      e.target.value = "";
+      return;
+    }
+    setPickedFile(f);
+    if (mode && name.trim() && agreeRights) {
+      void analyze(f);
+    }
     e.target.value = "";
   }
 
@@ -360,7 +371,7 @@ export default function BproPage() {
             </div>
           </div>
 
-          <input ref={inputRef} type="file" accept="audio/*" onChange={onPick} style={{ display: "none" }} />
+          <input ref={inputRef} type="file" accept="audio/*,.mp3,.wav,.m4a,.aac" onChange={onPick} style={{ display: "none" }} />
         </Card>
       </div>
 

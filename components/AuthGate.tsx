@@ -15,6 +15,7 @@ export default function AuthGate(props: {
     let mounted = true;
     (async () => {
       try {
+        if (!supabase) return;
         const { data } = await supabase.auth.getSession();
         if (!mounted) return;
         if (!data.session) {

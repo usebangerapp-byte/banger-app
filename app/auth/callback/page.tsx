@@ -4,49 +4,79 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 
-export default function AuthCallback() {
+export default function AuthCallbackPage() {
   const router = useRouter();
-  const supabase = createSupabaseBrowser();
   const [msg, setMsg] = useState("Finishing login…");
 
   useEffect(() => {
     let alive = true;
-    (async () => {
+
+    async function run() {
       try {
-        const code = new URLSearchParams(window.location.search).get("code");
-        if (code) {
-          // supabase-js v2
-          // @ts-ignore
-          await supabase.auth.exchangeCodeForSession(code);
+        if (typeof window === "undefined") return;
+
+        const supabase = createSupabaseBrowser();
+        if (!supabase) {
+          if (!alive) return;
+          setMsg("Missing Supabase config. Redirecting…");
+          window.setTimeout(() => {
+            if (alive) router.replace("/login");
+          }, 900);
+          return;
         }
+
+        const url = new URL(window.location.href);
+        const code = url.searchParams.get("code");
+
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) throw error;
+        }
+
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
         if (!alive) return;
-        router.replace("/");
-      } catch {
+
+        if (data.session) {
+          setMsg("Login successful. Redirecting…");
+          router.replace("/");
+        } else {
+          setMsg("No active session. Redirecting…");
+          router.replace("/login");
+        }
+      } catch (err) {
+        console.error(err);
         if (!alive) return;
-        setMsg("Login failed. Back to home…");
-        window.setTimeout(() => router.replace("/"), 900);
+        setMsg("Login failed. Redirecting…");
+        window.setTimeout(() => {
+          if (alive) router.replace("/login");
+        }, 900);
       }
-    })();
+    }
+
+    run();
+
     return () => {
       alive = false;
     };
-  }, [router, supabase]);
+  }, [router]);
 
   return (
-    <main
+    <div
       style={{
         minHeight: "100vh",
-        background: "#0b0b0c",
+        background: "#000",
         color: "#fff",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        letterSpacing: "0.14em",
-        fontWeight: 900,
-        opacity: 0.85,
+        padding: 24,
+        textAlign: "center",
       }}
     >
-      {msg}
-    </main>
+      <div style={{ opacity: 0.9, fontSize: 14, letterSpacing: "0.04em" }}>
+        {msg}
+      </div>
+    </div>
   );
 }

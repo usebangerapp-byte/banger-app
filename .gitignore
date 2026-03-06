@@ -46,3 +46,4 @@ next-env.d.ts
 *.bak_before_*
 *.bak_final_*
 *.bak_logo*
+.env*.local
