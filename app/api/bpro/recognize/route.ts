@@ -3,15 +3,10 @@ import { createClient } from "@supabase/supabase-js"
 
 export const runtime = "nodejs"
 
-function getSupabase() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl) throw new Error("NEXT_PUBLIC_SUPABASE_URL is required.");
-  if (!serviceRoleKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY is required.");
-
-  return createClient(supabaseUrl, serviceRoleKey);
-}
+const supabase = createClient(
+process.env.NEXT_PUBLIC_SUPABASE_URL!,
+process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 function signRequest(p:{
 httpMethod:string
@@ -50,7 +45,6 @@ return t
 }
 
 export async function POST(req:Request){
-  const supabase = getSupabase();
 try{
 
 const host = process.env.ACR_HOST

@@ -1,85 +1,71 @@
-import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { NextResponse } from "next/server"
+import { createClient } from "@supabase/supabase-js"
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime = "nodejs"
 
-function getSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabase = createClient(
+process.env.NEXT_PUBLIC_SUPABASE_URL!,
+process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
-  if (!url) throw new Error("NEXT_PUBLIC_SUPABASE_URL is required.");
-  if (!key) throw new Error("SUPABASE_SERVICE_ROLE_KEY is required.");
+export async function POST(req: Request){
 
-  return createClient(url, key);
+const token = process.env.ACR_CONSOLE_TOKEN
+const bucketId = process.env.ACR_BUCKET_ID
+
+if(!token || !bucketId){
+return NextResponse.json(
+{ error:"Missing ACR env" },
+{ status:500 }
+)
 }
 
-export async function POST(req: Request) {
-  try {
-    const supabase = getSupabase();
-    const form = await req.formData();
+const form = await req.formData()
+const file = form.get("file")
 
-    const file = form.get("file");
-    if (!(file instanceof File)) {
-      return NextResponse.json({ ok: false, error: "No file provided" }, { status: 400 });
-    }
+if(!(file instanceof File)){
+return NextResponse.json(
+{ error:"No file received" },
+{ status:400 }
+)
+}
 
-    const mode = String(form.get("mode") || "DJ");
-    const name = String(form.get("name") || "unknown");
-    const deleteAfter = String(form.get("delete_after") || "0") === "1";
+const upload = new FormData()
+upload.append("file",file)
+upload.append("title",file.name)
+upload.append("data_type","audio")
 
-    const safeName = file.name.replace(/[^\w.\-]+/g, "_");
-    const path = `${Date.now()}-${safeName}`;
+const res = await fetch(
+"https://api-v2.acrcloud.com/api/buckets/" +
+bucketId +
+"/files",
+{
+method:"POST",
+headers:{
+Authorization:"Bearer " + token
+},
+body:upload
+}
+)
 
-    const { error: uploadError } = await supabase.storage
-      .from("BANGER_UNRELEASED")
-      .upload(path, file, {
-        contentType: file.type || "application/octet-stream",
-        upsert: false,
-      });
+const text = await res.text()
 
-    if (uploadError) {
-      console.error("SUPABASE STORAGE UPLOAD ERROR:", uploadError);
-      return NextResponse.json({ ok: false, error: uploadError.message }, { status: 500 });
-    }
+let acr = null
+try{ acr = JSON.parse(text) }catch{}
 
-    const row = {
-      title: file.name,
-      artist: mode === "DJ" ? name : null,
-      label: mode === "LABEL" ? name : null,
-      path,
-      bucket: "BANGER_UNRELEASED",
-      created_at: new Date().toISOString(),
-      delete_after: deleteAfter,
-    };
+await supabase
+.from("unreleased_tracks")
+.insert({
+title:file.name,
+artist:"unknown",
+label:"unknown",
+bucket_id:bucketId,
+acr_id:acr?.data?.id || null
+})
 
-    // table principale
-    let dbError: any = null;
+return NextResponse.json({
+ok:true,
+acr
+})
 
-    const a = await supabase.from("unreleased_tracks").insert(row);
-    dbError = a.error;
-
-    if (dbError) {
-      const b = await supabase.from("recent").insert(row);
-      dbError = b.error;
-    }
-
-    if (dbError) {
-      console.error("SUPABASE DB INSERT ERROR:", dbError);
-      return NextResponse.json(
-        { ok: false, error: dbError.message, uploaded: true, path },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({
-      ok: true,
-      bucket: "BANGER_UNRELEASED",
-      path,
-      file: file.name,
-    });
-  } catch (e: any) {
-    console.error("BPRO UPLOAD FATAL:", e);
-    return NextResponse.json({ ok: false, error: e?.message || "Upload failed" }, { status: 500 });
-  }
 }
