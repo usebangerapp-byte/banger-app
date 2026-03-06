@@ -1,4 +1,4 @@
-import LoginScreen from "../_components/LoginScreen"
+import LoginScreen from "@/components/LoginScreen"
 export default function Page(){
 return <LoginScreen />
 }
