@@ -59,7 +59,7 @@ export default function Home() {
     let mounted = true;
     (async () => {
       try {
-        const { data } = await supabase.auth.getSession();
+        const { data } = await supabase!.auth.getSession();
         if (!mounted) return;
         setSessionOk(!!data.session);
       } catch {
@@ -78,7 +78,7 @@ export default function Home() {
   async function signInWithGoogle() {
     setLoginLoading(true);
     try {
-      await supabase.auth.signInWithOAuth({
+      await supabase!.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo:
