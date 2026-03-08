@@ -27,17 +27,7 @@ const PARTICLES = [
 ];
 
 export default function Home() {
-  const [supabase, setSupabase] = useState<ReturnType<typeof createSupabaseBrowser> | null>(null);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      setSupabase(createSupabaseBrowser());
-    } catch (e) {
-      console.error(e);
-    }
-  }, []);
-
+  const supabase = createSupabaseBrowser();
 
   const [sessionOk, setSessionOk] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(true);
@@ -68,10 +58,8 @@ export default function Home() {
   useEffect(() => {
     let mounted = true;
     (async () => {
-      if (!supabase) return;
       try {
-        if (!supabase) return;
-        const { data } = await supabase!.auth.getSession();
+        const { data } = await supabase.auth.getSession();
         if (!mounted) return;
         setSessionOk(!!data.session);
       } catch {
@@ -88,7 +76,6 @@ export default function Home() {
   }, [supabase]);
 
   async function signInWithGoogle() {
-    if (!supabase) return;
     setLoginLoading(true);
     try {
       await supabase.auth.signInWithOAuth({
