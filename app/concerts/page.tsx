@@ -1,113 +1,175 @@
+"use client"
 
-const sections = [
-  {
-    title:"Mysterious",
-    icon:"👀",
-    items:["Unknown ID","Unknown ID","Unknown ID"]
-  },
-  {
-    title:"Trending",
-    icon:"🔥",
-    items:["Rising Track","Rising Track","Rising Track"]
-  },
-  {
-    title:"Recently Added",
-    icon:"🆕",
-    items:["New Entry","New Entry","New Entry"]
-  },
-  {
-    title:"Most Wanted",
-    icon:"⭐",
-    items:["Wanted ID","Wanted ID","Wanted ID"]
-  }
-]
+import { useEffect, useState } from "react"
 
-export default function ConcertsPage(){
+type RadarItem = {
+  track_title: string
+  track_subtitle?: string
+  scans?: number
+  created_at?: string | null
+}
 
-  return(
-    <main style={{
-      minHeight:"100vh",
-      background:"#050507",
-      color:"#fff",
-      padding:"40px 22px 140px"
-    }}>
+type RadarData = {
+  mysterious: RadarItem[]
+  trending: RadarItem[]
+  recentlyAdded: RadarItem[]
+  mostWanted: RadarItem[]
+}
 
-      <div style={{maxWidth:720,margin:"0 auto"}}>
+const emptyData: RadarData = {
+  mysterious: [],
+  trending: [],
+  recentlyAdded: [],
+  mostWanted: [],
+}
 
-        <div style={{marginBottom:40}}>
+function Section(props: {
+  title: string
+  icon: string
+  items: RadarItem[]
+  accent?: string
+}) {
+  const { title, icon, items, accent = "#00eaff" } = props
 
-          <div style={{
-            fontSize:12,
-            letterSpacing:"0.18em",
-            opacity:0.55,
-            textTransform:"uppercase"
-          }}>
+  return (
+    <section
+      style={{
+        padding: 20,
+        borderRadius: 20,
+        background: "linear-gradient(160deg,#0a0a0d,#0b1015)",
+        border: "1px solid rgba(0,234,255,0.10)",
+        boxShadow: "0 0 30px rgba(0,234,255,0.06)",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 14,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            fontWeight: 700,
+            fontSize: 18,
+          }}
+        >
+          <span>{icon}</span>
+          <span>{title}</span>
+        </div>
+
+        <div
+          style={{
+            width: 10,
+            height: 10,
+            borderRadius: 999,
+            background: accent,
+            boxShadow: `0 0 14px ${accent}`,
+            opacity: 0.9,
+          }}
+        />
+      </div>
+
+      <div style={{ display: "grid", gap: 10 }}>
+        {items.length === 0 ? (
+          <div
+            style={{
+              padding: "12px 14px",
+              borderRadius: 14,
+              background: "rgba(255,255,255,0.04)",
+              opacity: 0.55,
+              fontSize: 14,
+            }}
+          >
+            No signal yet
+          </div>
+        ) : (
+          items.map((item, i) => (
+            <div
+              key={item.track_title + "|" + (item.track_subtitle || "") + "|" + i}
+              style={{
+                padding: "12px 14px",
+                borderRadius: 14,
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.04)",
+              }}
+            >
+              <div style={{ fontWeight: 600, fontSize: 14 }}>
+                {item.track_title || "Unknown ID"}
+              </div>
+              <div style={{ opacity: 0.55, fontSize: 12, marginTop: 4 }}>
+                {item.track_subtitle || "Unknown ID"}
+              </div>
+              {typeof item.scans === "number" && (
+                <div style={{ marginTop: 8, fontSize: 12, color: "#00eaff" }}>
+                  {item.scans} scans
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+    </section>
+  )
+}
+
+export default function ConcertsPage() {
+  const [data, setData] = useState<RadarData>(emptyData)
+
+  useEffect(() => {
+    fetch("/api/radar")
+      .then((r) => r.json())
+      .then((d) => setData({ ...emptyData, ...d }))
+      .catch(() => setData(emptyData))
+  }, [])
+
+  return (
+    <main
+      style={{
+        minHeight: "100vh",
+        background: "#050507",
+        color: "#fff",
+        padding: "40px 22px 140px",
+      }}
+    >
+      <div style={{ maxWidth: 720, margin: "0 auto" }}>
+        <div style={{ marginBottom: 40 }}>
+          <div
+            style={{
+              fontSize: 12,
+              letterSpacing: "0.18em",
+              opacity: 0.55,
+              textTransform: "uppercase",
+            }}
+          >
             Radar
           </div>
 
-          <h1 style={{
-            fontSize:38,
-            margin:"10px 0",
-            fontWeight:800
-          }}>
+          <h1
+            style={{
+              fontSize: 38,
+              margin: "10px 0",
+              fontWeight: 800,
+            }}
+          >
             Scene Signals
           </h1>
 
-          <div style={{opacity:0.65}}>
+          <div style={{ opacity: 0.65 }}>
             Discover what the scene is playing right now
           </div>
-
         </div>
 
-
-        <div style={{display:"grid",gap:22}}>
-
-          {sections.map(section => (
-
-            <section key={section.title}
-              style={{
-                padding:20,
-                borderRadius:20,
-                background:"linear-gradient(160deg,#0b0b0f,#0c1116)",
-                border:"1px solid rgba(0,255,255,0.08)",
-                boxShadow:"0 0 30px rgba(0,255,255,0.05)"
-              }}>
-
-              <div style={{
-                display:"flex",
-                alignItems:"center",
-                gap:10,
-                marginBottom:14,
-                fontWeight:700,
-                fontSize:18
-              }}>
-                <span>{section.icon}</span>
-                {section.title}
-              </div>
-
-              <div style={{display:"grid",gap:10}}>
-
-                {section.items.map((item,i)=>(
-                  <div key={i}
-                    style={{
-                      padding:"12px 14px",
-                      borderRadius:14,
-                      background:"rgba(255,255,255,0.04)",
-                      fontSize:14,
-                      opacity:0.9
-                    }}>
-                    {item}
-                  </div>
-                ))}
-
-              </div>
-
-            </section>
-
-          ))}
-
+        <div style={{ display: "grid", gap: 22 }}>
+          <Section title="Mysterious" icon="👀" items={data.mysterious} accent="#35e8ff" />
+          <Section title="Trending" icon="🔥" items={data.trending} accent="#00eaff" />
+          <Section title="Recently Added" icon="🆕" items={data.recentlyAdded} accent="#55f3ff" />
+          <Section title="Most Wanted" icon="⭐" items={data.mostWanted} accent="#7df7ff" />
         </div>
-
       </div>
     </main>
   )
