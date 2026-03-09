@@ -33,7 +33,7 @@ export default function ConcertsPage() {
             Discovery Signals
           </h1>
           <p style={{ margin: 0, opacity: 0.72, fontSize: 15 }}>
-            Explore patterns, momentum and hidden tracks
+            Discover what the scene is playing right now
           </p>
         </div>
 
