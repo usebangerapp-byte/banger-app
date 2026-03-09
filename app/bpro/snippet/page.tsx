@@ -112,7 +112,12 @@ export default function SnippetPage() {
       ]);
 
       const data = await ffmpeg.readFile("snippet.mp3");
-      const blob = new Blob([data], { type: "audio/mpeg" });
+      if (typeof data === "string") {
+        throw new Error("Invalid ffmpeg output");
+      }
+      const safeBytes = new Uint8Array(data.length);
+      safeBytes.set(data);
+      const blob = new Blob([safeBytes.buffer], { type: "audio/mpeg" });
 
       if (snippetUrl) URL.revokeObjectURL(snippetUrl);
       const url = URL.createObjectURL(blob);

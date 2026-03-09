@@ -1,54 +1,30 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "crypto";
-import { spawn } from "child_process";
-import { tmpdir } from "os";
-import { join } from "path";
-import { mkdir, readFile, rm, writeFile } from "fs/promises";
 
 export const runtime = "nodejs";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
-const STORAGE_BUCKET = "bpro_uploads";
-const FINGERPRINT_DURATION = 20;
+const STORAGE_BUCKET = process.env.BPRO_STORAGE_BUCKET || "bpro_uploads";
+const ACR_BUCKET_ID = process.env.ACR_BUCKET_ID || "";
 
 function sanitizeName(name: string) {
   return name.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/-+/g, "-");
 }
 
-async function runFfmpeg(args: string[]) {
-  await new Promise<void>((resolve, reject) => {
-    const child = spawn("ffmpeg", ["-y", ...args]);
-    let stderr = "";
-
-    child.stderr.on("data", (chunk) => {
-      stderr += chunk.toString();
-    });
-
-    child.on("error", (err) => reject(err));
-    child.on("close", (code) => {
-      if (code === 0) return resolve();
-      reject(new Error(stderr || "ffmpeg failed"));
-    });
-  });
-}
-
 export async function POST(req: Request) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const token = process.env.ACR_CONSOLE_TOKEN;
-  const bucketId = process.env.ACR_BUCKET_ID;
 
-  if (!token || !bucketId) {
-    console.log("[BPRO] step 10: success response");
+  if (!supabaseUrl || !supabaseKey) {
+    return NextResponse.json({ error: "Missing Supabase env" }, { status: 500 });
+  }
+
+  if (!token || !ACR_BUCKET_ID) {
     return NextResponse.json({ error: "Missing ACR env" }, { status: 500 });
   }
 
-  console.log("[BPRO] SUPABASE URL =", process.env.NEXT_PUBLIC_SUPABASE_URL);
-  console.log("[BPRO] STORAGE_BUCKET =", STORAGE_BUCKET);
-
+  const supabase = createClient(supabaseUrl, supabaseKey);
   const form = await req.formData();
 
   const source = form.get("file");
@@ -76,213 +52,115 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Rights confirmation required" }, { status: 400 });
   }
 
-  const workDir = join(tmpdir(), `bpro-${randomUUID()}`);
-  await mkdir(workDir, { recursive: true });
+  const sourceBuffer = Buffer.from(await source.arrayBuffer());
+  const sourceExt = source.name.includes(".") ? source.name.split(".").pop() : "mp3";
+  const snippetPath = `snippets/${Date.now()}-${randomUUID()}-${sanitizeName(title)}.${sourceExt}`;
 
-  const safeBase = sanitizeName(source.name || "track");
-  const inputPath = join(workDir, `input-${safeBase}`);
-  const storedSnippetPath = join(workDir, `stored-snippet-${randomUUID()}.mp3`);
-  const fingerprintPath = join(workDir, `fingerprint-${randomUUID()}.mp3`);
+  const { error: storageError } = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .upload(snippetPath, new Blob([sourceBuffer]), {
+      contentType: source.type || "audio/mpeg",
+      upsert: false,
+    });
 
-  let snippetPath: string | null = null;
+  if (storageError) {
+    return NextResponse.json({ error: `Snippet storage failed: ${storageError.message}` }, { status: 500 });
+  }
+
   let artworkPath: string | null = "B-logo.png";
 
-  try {
-    console.log("[BPRO] step 1: reading source buffer");
-    const inputBuffer = Buffer.from(await source.arrayBuffer());
-    console.log("[BPRO] step 1 done");
-    console.log("[BPRO] step 2: writing temp input");
-    await writeFile(inputPath, inputBuffer);
-    console.log("[BPRO] step 2 done");
+  if (artwork instanceof File && artwork.size > 0) {
+    const artworkBuffer = Buffer.from(await artwork.arrayBuffer());
+    const ext = artwork.name.includes(".") ? artwork.name.split(".").pop() : "jpg";
+    artworkPath = `artwork/${Date.now()}-${randomUUID()}-${sanitizeName(title)}.${ext}`;
 
-    const hasSnippet = Number.isFinite(snippetDurationRaw) && snippetDurationRaw > 0;
-    const snippetDuration = hasSnippet ? Math.min(60, Math.max(1, Math.floor(snippetDurationRaw))) : null;
-    const snippetStart = hasSnippet ? Math.max(0, Math.floor(snippetStartRaw)) : 0;
-
-    // 1) fichier stocke chez toi : preview segment complet
-    if (hasSnippet && snippetDuration) {
-      console.log("[BPRO] step 3: ffmpeg stored snippet start");
-      console.log("[BPRO] step 6: ffmpeg fingerprint start");
-      await runFfmpeg([
-        "-ss", String(snippetStart),
-        "-t", String(snippetDuration),
-        "-i", inputPath,
-        "-vn",
-        "-acodec", "libmp3lame",
-        "-b:a", "192k",
-        storedSnippetPath,
-      ]);
-    } else {
-      await runFfmpeg([
-        "-i", inputPath,
-        "-vn",
-        "-acodec", "libmp3lame",
-        "-b:a", "192k",
-        storedSnippetPath,
-      ]);
-    }
-
-    console.log("[BPRO] step 3 done");
-    console.log("[BPRO] step 4: reading stored snippet");
-    const storedSnippetBuffer = await readFile(storedSnippetPath);
-    console.log("[BPRO] step 4 done");
-
-    snippetPath = `snippets/${Date.now()}-${randomUUID()}-${sanitizeName(title)}.mp3`;
-    console.log("[BPRO] step 5: uploading snippet to storage");
-    const { error: storageError } = await supabase.storage
+    const { error: artworkError } = await supabase.storage
       .from(STORAGE_BUCKET)
-      .upload(snippetPath, new Blob([storedSnippetBuffer]), {
-        contentType: "audio/mpeg",
+      .upload(artworkPath, new Blob([artworkBuffer]), {
+        contentType: artwork.type || "image/jpeg",
         upsert: false,
       });
 
-    console.log("[BPRO] step 5 done");
-    if (storageError) {
-      throw new Error(`Snippet storage failed: ${storageError.message}`);
+    if (artworkError) {
+      return NextResponse.json({ error: `Artwork storage failed: ${artworkError.message}` }, { status: 500 });
     }
+  }
 
-    if (artwork && artwork.size > 0) {
-      const artworkBuffer = Buffer.from(await artwork.arrayBuffer());
-      const ext = artwork.name.includes(".") ? artwork.name.split(".").pop() : "jpg";
-      artworkPath = `artwork/${Date.now()}-${randomUUID()}-${sanitizeName(title)}.${ext}`;
-
-      const { error: artworkError } = await supabase.storage
-        .from(STORAGE_BUCKET)
-        .upload(artworkPath, artworkBuffer, {
-          contentType: artwork.type || "image/jpeg",
-          upsert: false,
-        });
-
-      if (artworkError) {
-        throw new Error(`Artwork storage failed: ${artworkError.message}`);
-      }
-    }
-
-    // 2) fichier envoye a ACR : 20 sec au centre
-    if (hasSnippet && snippetDuration) {
-      const centerOffset = Math.max(0, Math.floor((snippetDuration - Math.min(FINGERPRINT_DURATION, snippetDuration)) / 2));
-      const fingerprintStart = snippetStart + centerOffset;
-      const fingerprintDuration = Math.min(FINGERPRINT_DURATION, snippetDuration);
-
-      await runFfmpeg([
-        "-ss", String(fingerprintStart),
-        "-t", String(fingerprintDuration),
-        "-i", inputPath,
-        "-vn",
-        "-acodec", "libmp3lame",
-        "-b:a", "192k",
-        fingerprintPath,
-      ]);
-    } else {
-      await runFfmpeg([
-        "-i", inputPath,
-        "-t", String(FINGERPRINT_DURATION),
-        "-vn",
-        "-acodec", "libmp3lame",
-        "-b:a", "192k",
-        fingerprintPath,
-      ]);
-    }
-
-    console.log("[BPRO] step 6 done");
-    console.log("[BPRO] step 7: reading fingerprint");
-    const fingerprintBuffer = await readFile(fingerprintPath);
-    console.log("[BPRO] step 7 done");
-
-    const acrForm = new FormData();
-    acrForm.append(
-      "file",
-      new Blob([fingerprintBuffer], { type: "audio/mpeg" }),
-      "fingerprint.mp3"
-    );
-    acrForm.append("title", title);
-    acrForm.append("data_type", "audio");
-    acrForm.append(
-      "user_defined",
-      JSON.stringify({
-        mode,
-        name,
-        info,
-        release_status: releaseStatus,
-        release_date: releaseDate || null,
-        allow_preview: allowPreview,
-        storage_bucket: STORAGE_BUCKET,
-        snippet_path: snippetPath,
-        artwork_path: artworkPath,
-        fingerprint_duration: FINGERPRINT_DURATION,
-      })
-    );
-
-    console.log("[BPRO] step 8: upload to ACR start");
-    const acrRes = await fetch(`https://api-v2.acrcloud.com/api/buckets/${bucketId}/files`, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: acrForm,
-    });
-
-    console.log("[BPRO] step 8 response status =", acrRes.status);
-    const acrJson = await acrRes.json().catch(() => null);
-    console.log("[BPRO] step 8 response body =", JSON.stringify(acrJson));
-
-    if (!acrRes.ok) {
-      return NextResponse.json(
-        {
-          error: acrJson?.error || "ACR upload failed",
-          snippet_path: snippetPath,
-          artwork_path: artworkPath,
-        },
-        { status: 500 }
-      );
-    }
-
-    const acrItem = Array.isArray(acrJson?.data) ? acrJson.data[0] : acrJson?.data;
-    const fingerprintStatus =
-      acrItem?.state === 1 ? "ready" : "processing";
-
-    try {
-      console.log("[BPRO] step 9: insert database row");
-      await supabase.from("bpro_uploads").insert({
-        mode,
-        name,
-        title,
-        info: info || null,
-        release_status: releaseStatus || null,
-        release_date: releaseDate || null,
-        allow_preview: allowPreview,
-        storage_bucket: STORAGE_BUCKET,
-        snippet_path: snippetPath,
-        artwork_path: artworkPath,
-        snippet_start: hasSnippet ? snippetStart : 0,
-        snippet_duration: hasSnippet ? snippetDuration : null,
-        source_file_name: source.name,
-        source_size: source.size,
-        acr_id: acrItem?.acr_id || null,
-        fingerprint_status: fingerprintStatus,
-        fingerprint_duration: FINGERPRINT_DURATION,
-      });
-    } catch {
-      // non-blocking
-    }
-
-    return NextResponse.json({
-      ok: true,
+  const acrForm = new FormData();
+  acrForm.append(
+    "file",
+    new Blob([sourceBuffer], { type: source.type || "audio/mpeg" }),
+    source.name || "snippet.mp3"
+  );
+  acrForm.append("title", title);
+  acrForm.append("data_type", "audio");
+  acrForm.append(
+    "user_defined",
+    JSON.stringify({
+      mode,
+      name,
+      info,
+      release_status: releaseStatus,
+      release_date: releaseDate || null,
+      allow_preview: allowPreview,
+      storage_bucket: STORAGE_BUCKET,
       snippet_path: snippetPath,
       artwork_path: artworkPath,
-      acr_id: acrItem?.acr_id || null,
-      acr_state: acrItem?.state ?? null,
-      fingerprint_status: fingerprintStatus,
-      fingerprint_duration: FINGERPRINT_DURATION,
-    });
-  } catch (err: any) {
-    console.error("[BPRO] upload route error:", err);
+      snippet_start: Number.isFinite(snippetStartRaw) ? snippetStartRaw : 0,
+      snippet_duration: Number.isFinite(snippetDurationRaw) ? snippetDurationRaw : null,
+      source_file_name: source.name,
+      source_size: source.size,
+    })
+  );
+
+  const acrRes = await fetch(`https://api-v2.acrcloud.com/api/buckets/${ACR_BUCKET_ID}/files`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: acrForm,
+  });
+
+  const acrJson = await acrRes.json().catch(() => null);
+
+  if (!acrRes.ok) {
     return NextResponse.json(
-      { error: err?.message || "Upload failed" },
+      { error: acrJson?.error || "ACR upload failed", snippet_path: snippetPath, artwork_path: artworkPath },
       { status: 500 }
     );
-  } finally {
-    await rm(workDir, { recursive: true, force: true }).catch(() => {});
   }
+
+  const acrItem = Array.isArray(acrJson?.data) ? acrJson.data[0] : acrJson?.data;
+  const fingerprintStatus = acrItem?.state === 1 ? "ready" : "processing";
+
+  try {
+    await supabase.from("bpro_uploads").insert({
+      mode,
+      name,
+      title,
+      info: info || null,
+      release_status: releaseStatus || null,
+      release_date: releaseDate || null,
+      allow_preview: allowPreview,
+      storage_bucket: STORAGE_BUCKET,
+      snippet_path: snippetPath,
+      artwork_path: artworkPath,
+      snippet_start: Number.isFinite(snippetStartRaw) ? snippetStartRaw : 0,
+      snippet_duration: Number.isFinite(snippetDurationRaw) ? snippetDurationRaw : null,
+      source_file_name: source.name,
+      source_size: source.size,
+      acr_id: acrItem?.acr_id || null,
+      fingerprint_status: fingerprintStatus,
+    });
+  } catch {}
+
+  return NextResponse.json({
+    ok: true,
+    snippet_path: snippetPath,
+    artwork_path: artworkPath,
+    acr_id: acrItem?.acr_id || null,
+    acr_state: acrItem?.state ?? null,
+    fingerprint_status: fingerprintStatus,
+  });
 }

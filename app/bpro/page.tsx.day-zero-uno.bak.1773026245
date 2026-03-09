@@ -443,7 +443,7 @@ export default function BproPage() {
               <input
                 ref={audioInputRef}
                 type="file"
-                accept=".mp3,.wav,.wave,.aiff,.aif,.flac,.m4a,.aac,.ogg,.opus,audio/*"
+                accept="audio/*"
                 onChange={onPickAudio}
                 style={{ display: "none" }}
               />
