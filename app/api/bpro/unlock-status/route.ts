@@ -28,9 +28,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const accepted = (data || []).filter((row: any) =>
-    row?.fingerprint_status === "ready" || row?.fingerprint_status === "processing"
-  );
+  const accepted = data || [];
 
   return NextResponse.json({
     unlocked: accepted.length >= 3,
