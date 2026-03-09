@@ -41,6 +41,7 @@ export async function POST(req: Request) {
   const releaseDate = String(form.get("release_date") || "");
   const allowPreview = String(form.get("allow_preview") || "1") === "1";
   const hasRights = String(form.get("has_rights") || "0") === "1";
+  const uploaderEmail = String(form.get("uploader_email") || "").trim().toLowerCase();
   const snippetStartRaw = Number(form.get("snippet_start") || 0);
   const snippetDurationRaw = Number(form.get("snippet_duration") || 0);
 
@@ -152,6 +153,7 @@ export async function POST(req: Request) {
       source_size: source.size,
       acr_id: acrItem?.acr_id || null,
       fingerprint_status: fingerprintStatus,
+      uploader_email: uploaderEmail || null,
     });
   } catch {}
 

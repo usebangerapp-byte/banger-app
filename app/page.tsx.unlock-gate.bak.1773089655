@@ -3,7 +3,6 @@
 import Image from "next/image";
 import BottomNav from "@/components/BottomNav";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 
 type Status = "idle" | "listening" | "recognizing";
@@ -28,7 +27,6 @@ const PARTICLES = [
 ];
 
 export default function Home() {
-  const router = useRouter();
   const supabase = createSupabaseBrowser();
 
   const [sessionOk, setSessionOk] = useState(false);
@@ -62,26 +60,8 @@ export default function Home() {
     (async () => {
       try {
         const { data } = await supabase!.auth.getSession();
-        const session = data.session;
         if (!mounted) return;
-
-        setSessionOk(!!session);
-
-        if (!session?.user?.email) {
-          return;
-        }
-
-        try {
-          const r = await fetch(`/api/bpro/unlock-status?email=${encodeURIComponent(session.user.email)}`, {
-            cache: "no-store",
-          });
-          const j = await r.json().catch(() => null);
-          if (!mounted) return;
-          if (!j?.unlocked) {
-            router.replace("/unlock");
-            return;
-          }
-        } catch {}
+        setSessionOk(!!data.session);
       } catch {
         if (!mounted) return;
         setSessionOk(false);
@@ -93,7 +73,7 @@ export default function Home() {
     return () => {
       mounted = false;
     };
-  }, [router, supabase]);
+  }, [supabase]);
 
   async function signInWithGoogle() {
     setLoginLoading(true);

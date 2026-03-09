@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { createSupabaseBrowser } from "@/lib/supabase/client";
 import WaveSurfer from "wavesurfer.js";
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 
@@ -19,8 +18,6 @@ type UploadResult = {
 };
 
 export default function BproPage() {
-  const [uploaderEmail, setUploaderEmail] = useState("");
-  const supabase = createSupabaseBrowser();
   const audioInputRef = useRef<HTMLInputElement | null>(null);
   const artworkInputRef = useRef<HTMLInputElement | null>(null);
   const waveformRef = useRef<HTMLDivElement | null>(null);
@@ -321,7 +318,6 @@ fd.append("file", uploadFile);
       fd.append("allow_preview", allowPublicPreview ? "1" : "0");
       fd.append("delete_after", "1");
       fd.append("has_rights", agreeRights ? "1" : "0");
-      fd.append("uploader_email", uploaderEmail || "");
 
       if (artwork) fd.append("artwork", artwork);
 
