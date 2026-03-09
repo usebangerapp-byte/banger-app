@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import WaveSurfer from "wavesurfer.js";
+import { FFmpeg } from "@ffmpeg/ffmpeg";
 
 type Mode = "DJ" | "LABEL";
 type ReleaseStatus = "released" | "unreleased";
@@ -21,6 +22,8 @@ export default function BproPage() {
   const artworkInputRef = useRef<HTMLInputElement | null>(null);
   const waveformRef = useRef<HTMLDivElement | null>(null);
   const waveRef = useRef<WaveSurfer | null>(null);
+  const ffmpegRef = useRef<FFmpeg | null>(null);
+  const ffmpegLoadedRef = useRef(false);
   const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
 
   const [mode, setMode] = useState<Mode | null>(null);
@@ -195,6 +198,79 @@ export default function BproPage() {
     setStatus("Preview segment confirmed — ready for analysis.");
     setError("");
     setSuccess("");
+  }
+
+  async function buildUploadFile() {
+    if (!audioFile) {
+      throw new Error("Audio file missing.");
+    }
+
+    if (!isLong) {
+      return audioFile;
+    }
+
+    setStatus("Building preview segment...");
+
+    if (!ffmpegRef.current) {
+      ffmpegRef.current = new FFmpeg();
+    }
+
+    const ffmpeg = ffmpegRef.current;
+
+    if (!ffmpegLoadedRef.current) {
+      await ffmpeg.load();
+      ffmpegLoadedRef.current = true;
+    }
+
+    const inputExt = audioFile.name.includes(".")
+      ? audioFile.name.split(".").pop()
+      : "wav";
+
+    const inputName = `input.${inputExt}`;
+    const outputName = "snippet.mp3";
+
+    const inputBytes = new Uint8Array(await audioFile.arrayBuffer());
+    await ffmpeg.writeFile(inputName, inputBytes);
+
+    await ffmpeg.exec([
+      "-ss",
+      String(previewStart),
+      "-t",
+      String(previewDuration),
+      "-i",
+      inputName,
+      "-vn",
+      "-acodec",
+      "libmp3lame",
+      "-b:a",
+      "192k",
+      outputName,
+    ]);
+
+    const data = await ffmpeg.readFile(outputName);
+
+    if (typeof data === "string") {
+      throw new Error("Invalid ffmpeg output");
+    }
+
+    const safeBytes = new Uint8Array(data.length);
+    safeBytes.set(data);
+    const blob = new Blob([safeBytes.buffer], { type: "audio/mpeg" });
+
+    const baseName = (trackTitle.trim() || audioFile.name.replace(/\.[^/.]+$/, ""))
+      .replace(/[^a-zA-Z0-9._-]+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "") || "snippet";
+
+    try {
+      await ffmpeg.deleteFile(inputName);
+    } catch {}
+
+    try {
+      await ffmpeg.deleteFile(outputName);
+    } catch {}
+
+    return new File([blob], `${baseName}.mp3`, { type: "audio/mpeg" });
   }
 
   function testPreview() {
