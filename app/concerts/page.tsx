@@ -1,76 +1,114 @@
+
 const sections = [
   {
-    title: "Mysterious",
-    subtitle: "High scan activity, very little public information",
-    items: ["Unknown ID 01", "Unknown ID 02", "Unknown ID 03"],
+    title:"Mysterious",
+    icon:"👀",
+    items:["Unknown ID","Unknown ID","Unknown ID"]
   },
   {
-    title: "Trending",
-    subtitle: "Tracks with scan momentum accelerating",
-    items: ["Fast Rise 01", "Fast Rise 02", "Fast Rise 03"],
+    title:"Trending",
+    icon:"🔥",
+    items:["Rising Track","Rising Track","Rising Track"]
   },
   {
-    title: "Recently Added",
-    subtitle: "Fresh tracks recently added to the system",
-    items: ["New Entry 01", "New Entry 02", "New Entry 03"],
+    title:"Recently Added",
+    icon:"🆕",
+    items:["New Entry","New Entry","New Entry"]
   },
   {
-    title: "Most Wanted",
-    subtitle: "Tracks people keep scanning before public identification",
-    items: ["Wanted 01", "Wanted 02", "Wanted 03"],
-  },
-];
+    title:"Most Wanted",
+    icon:"⭐",
+    items:["Wanted ID","Wanted ID","Wanted ID"]
+  }
+]
 
-export default function ConcertsPage() {
-  return (
-    <main style={{ minHeight: "100vh", background: "#0b0b0f", color: "white", padding: "24px 20px 120px" }}>
-      <div style={{ maxWidth: 720, margin: "0 auto" }}>
-        <div style={{ marginBottom: 24 }}>
-          <div style={{ fontSize: 12, opacity: 0.6, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+export default function ConcertsPage(){
+
+  return(
+    <main style={{
+      minHeight:"100vh",
+      background:"#050507",
+      color:"#fff",
+      padding:"40px 22px 140px"
+    }}>
+
+      <div style={{maxWidth:720,margin:"0 auto"}}>
+
+        <div style={{marginBottom:40}}>
+
+          <div style={{
+            fontSize:12,
+            letterSpacing:"0.18em",
+            opacity:0.55,
+            textTransform:"uppercase"
+          }}>
             Radar
           </div>
-          <h1 style={{ fontSize: 36, lineHeight: 1.05, margin: "8px 0 10px", fontWeight: 800 }}>
-            Discovery Signals
+
+          <h1 style={{
+            fontSize:38,
+            margin:"10px 0",
+            fontWeight:800
+          }}>
+            Scene Signals
           </h1>
-          <p style={{ margin: 0, opacity: 0.72, fontSize: 15 }}>
+
+          <div style={{opacity:0.65}}>
             Discover what the scene is playing right now
-          </p>
+          </div>
+
         </div>
 
-        <div style={{ display: "grid", gap: 18 }}>
-          {sections.map((section) => (
-            <section
-              key={section.title}
+
+        <div style={{display:"grid",gap:22}}>
+
+          {sections.map(section => (
+
+            <section key={section.title}
               style={{
-                padding: 16,
-                borderRadius: 20,
-                background: "rgba(255,255,255,0.06)",
-                border: "1px solid rgba(255,255,255,0.08)",
-              }}
-            >
-              <div style={{ marginBottom: 12 }}>
-                <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>{section.title}</h2>
-                <p style={{ margin: "6px 0 0", opacity: 0.68, fontSize: 14 }}>{section.subtitle}</p>
+                padding:20,
+                borderRadius:20,
+                background:"linear-gradient(160deg,#0b0b0f,#0c1116)",
+                border:"1px solid rgba(0,255,255,0.08)",
+                boxShadow:"0 0 30px rgba(0,255,255,0.05)"
+              }}>
+
+              <div style={{
+                display:"flex",
+                alignItems:"center",
+                gap:10,
+                marginBottom:14,
+                fontWeight:700,
+                fontSize:18
+              }}>
+                <span>{section.icon}</span>
+                {section.title}
               </div>
 
-              <div style={{ display: "grid", gap: 10 }}>
-                {section.items.map((item) => (
-                  <div
-                    key={item}
+              <div style={{display:"grid",gap:10}}>
+
+                {section.items.map((item,i)=>(
+                  <div key={i}
                     style={{
-                      padding: "12px 14px",
-                      borderRadius: 14,
-                      background: "rgba(255,255,255,0.05)",
-                    }}
-                  >
+                      padding:"12px 14px",
+                      borderRadius:14,
+                      background:"rgba(255,255,255,0.04)",
+                      fontSize:14,
+                      opacity:0.9
+                    }}>
                     {item}
                   </div>
                 ))}
+
               </div>
+
             </section>
+
           ))}
+
         </div>
+
       </div>
     </main>
-  );
+  )
 }
