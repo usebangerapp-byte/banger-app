@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import WaveSurfer from "wavesurfer.js";
+import React, { useMemo, useRef, useState } from "react";
 
 type Mode = "DJ" | "LABEL";
 type ReleaseStatus = "released" | "unreleased";
-type Flow = "idle" | "preview" | "done";
+type Flow = "idle" | "snippet" | "done";
 
 type UploadResult = {
   ok?: boolean;
@@ -19,9 +18,6 @@ type UploadResult = {
 export default function BproPage() {
   const audioInputRef = useRef<HTMLInputElement | null>(null);
   const artworkInputRef = useRef<HTMLInputElement | null>(null);
-  const waveformRef = useRef<HTMLDivElement | null>(null);
-  const waveRef = useRef<WaveSurfer | null>(null);
-  const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
 
   const [mode, setMode] = useState<Mode | null>(null);
   const [name, setName] = useState("");
@@ -30,18 +26,17 @@ export default function BproPage() {
 
   const [releaseStatus, setReleaseStatus] = useState<ReleaseStatus>("unreleased");
   const [releaseDate, setReleaseDate] = useState("");
-  const [allowPublicPreview, setAllowPublicPreview] = useState(true);
+  const [allowPreview, setAllowPreview] = useState(true);
   const [agreeRights, setAgreeRights] = useState(false);
 
   const [artwork, setArtwork] = useState<File | null>(null);
-  const [artworkPreviewUrl, setArtworkPreviewUrl] = useState("/B-logo.png");
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [audioUrl, setAudioUrl] = useState("");
   const [durationSec, setDurationSec] = useState<number | null>(null);
 
-  const [previewStart, setPreviewStart] = useState(0);
-  const [previewDuration, setPreviewDuration] = useState(60);
-  const [previewConfirmed, setPreviewConfirmed] = useState(false);
+  const [snippetStart, setSnippetStart] = useState(0);
+  const [snippetDuration, setSnippetDuration] = useState(60);
+  const [snippetConfirmed, setSnippetConfirmed] = useState(false);
 
   const [busy, setBusy] = useState(false);
   const [flow, setFlow] = useState<Flow>("idle");
@@ -51,53 +46,11 @@ export default function BproPage() {
   const [result, setResult] = useState<UploadResult | null>(null);
 
   const identityOk = useMemo(() => !!mode && name.trim().length > 0, [mode, name]);
-  const trackOk = useMemo(() => trackTitle.trim().length > 0, [trackTitle]);
-  const canPickAudio = identityOk && trackOk && agreeRights && !busy;
-
+  const metaOk = useMemo(() => trackTitle.trim().length > 0, [trackTitle]);
+  const canPickAudio = identityOk && metaOk && agreeRights && !busy;
   const isShort = durationSec !== null && durationSec <= 60;
   const isLong = durationSec !== null && durationSec > 60;
-
-  const maxPreviewDuration = useMemo(() => {
-    if (!durationSec) return 60;
-    return Math.min(60, durationSec);
-  }, [durationSec]);
-
-  const previewEnd = previewStart + previewDuration;
-  const maxPreviewStart = useMemo(() => {
-    if (!durationSec) return 0;
-    return Math.max(0, durationSec - previewDuration);
-  }, [durationSec, previewDuration]);
-
-  useEffect(() => {
-    setPreviewDuration(maxPreviewDuration);
-  }, [maxPreviewDuration]);
-
-  useEffect(() => {
-    if (!audioUrl || !waveformRef.current) return;
-
-    if (waveRef.current) {
-      waveRef.current.destroy();
-      waveRef.current = null;
-    }
-
-    const ws = WaveSurfer.create({
-      container: waveformRef.current,
-      waveColor: "#5f5f5f",
-      progressColor: "#dcdcdc",
-      cursorColor: "#ffffff",
-      height: 100,
-      barWidth: 2,
-      barGap: 1,
-    });
-
-    waveRef.current = ws;
-    ws.load(audioUrl);
-
-    return () => {
-      ws.destroy();
-      waveRef.current = null;
-    };
-  }, [audioUrl]);
+  const snippetEnd = snippetStart + snippetDuration;
 
   async function detectDuration(file: File) {
     return await new Promise<number>((resolve, reject) => {
@@ -114,7 +67,7 @@ export default function BproPage() {
 
       audio.onerror = () => {
         URL.revokeObjectURL(url);
-        reject(new Error("Unable to read audio duration."));
+        reject(new Error("Impossible de lire la durée du fichier audio."));
       };
     });
   }
@@ -130,9 +83,9 @@ export default function BproPage() {
     resetMessages();
     setAudioFile(null);
     setDurationSec(null);
-    setPreviewStart(0);
-    setPreviewDuration(60);
-    setPreviewConfirmed(false);
+    setSnippetStart(0);
+    setSnippetDuration(60);
+    setSnippetConfirmed(false);
     setFlow("idle");
     if (audioUrl) URL.revokeObjectURL(audioUrl);
     setAudioUrl("");
@@ -150,7 +103,7 @@ export default function BproPage() {
     if (!file) return;
 
     resetMessages();
-    setPreviewConfirmed(false);
+    setSnippetConfirmed(false);
     setFlow("idle");
 
     try {
@@ -159,21 +112,21 @@ export default function BproPage() {
       setAudioUrl(nextUrl);
       setAudioFile(file);
 
-      setStatus("Reading file…");
+      setStatus("Lecture du fichier…");
       const d = await detectDuration(file);
       setDurationSec(d);
 
       if (d > 60) {
-        setFlow("preview");
-        setPreviewStart(0);
-        setPreviewDuration(Math.min(60, d));
-        setStatus("Select a preview segment before continuing.");
+        setFlow("snippet");
+        setSnippetStart(0);
+        setSnippetDuration(60);
+        setStatus("Track long détecté → confirme un snippet de 60 sec max avant l’analyse.");
       } else {
         setFlow("idle");
-        setStatus("This file is ready for the next step.");
+        setStatus("Track court détecté → prêt pour l’analyse directe.");
       }
     } catch (err: any) {
-      setError(err?.message || "Unsupported audio file.");
+      setError(err?.message || "Audio non supporté.");
       setAudioFile(null);
       setDurationSec(null);
       setFlow("idle");
@@ -186,38 +139,20 @@ export default function BproPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     setArtwork(file);
-    setArtworkPreviewUrl(URL.createObjectURL(file));
     e.target.value = "";
   }
 
-  function confirmPreviewSegment() {
-    setPreviewConfirmed(true);
-    setStatus("Preview segment confirmed — ready for analysis.");
+  function confirmSnippet() {
+    setSnippetConfirmed(true);
+    setStatus("Snippet confirmé → prêt à être découpé et envoyé.");
     setError("");
     setSuccess("");
   }
 
-  function testPreview() {
-    if (!audioPreviewRef.current || !audioUrl) return;
-    const audio = audioPreviewRef.current;
-    audio.pause();
-    audio.currentTime = previewStart;
-    void audio.play();
-
-    const stopAt = previewEnd;
-    const onTimeUpdate = () => {
-      if (audio.currentTime >= stopAt) {
-        audio.pause();
-        audio.removeEventListener("timeupdate", onTimeUpdate);
-      }
-    };
-    audio.addEventListener("timeupdate", onTimeUpdate);
-  }
-
   async function sendForAnalysis() {
     if (!audioFile || !mode || !name.trim() || !trackTitle.trim() || !agreeRights) return;
-    if (isLong && !previewConfirmed) {
-      setError("Confirm the preview segment first.");
+    if (isLong && !snippetConfirmed) {
+      setError("Confirme d’abord le snippet.");
       return;
     }
 
@@ -225,7 +160,7 @@ export default function BproPage() {
     setError("");
     setSuccess("");
     setResult(null);
-    setStatus(isLong ? "Preparing track…" : "Preparing track…");
+    setStatus(isLong ? "Découpe du snippet + envoi…" : "Envoi pour analyse…");
 
     try {
       const fd = new FormData();
@@ -236,15 +171,15 @@ export default function BproPage() {
       fd.append("info", info.trim());
       fd.append("release_status", releaseStatus);
       fd.append("release_date", releaseDate || "");
-      fd.append("allow_preview", allowPublicPreview ? "1" : "0");
+      fd.append("allow_preview", allowPreview ? "1" : "0");
       fd.append("delete_after", "1");
       fd.append("has_rights", agreeRights ? "1" : "0");
 
       if (artwork) fd.append("artwork", artwork);
 
       if (isLong) {
-        fd.append("snippet_start", String(previewStart));
-        fd.append("snippet_duration", String(previewDuration));
+        fd.append("snippet_start", String(snippetStart));
+        fd.append("snippet_duration", String(snippetDuration));
       }
 
       const r = await fetch("/api/bpro/upload", {
@@ -255,7 +190,7 @@ export default function BproPage() {
       const j = (await r.json().catch(() => null)) as UploadResult | null;
 
       if (!r.ok || !j?.ok) {
-        throw new Error(j?.error || "Unable to complete analysis.");
+        throw new Error(j?.error || "Analyse impossible.");
       }
 
       setResult(j);
@@ -263,72 +198,60 @@ export default function BproPage() {
       setStatus("");
       setSuccess(
         j.fingerprint_status === "ready"
-          ? "Your track is now ready for scan."
-          : "Track prepared successfully."
+          ? "Tout est OK : snippet stocké, fingerprint prêt, track scannable."
+          : "Snippet stocké et envoyé à ACR. Fingerprint en cours de préparation."
       );
     } catch (err: any) {
-      setError(err?.message || "Unable to complete analysis.");
+      setError(err?.message || "Analyse impossible.");
     } finally {
       setBusy(false);
     }
   }
 
-  const steps = [
-    { label: "Profile", done: !!mode },
-    { label: "Track", done: identityOk && trackOk },
-    { label: "Rights", done: agreeRights },
-    { label: "Audio", done: !!audioFile },
-    { label: "Preview", done: isShort ? !!audioFile : previewConfirmed },
-    { label: "Ready", done: flow === "done" },
-  ];
-
-  const selectionLeft = durationSec ? `${(previewStart / durationSec) * 100}%` : "0%";
-  const selectionWidth = durationSec ? `${(previewDuration / durationSec) * 100}%` : "0%";
-
   return (
     <main style={{ minHeight: "100vh", background: "#000", color: "#fff", padding: 20 }}>
-      <div style={{ maxWidth: 760, margin: "0 auto", paddingBottom: 220 }}>
+      <div style={{ maxWidth: 760, margin: "0 auto", paddingBottom: 120 }}>
         <div style={{ textAlign: "center", marginBottom: 18 }}>
           <div style={{ fontSize: 12, opacity: 0.6, letterSpacing: "0.10em" }}>BPRO</div>
           <h1 style={{ margin: "8px 0 6px", fontSize: 30 }}>DJ / Label Upload</h1>
           <div style={{ opacity: 0.72, fontSize: 14 }}>
-            A private space to prepare your tracks before scan.
+            Upload intelligent pour protéger l’audio, stocker le snippet et préparer le scan.
           </div>
         </div>
 
         <div style={{ display: "grid", gap: 14 }}>
-          <Card title="1. Profile">
+          <Card title="1. Profil">
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <SelectButton active={mode === "DJ"} onClick={() => setMode("DJ")}>DJ</SelectButton>
               <SelectButton active={mode === "LABEL"} onClick={() => setMode("LABEL")}>Label</SelectButton>
             </div>
           </Card>
 
-          <Card title="2. Track Info">
+          <Card title="2. Infos">
             <div style={{ display: "grid", gap: 10 }}>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Artist / Label name"
+                placeholder={mode === "LABEL" ? "Nom du label" : "Nom DJ / artiste"}
                 style={inputStyle}
               />
               <input
                 value={trackTitle}
                 onChange={(e) => setTrackTitle(e.target.value)}
-                placeholder="Artist name(s) – Track name / Remix name"
+                placeholder="Titre du track"
                 style={inputStyle}
               />
               <textarea
                 value={info}
                 onChange={(e) => setInfo(e.target.value)}
-                placeholder="Additional info (optional)"
+                placeholder="Info utile (email, note interne, remix, version...)"
                 rows={3}
                 style={{ ...inputStyle, resize: "vertical" }}
               />
             </div>
           </Card>
 
-          <Card title="3. Release Status">
+          <Card title="3. Statut">
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <SelectButton active={releaseStatus === "unreleased"} onClick={() => setReleaseStatus("unreleased")}>
                 Unreleased
@@ -341,7 +264,7 @@ export default function BproPage() {
             <div style={{ height: 12 }} />
 
             <label style={{ display: "grid", gap: 6 }}>
-              <span style={labelStyle}>Release date (optional)</span>
+              <span style={labelStyle}>Release date (optionnelle)</span>
               <input
                 type="date"
                 value={releaseDate}
@@ -355,37 +278,15 @@ export default function BproPage() {
             <label style={checkboxRow}>
               <input
                 type="checkbox"
-                checked={allowPublicPreview}
-                onChange={(e) => setAllowPublicPreview(e.target.checked)}
+                checked={allowPreview}
+                onChange={(e) => setAllowPreview(e.target.checked)}
               />
-              <span>Allow 10-second public preview</span>
+              <span>Autoriser preview 10 secondes</span>
             </label>
           </Card>
 
-          <Card title="4. Artwork">
+          <Card title="4. Cover">
             <div style={{ display: "grid", gap: 12 }}>
-              <div style={hintStyle}>
-                Artwork is optional — BANGER logo will be used by default.
-              </div>
-
-              <div style={{
-                width: 120,
-                height: 120,
-                borderRadius: 18,
-                overflow: "hidden",
-                border: "1px solid rgba(255,255,255,0.12)",
-                background: "rgba(255,255,255,0.04)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}>
-                <img
-                  src={artworkPreviewUrl}
-                  alt="Artwork preview"
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                />
-              </div>
-
               <input
                 ref={artworkInputRef}
                 type="file"
@@ -393,48 +294,31 @@ export default function BproPage() {
                 onChange={onPickArtwork}
                 style={{ display: "none" }}
               />
-
               <button
                 type="button"
                 onClick={() => artworkInputRef.current?.click()}
                 style={secondaryButton}
               >
-                Add square artwork (1:1)
+                Ajouter une cover carrée (1:1)
               </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setArtwork(null);
-                  setArtworkPreviewUrl("/B-logo.png");
-                }}
-                style={ghostButton}
-              >
-                Use BANGER logo
-              </button>
-
-              {artwork ? (
+              {artwork && (
                 <div style={summaryBox}>
-                  <div><strong>Artwork:</strong> {artwork.name}</div>
-                  <div><strong>Size:</strong> {(artwork.size / 1024 / 1024).toFixed(1)} MB</div>
-                </div>
-              ) : (
-                <div style={summaryBox}>
-                  <div><strong>Artwork:</strong> B-logo.png</div>
-                  <div>Default BANGER artwork selected</div>
+                  <div><strong>Cover :</strong> {artwork.name}</div>
+                  <div><strong>Taille :</strong> {(artwork.size / 1024 / 1024).toFixed(1)} MB</div>
                 </div>
               )}
             </div>
           </Card>
 
-          <Card title="5. Rights">
+          <Card title="5. Droits">
             <label style={checkboxRow}>
               <input
                 type="checkbox"
                 checked={agreeRights}
                 onChange={(e) => setAgreeRights(e.target.checked)}
               />
-              <span>I confirm that I own the rights or have permission to analyze this audio file.</span>
+              <span>Je confirme avoir les droits ou l’autorisation d’analyser ce fichier audio.</span>
             </label>
           </Card>
 
@@ -454,119 +338,82 @@ export default function BproPage() {
                 disabled={!canPickAudio}
                 style={primaryButton(!canPickAudio)}
               >
-                Choose audio file
+                Choisir un fichier audio
               </button>
 
-              {!identityOk && <div style={hintStyle}>Select profile and enter your name first.</div>}
-              {identityOk && !trackOk && <div style={hintStyle}>Add the track title to continue.</div>}
-              {identityOk && trackOk && !agreeRights && <div style={hintStyle}>Confirm rights before importing audio.</div>}
+              {!identityOk && <div style={hintStyle}>Choisis DJ ou Label puis remplis ton nom.</div>}
+              {identityOk && !metaOk && <div style={hintStyle}>Ajoute le titre du track.</div>}
+              {identityOk && metaOk && !agreeRights && <div style={hintStyle}>Coche les droits avant d’importer un fichier.</div>}
 
               {audioFile && (
                 <div style={summaryBox}>
-                  <div><strong>File:</strong> {audioFile.name}</div>
-                  <div><strong>Size:</strong> {(audioFile.size / 1024 / 1024).toFixed(1)} MB</div>
-                  <div><strong>Duration:</strong> {durationSec !== null ? `${durationSec}s` : "…"}</div>
-                  {audioUrl && <audio ref={audioPreviewRef} controls src={audioUrl} style={{ width: "100%", marginTop: 10 }} />}
+                  <div><strong>Fichier :</strong> {audioFile.name}</div>
+                  <div><strong>Taille :</strong> {(audioFile.size / 1024 / 1024).toFixed(1)} MB</div>
+                  <div><strong>Durée :</strong> {durationSec !== null ? `${durationSec}s` : "…"}</div>
+                  {audioUrl && <audio controls src={audioUrl} style={{ width: "100%", marginTop: 10 }} />}
                 </div>
               )}
 
-              {isShort && <div style={infoBox}>This file is ready for the next step.</div>}
-              {isLong && <div style={infoBox}>Select a preview segment before continuing.</div>}
+              {isShort && <div style={infoBox}>Le track dure 60 sec ou moins → il sera converti et envoyé directement.</div>}
+              {isLong && <div style={infoBox}>Le track dépasse 60 sec → crée un snippet puis envoie-le.</div>}
             </div>
           </Card>
 
           {isLong && (
-            <Card title="7. Preview Segment">
+            <Card title="7. Snippet">
               <div style={{ display: "grid", gap: 12 }}>
-                <div style={{ fontSize: 13, opacity: 0.78 }}>
-                  Move the selected area to choose the best segment for scan.
-                </div>
-
-                <div style={{ position: "relative", borderRadius: 14, overflow: "hidden", background: "#0f0f0f", padding: 12 }}>
-                  <div ref={waveformRef} />
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: 12,
-                      bottom: 12,
-                      left: selectionLeft,
-                      width: selectionWidth,
-                      border: "1px solid rgba(255,255,255,0.75)",
-                      borderRadius: 12,
-                      background: "rgba(255,255,255,0.08)",
-                      pointerEvents: "none",
-                      minWidth: 18,
-                    }}
-                  />
-                </div>
-
                 <label style={{ display: "grid", gap: 6 }}>
-                  <span style={labelStyle}>Move segment</span>
+                  <span style={labelStyle}>Début (sec)</span>
                   <input
-                    type="range"
+                    type="number"
                     min={0}
-                    max={maxPreviewStart}
-                    step={1}
-                    value={previewStart}
-                    onChange={(e) => {
-                      setPreviewStart(Number(e.target.value));
-                      setPreviewConfirmed(false);
-                    }}
+                    value={snippetStart}
+                    onChange={(e) => setSnippetStart(Math.max(0, Number(e.target.value) || 0))}
+                    style={inputStyle}
                   />
                 </label>
 
                 <label style={{ display: "grid", gap: 6 }}>
-                  <span style={labelStyle}>Segment length</span>
+                  <span style={labelStyle}>Durée (max 60 sec)</span>
                   <input
-                    type="range"
-                    min={10}
-                    max={Math.min(60, durationSec || 60)}
-                    step={1}
-                    value={previewDuration}
-                    onChange={(e) => {
-                      const next = Number(e.target.value);
-                      setPreviewDuration(next);
-                      if (durationSec && previewStart + next > durationSec) {
-                        setPreviewStart(Math.max(0, durationSec - next));
-                      }
-                      setPreviewConfirmed(false);
-                    }}
+                    type="number"
+                    min={1}
+                    max={60}
+                    value={snippetDuration}
+                    onChange={(e) => setSnippetDuration(Math.min(60, Math.max(1, Number(e.target.value) || 1)))}
+                    style={inputStyle}
                   />
                 </label>
 
                 <div style={summaryBox}>
-                  <div><strong>Start:</strong> {previewStart}s</div>
-                  <div><strong>End:</strong> {previewEnd}s</div>
-                  <div><strong>Length:</strong> {previewDuration}s</div>
+                  <div><strong>Start :</strong> {snippetStart}s</div>
+                  <div><strong>End :</strong> {snippetEnd}s</div>
+                  <div><strong>Durée :</strong> {snippetDuration}s</div>
                 </div>
 
                 <div style={{ display: "grid", gap: 10 }}>
-                  <button type="button" onClick={testPreview} style={secondaryButton}>
-                    Test Preview
-                  </button>
-
-                  <button type="button" onClick={confirmPreviewSegment} style={secondaryButton}>
-                    Confirm Preview Segment
+                  <button type="button" onClick={confirmSnippet} style={secondaryButton}>
+                    Confirmer le snippet
                   </button>
 
                   <button
                     type="button"
-                    disabled={busy || !previewConfirmed}
+                    disabled={busy || !snippetConfirmed}
                     onClick={sendForAnalysis}
-                    style={primaryButton(busy || !previewConfirmed)}
+                    style={primaryButton(busy || !snippetConfirmed)}
                   >
-                    {busy ? "Preparing track…" : "Prepare for Scan"}
+                    {busy ? "Découpe + envoi…" : "Découper + envoyer à ACR"}
                   </button>
 
                   <button type="button" onClick={resetAudio} style={ghostButton}>
-                    Change audio file
+                    Changer de fichier
                   </button>
                 </div>
               </div>
             </Card>
           )}
 
-          <Card title={isLong ? "8. Scan Ready" : "7. Scan Ready"}>
+          <Card title={isLong ? "8. Analyse" : "7. Analyse"}>
             <div style={{ display: "grid", gap: 12 }}>
               {isShort && (
                 <button
@@ -575,7 +422,7 @@ export default function BproPage() {
                   onClick={sendForAnalysis}
                   style={primaryButton(busy || !audioFile)}
                 >
-                  {busy ? "Preparing track…" : "Prepare for Scan"}
+                  {busy ? "Envoi…" : "Envoyer et analyser"}
                 </button>
               )}
 
@@ -585,41 +432,19 @@ export default function BproPage() {
 
               {result?.snippet_path && (
                 <div style={summaryBox}>
-                  <div><strong>Stored file:</strong> {result.snippet_path}</div>
-                  <div><strong>Track ID:</strong> {result.acr_id || "—"}</div>
-                  <div><strong>Status:</strong> {result.fingerprint_status || "processing"}</div>
+                  <div><strong>Snippet bucket :</strong> {result.snippet_path}</div>
+                  <div><strong>ACR ID :</strong> {result.acr_id || "—"}</div>
+                  <div><strong>Fingerprint :</strong> {result.fingerprint_status || "processing"}</div>
                 </div>
               )}
 
               {flow === "done" && (
                 <button type="button" onClick={resetAll} style={secondaryButton}>
-                  Upload another track
+                  Uploader un autre track
                 </button>
               )}
             </div>
           </Card>
-        </div>
-      </div>
-
-      <div style={progressDock}>
-        <div style={progressRow}>
-          {steps.map((step, i) => (
-            <div key={step.label} style={stepItem}>
-              <div style={{
-                ...stepDot,
-                opacity: step.done ? 1 : 0.35,
-                boxShadow: step.done ? "0 0 10px rgba(255,255,255,0.14)" : "none",
-              }} />
-              <div style={{
-                fontSize: 11,
-                opacity: step.done ? 0.92 : 0.42,
-                whiteSpace: "nowrap",
-              }}>
-                {step.label}
-              </div>
-              {i < steps.length - 1 && <div style={{ ...stepLine, opacity: steps[i].done ? 0.75 : 0.18 }} />}
-            </div>
-          ))}
         </div>
       </div>
     </main>
@@ -763,52 +588,4 @@ const ghostButton: React.CSSProperties = {
   color: "#fff",
   fontWeight: 600,
   width: "100%",
-};
-
-const progressDock: React.CSSProperties = {
-  position: "fixed",
-  left: 0,
-  right: 0,
-  bottom: 72,
-  display: "flex",
-  justifyContent: "center",
-  padding: "0 12px",
-  pointerEvents: "none",
-};
-
-const progressRow: React.CSSProperties = {
-  width: "100%",
-  maxWidth: 760,
-  border: "1px solid rgba(255,255,255,0.08)",
-  background: "rgba(8,8,8,0.92)",
-  backdropFilter: "blur(10px)",
-  borderRadius: 18,
-  padding: "12px 10px",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: 6,
-};
-
-const stepItem: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 6,
-  flex: 1,
-  minWidth: 0,
-};
-
-const stepDot: React.CSSProperties = {
-  width: 8,
-  height: 8,
-  borderRadius: 999,
-  background: "#f2f2f2",
-  flexShrink: 0,
-};
-
-const stepLine: React.CSSProperties = {
-  height: 1,
-  background: "rgba(255,255,255,0.45)",
-  flex: 1,
-  minWidth: 8,
 };

@@ -71,9 +71,16 @@ function Icon({
     return (
       <svg {...common}>
         <path
-          d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"
+          d="M12 4.2 14.05 5.5 16.45 5.3 17.2 7.6 19.2 8.9 18.45 11.2 19.2 13.5 17.2 14.8 16.45 17.1 14.05 16.9 12 18.2 9.95 16.9 7.55 17.1 6.8 14.8 4.8 13.5 5.55 11.2 4.8 8.9 6.8 7.6 7.55 5.3 9.95 5.5 12 4.2Z"
           stroke={stroke}
           strokeWidth="1.6"
+          strokeLinejoin="round"
+        />
+        <path
+          d="m9.5 11.3 1.6 1.6 3.4-3.4"
+          stroke={stroke}
+          strokeWidth="1.6"
+          strokeLinecap="round"
           strokeLinejoin="round"
         />
       </svg>
@@ -100,11 +107,11 @@ export default function BottomNav() {
   const path = usePathname();
 
   const items = [
-    { href: "/", label: "Home", icon: "home" as const },
-    { href: "/library", label: "Library", icon: "lib" as const },
-    { href: "/concerts", label: "Concerts", icon: "mic" as const },
-    { href: "/bpro", label: "Bpro", icon: "bolt" as const },
-    { href: "/profile", label: "Profile", icon: "user" as const },
+    { href: "/profile", label: "Profil", icon: "user" as const },
+    { href: "/library", label: "Charts", icon: "chart" as const },
+    { href: "/", label: "Scan", icon: "bolt" as const },
+    { href: "/concerts", label: "Radar", icon: "sat" as const },
+    { href: "/bpro", label: "BPRO", icon: "bolt" as const },
   ];
 
   return (
@@ -121,7 +128,7 @@ export default function BottomNav() {
               transform: active ? "translateY(-2px)" : "none",
             }}
           >
-            <Icon name={it.icon} active={active} />
+            
             <div style={{ ...styles.label, opacity: active ? 0.95 : 0.72 }}>
               {it.label}
             </div>

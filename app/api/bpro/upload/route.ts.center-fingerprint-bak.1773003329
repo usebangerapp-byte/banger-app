@@ -14,7 +14,6 @@ const supabase = createClient(
 );
 
 const STORAGE_BUCKET = "bpro_uploads";
-const FINGERPRINT_DURATION = 20;
 
 function sanitizeName(name: string) {
   return name.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/-+/g, "-");
@@ -38,16 +37,15 @@ async function runFfmpeg(args: string[]) {
 }
 
 export async function POST(req: Request) {
+  console.log("[BPRO] SUPABASE URL =", process.env.NEXT_PUBLIC_SUPABASE_URL);
+  console.log("[BPRO] STORAGE_BUCKET =", STORAGE_BUCKET);
+
   const token = process.env.ACR_CONSOLE_TOKEN;
   const bucketId = process.env.ACR_BUCKET_ID;
 
   if (!token || !bucketId) {
-    console.log("[BPRO] step 10: success response");
     return NextResponse.json({ error: "Missing ACR env" }, { status: 500 });
   }
-
-  console.log("[BPRO] SUPABASE URL =", process.env.NEXT_PUBLIC_SUPABASE_URL);
-  console.log("[BPRO] STORAGE_BUCKET =", STORAGE_BUCKET);
 
   const form = await req.formData();
 
@@ -81,28 +79,20 @@ export async function POST(req: Request) {
 
   const safeBase = sanitizeName(source.name || "track");
   const inputPath = join(workDir, `input-${safeBase}`);
-  const storedSnippetPath = join(workDir, `stored-snippet-${randomUUID()}.mp3`);
-  const fingerprintPath = join(workDir, `fingerprint-${randomUUID()}.mp3`);
+  const outputPath = join(workDir, `snippet-${randomUUID()}.mp3`);
 
   let snippetPath: string | null = null;
-  let artworkPath: string | null = "B-logo.png";
+  let artworkPath: string | null = null;
 
   try {
-    console.log("[BPRO] step 1: reading source buffer");
     const inputBuffer = Buffer.from(await source.arrayBuffer());
-    console.log("[BPRO] step 1 done");
-    console.log("[BPRO] step 2: writing temp input");
     await writeFile(inputPath, inputBuffer);
-    console.log("[BPRO] step 2 done");
 
     const hasSnippet = Number.isFinite(snippetDurationRaw) && snippetDurationRaw > 0;
     const snippetDuration = hasSnippet ? Math.min(60, Math.max(1, Math.floor(snippetDurationRaw))) : null;
     const snippetStart = hasSnippet ? Math.max(0, Math.floor(snippetStartRaw)) : 0;
 
-    // 1) fichier stocke chez toi : preview segment complet
     if (hasSnippet && snippetDuration) {
-      console.log("[BPRO] step 3: ffmpeg stored snippet start");
-      console.log("[BPRO] step 6: ffmpeg fingerprint start");
       await runFfmpeg([
         "-ss", String(snippetStart),
         "-t", String(snippetDuration),
@@ -110,7 +100,7 @@ export async function POST(req: Request) {
         "-vn",
         "-acodec", "libmp3lame",
         "-b:a", "192k",
-        storedSnippetPath,
+        outputPath,
       ]);
     } else {
       await runFfmpeg([
@@ -118,30 +108,25 @@ export async function POST(req: Request) {
         "-vn",
         "-acodec", "libmp3lame",
         "-b:a", "192k",
-        storedSnippetPath,
+        outputPath,
       ]);
     }
 
-    console.log("[BPRO] step 3 done");
-    console.log("[BPRO] step 4: reading stored snippet");
-    const storedSnippetBuffer = await readFile(storedSnippetPath);
-    console.log("[BPRO] step 4 done");
+    const snippetBuffer = await readFile(outputPath);
 
     snippetPath = `snippets/${Date.now()}-${randomUUID()}-${sanitizeName(title)}.mp3`;
-    console.log("[BPRO] step 5: uploading snippet to storage");
     const { error: storageError } = await supabase.storage
       .from(STORAGE_BUCKET)
-      .upload(snippetPath, new Blob([storedSnippetBuffer]), {
+      .upload(snippetPath, snippetBuffer, {
         contentType: "audio/mpeg",
         upsert: false,
       });
 
-    console.log("[BPRO] step 5 done");
     if (storageError) {
       throw new Error(`Snippet storage failed: ${storageError.message}`);
     }
 
-    if (artwork && artwork.size > 0) {
+    if (artwork instanceof File && artwork.size > 0) {
       const artworkBuffer = Buffer.from(await artwork.arrayBuffer());
       const ext = artwork.name.includes(".") ? artwork.name.split(".").pop() : "jpg";
       artworkPath = `artwork/${Date.now()}-${randomUUID()}-${sanitizeName(title)}.${ext}`;
@@ -158,42 +143,11 @@ export async function POST(req: Request) {
       }
     }
 
-    // 2) fichier envoye a ACR : 20 sec au centre
-    if (hasSnippet && snippetDuration) {
-      const centerOffset = Math.max(0, Math.floor((snippetDuration - Math.min(FINGERPRINT_DURATION, snippetDuration)) / 2));
-      const fingerprintStart = snippetStart + centerOffset;
-      const fingerprintDuration = Math.min(FINGERPRINT_DURATION, snippetDuration);
-
-      await runFfmpeg([
-        "-ss", String(fingerprintStart),
-        "-t", String(fingerprintDuration),
-        "-i", inputPath,
-        "-vn",
-        "-acodec", "libmp3lame",
-        "-b:a", "192k",
-        fingerprintPath,
-      ]);
-    } else {
-      await runFfmpeg([
-        "-i", inputPath,
-        "-t", String(FINGERPRINT_DURATION),
-        "-vn",
-        "-acodec", "libmp3lame",
-        "-b:a", "192k",
-        fingerprintPath,
-      ]);
-    }
-
-    console.log("[BPRO] step 6 done");
-    console.log("[BPRO] step 7: reading fingerprint");
-    const fingerprintBuffer = await readFile(fingerprintPath);
-    console.log("[BPRO] step 7 done");
-
     const acrForm = new FormData();
     acrForm.append(
       "file",
-      new Blob([fingerprintBuffer], { type: "audio/mpeg" }),
-      "fingerprint.mp3"
+      new Blob([snippetBuffer], { type: "audio/mpeg" }),
+      "snippet.mp3"
     );
     acrForm.append("title", title);
     acrForm.append("data_type", "audio");
@@ -209,11 +163,9 @@ export async function POST(req: Request) {
         storage_bucket: STORAGE_BUCKET,
         snippet_path: snippetPath,
         artwork_path: artworkPath,
-        fingerprint_duration: FINGERPRINT_DURATION,
       })
     );
 
-    console.log("[BPRO] step 8: upload to ACR start");
     const acrRes = await fetch(`https://api-v2.acrcloud.com/api/buckets/${bucketId}/files`, {
       method: "POST",
       headers: {
@@ -223,9 +175,7 @@ export async function POST(req: Request) {
       body: acrForm,
     });
 
-    console.log("[BPRO] step 8 response status =", acrRes.status);
     const acrJson = await acrRes.json().catch(() => null);
-    console.log("[BPRO] step 8 response body =", JSON.stringify(acrJson));
 
     if (!acrRes.ok) {
       return NextResponse.json(
@@ -243,7 +193,6 @@ export async function POST(req: Request) {
       acrItem?.state === 1 ? "ready" : "processing";
 
     try {
-      console.log("[BPRO] step 9: insert database row");
       await supabase.from("bpro_uploads").insert({
         mode,
         name,
@@ -261,10 +210,9 @@ export async function POST(req: Request) {
         source_size: source.size,
         acr_id: acrItem?.acr_id || null,
         fingerprint_status: fingerprintStatus,
-        fingerprint_duration: FINGERPRINT_DURATION,
       });
     } catch {
-      // non-blocking
+      // non-blocking if table schema differs
     }
 
     return NextResponse.json({
@@ -274,10 +222,8 @@ export async function POST(req: Request) {
       acr_id: acrItem?.acr_id || null,
       acr_state: acrItem?.state ?? null,
       fingerprint_status: fingerprintStatus,
-      fingerprint_duration: FINGERPRINT_DURATION,
     });
   } catch (err: any) {
-    console.error("[BPRO] upload route error:", err);
     return NextResponse.json(
       { error: err?.message || "Upload failed" },
       { status: 500 }
