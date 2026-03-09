@@ -28,10 +28,6 @@ const PARTICLES = [
 ];
 
 export default function Home() {
-  if (typeof window !== "undefined") {
-    window.location.replace("/unlock");
-    return null;
-  }
   const router = useRouter();
   const supabase = createSupabaseBrowser();
 
@@ -354,9 +350,6 @@ export default function Home() {
             </button>
             <div style={styles.loginHint}>
               Après login → Home (Scan) + onglets.
-
-Scan the music around you
-Discover what the scene is playing
             </div>
           </div>
         </div>
