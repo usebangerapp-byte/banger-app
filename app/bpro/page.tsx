@@ -305,7 +305,10 @@ export default function BproPage() {
 
     try {
       const fd = new FormData();
-      fd.append("file", audioFile);
+      
+const uploadFile = await buildUploadFile();
+fd.append("file", uploadFile);
+
       fd.append("mode", mode);
       fd.append("name", name.trim());
       fd.append("title", trackTitle.trim());
