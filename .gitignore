@@ -47,3 +47,7 @@ next-env.d.ts
 *.bak_final_*
 *.bak_logo*
 .env*.local
+
+.env.local
+.env.*
+.vercel
