@@ -1,35 +1,21 @@
 "use client";
 
+import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
-import Link from "next/link";
 
 export default function UnlockPage() {
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const params = new URLSearchParams(window.location.search);
-    const adminKey = params.get("admin");
-
-    if (adminKey === "BANGER_ADMIN_ACCESS_001") {
-      window.location.href = "/";
-    }
-  }, []);
-
-
-  
   const router = useRouter();
   const supabase = createSupabaseBrowser();
 
   const [sessionLoading, setSessionLoading] = useState(true);
-  const [sessionOk, setSessionOk] = useState(false);
   const [email, setEmail] = useState("");
   const [count, setCount] = useState(0);
   const [checking, setChecking] = useState(true);
 
-  const remaining = useMemo(() => Math.max(0, 3 - count), [count]);
+  const remaining = useMemo(() => Math.max(0, 1 - count), [count]);
 
   useEffect(() => {
     let mounted = true;
@@ -41,14 +27,11 @@ export default function UnlockPage() {
         if (!mounted) return;
 
         if (!user?.email) {
-          setSessionOk(false);
-          setSessionLoading(false);
           router.replace("/login");
           return;
         }
 
         setEmail(user.email);
-        setSessionOk(true);
       } finally {
         if (mounted) setSessionLoading(false);
       }
@@ -67,15 +50,19 @@ export default function UnlockPage() {
     (async () => {
       setChecking(true);
       try {
-        const r = await fetch(`/api/bpro/unlock-status?email=${encodeURIComponent(email)}`, {
-          cache: "no-store",
-        });
+        const r = await fetch(
+          `/api/bpro/unlock-status?email=${encodeURIComponent(email)}`,
+          { cache: "no-store" }
+        );
         const j = await r.json().catch(() => null);
-
         if (!mounted) return;
+
         const nextCount = Number(j?.count || 0);
         setCount(nextCount);
 
+        if (j?.unlocked) {
+          router.replace("/");
+        }
       } finally {
         if (mounted) setChecking(false);
       }
@@ -88,34 +75,65 @@ export default function UnlockPage() {
 
   if (sessionLoading || checking) {
     return (
-      <main style={{ minHeight: "100vh", background: "#000", color: "#fff", display: "grid", placeItems: "center", padding: 24 }}>
+      <main
+        style={{
+          minHeight: "100vh",
+          background: "#000",
+          color: "#fff",
+          display: "grid",
+          placeItems: "center",
+          padding: 24,
+        }}
+      >
         <div style={{ opacity: 0.8 }}>Loading unlock status...</div>
       </main>
     );
   }
 
-  if (!sessionOk) return null;
-
   return (
-    <main style={{ minHeight: "100vh", background: "#000", color: "#fff", padding: 24 }}>
-      <div style={{ maxWidth: 760, margin: "0 auto", display: "grid", gap: 16, paddingBottom: 80 }}>
-        <div style={{ textAlign: "center", marginTop: 24 }}>
-          <div style={{ fontSize: 12, opacity: 0.6, letterSpacing: "0.10em" }}>BANGER</div>
-          <h1 style={{ fontSize: 30, margin: "8px 0 6px" }}>Unlock Banger</h1>
-          <div style={{ opacity: 0.75, fontSize: 14 }}>
-            Upload 1 unreleased / demo / snippet to unlock Banger.
+    <main
+      style={{
+        minHeight: "100vh",
+        background: "#000",
+        color: "#fff",
+        padding: 24,
+      }}
+    >
+      <div
+        style={{
+          maxWidth: 760,
+          margin: "0 auto",
+          display: "grid",
+          gap: 18,
+          paddingBottom: 80,
+        }}
+      >
+        <div style={{ display: "grid", placeItems: "center", gap: 10, marginTop: 8 }}>
+          <Image
+            src="/b-logo.png"
+            alt="Banger"
+            width={104}
+            height={104}
+            style={{ width: 104, height: 104 }}
+            priority
+          />
+          <h1 style={{ fontSize: 30, margin: 0 }}>Unlock Banger</h1>
+          <div style={{ opacity: 0.78, fontSize: 15, textAlign: "center" }}>
+            Upload 1 unreleased track to unlock the full app.
           </div>
         </div>
 
-        <section style={{
-          border: "1px solid rgba(255,255,255,0.12)",
-          borderRadius: 18,
-          padding: 18,
-          background: "rgba(255,255,255,0.03)",
-          display: "grid",
-          gap: 10
-        }}>
-          <div style={{ fontSize: 18, fontWeight: 700 }}>
+        <section
+          style={{
+            border: "1px solid rgba(255,255,255,0.12)",
+            borderRadius: 20,
+            padding: 18,
+            background: "rgba(255,255,255,0.03)",
+            display: "grid",
+            gap: 10,
+          }}
+        >
+          <div style={{ fontSize: 20, fontWeight: 800 }}>
             {count} / 1 track uploaded
           </div>
           <div style={{ opacity: 0.78, fontSize: 14 }}>
@@ -125,24 +143,24 @@ export default function UnlockPage() {
             Banger keeps only an audio fingerprint for recognition, so there is no risk of leak.
           </div>
           <div style={{ opacity: 0.78, fontSize: 14 }}>
-            Optional public preview: 30 seconds.
+            Released tracks do not count for unlock.
           </div>
           <div style={{ opacity: 0.78, fontSize: 14 }}>
             Upload only tracks you own or have permission to use.
           </div>
           <div style={{ marginTop: 8, fontSize: 14, opacity: 0.9 }}>
-            {remaining > 0 ? "Upload 1 accepted track to unlock Banger." : "Banger unlocked."}
+            {remaining > 0 ? "Upload 1 accepted unreleased track to unlock Banger." : "Banger unlocked."}
           </div>
         </section>
 
         <Link
-          href="/bpro"
+          href="/bpro?unlock=1"
           style={{
             display: "inline-flex",
             justifyContent: "center",
             alignItems: "center",
-            padding: "14px 16px",
-            borderRadius: 14,
+            padding: "15px 16px",
+            borderRadius: 16,
             border: "1px solid rgba(255,255,255,0.14)",
             background: "#fff",
             color: "#000",
@@ -150,43 +168,23 @@ export default function UnlockPage() {
             textDecoration: "none",
           }}
         >
-          Upload a track
+          Upload 1 Unreleased Track
         </Link>
 
-        {count >= 1 ? (
-          <Link
-            href="/"
-            style={{
-              display: "inline-flex",
-              justifyContent: "center",
-              alignItems: "center",
-              padding: "14px 16px",
-              borderRadius: 14,
-              border: "1px solid rgba(255,255,255,0.14)",
-              background: "#fff",
-              color: "#000",
-              fontWeight: 800,
-              textDecoration: "none",
-            }}
-          >
-            Access BANGER
-          </Link>
-        ) : (
-          <button
-            type="button"
-            onClick={() => location.reload()}
-            style={{
-              padding: "12px 16px",
-              borderRadius: 14,
-              border: "1px solid rgba(255,255,255,0.12)",
-              background: "rgba(255,255,255,0.05)",
-              color: "#fff",
-              fontWeight: 700,
-            }}
-          >
-            Refresh status
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => location.reload()}
+          style={{
+            padding: "13px 16px",
+            borderRadius: 16,
+            border: "1px solid rgba(255,255,255,0.12)",
+            background: "rgba(255,255,255,0.05)",
+            color: "#fff",
+            fontWeight: 700,
+          }}
+        >
+          Refresh status
+        </button>
       </div>
     </main>
   );

@@ -35,7 +35,7 @@ export default function BproPage() {
   const [info, setInfo] = useState("");
 
   const [releaseStatus, setReleaseStatus] = useState<ReleaseStatus>("unreleased");
-  const forceUnreleasedForUnlock = false;
+  const [forceUnreleasedForUnlock, setForceUnreleasedForUnlock] = useState(false);
   const [releaseDate, setReleaseDate] = useState("");
   const [allowPublicPreview, setAllowPublicPreview] = useState(true);
   const [agreeRights, setAgreeRights] = useState(false);
@@ -70,6 +70,16 @@ export default function BproPage() {
   }, [durationSec]);
 
   const previewEnd = previewStart + previewDuration;
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    setForceUnreleasedForUnlock(params.get("unlock") === "1");
+  }, []);
+
+  useEffect(() => {
+    if (forceUnreleasedForUnlock) setReleaseStatus("unreleased");
+  }, [forceUnreleasedForUnlock]);
+
   const maxPreviewStart = useMemo(() => {
     if (!durationSec) return 0;
     return Math.max(0, durationSec - previewDuration);

@@ -1,4 +1,5 @@
 "use client";
+import { useRouter } from "next/navigation";
 
 import Image from "next/image";
 import BottomNav from "@/components/BottomNav";
@@ -27,6 +28,7 @@ const PARTICLES = [
 ];
 
 export default function Home() {
+  const router = useRouter();
   const supabase = createSupabaseBrowser();
 
   const [sessionOk, setSessionOk] = useState(false);
