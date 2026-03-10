@@ -21,27 +21,35 @@ const ITEMS = [
 export default function BottomNav() {
   const pathname = usePathname() || "/";
 
-  const hidden = HIDDEN_PREFIXES.some((prefix) =>
-    pathname === prefix || pathname.startsWith(prefix + "/")
+  const hidden = HIDDEN_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(prefix + "/")
   );
 
   if (hidden) return null;
 
   return (
     <>
-      <div style={{ height: 84 }} />
+      <div
+        style={{
+          height: 98,
+          background: "#000",
+        }}
+      />
       <nav
         aria-label="Primary"
         style={{
           position: "fixed",
-          left: 0,
-          right: 0,
-          bottom: 0,
-          zIndex: 50,
-          borderTop: "1px solid rgba(255,255,255,0.08)",
-          background: "rgba(8,8,8,0.96)",
-          backdropFilter: "blur(14px)",
-          WebkitBackdropFilter: "blur(14px)",
+          left: 12,
+          right: 12,
+          bottom: 12,
+          zIndex: 60,
+          border: "1px solid rgba(255,255,255,0.08)",
+          background: "rgba(8,8,8,0.94)",
+          backdropFilter: "blur(18px)",
+          WebkitBackdropFilter: "blur(18px)",
+          borderRadius: 22,
+          boxShadow: "0 12px 40px rgba(0,0,0,0.45)",
+          overflow: "hidden",
         }}
       >
         <div
@@ -51,8 +59,9 @@ export default function BottomNav() {
             display: "grid",
             gridTemplateColumns: "repeat(5, 1fr)",
             alignItems: "center",
-            gap: 4,
+            gap: 6,
             padding: "10px 10px calc(10px + env(safe-area-inset-bottom))",
+            background: "#050505",
           }}
         >
           {ITEMS.map((item) => {
@@ -67,13 +76,22 @@ export default function BottomNav() {
                 href={item.href}
                 style={{
                   textDecoration: "none",
-                  color: active ? "#fff" : "rgba(255,255,255,0.72)",
+                  color: active ? "#fff" : "rgba(255,255,255,0.68)",
                   textAlign: "center",
                   fontSize: 13,
                   fontWeight: active ? 800 : 600,
-                  padding: "8px 4px",
-                  borderRadius: 12,
-                  background: active ? "rgba(255,255,255,0.06)" : "transparent",
+                  padding: "12px 6px",
+                  borderRadius: 16,
+                  background: active
+                    ? "linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04))"
+                    : "transparent",
+                  border: active
+                    ? "1px solid rgba(255,255,255,0.08)"
+                    : "1px solid transparent",
+                  boxShadow: active
+                    ? "inset 0 1px 0 rgba(255,255,255,0.06)"
+                    : "none",
+                  letterSpacing: "0.01em",
                 }}
               >
                 {item.label}
