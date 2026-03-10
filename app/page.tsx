@@ -65,6 +65,17 @@ export default function Home() {
     let mounted = true;
     (async () => {
       try {
+        const isAdmin =
+          typeof document !== "undefined" &&
+          document.cookie.includes("banger_admin=1");
+
+        if (isAdmin) {
+          if (!mounted) return;
+          setSessionOk(true);
+          setSessionLoading(false);
+          return;
+        }
+
         const { data } = await supabase!.auth.getSession();
         const session = data.session;
         if (!mounted) return;
