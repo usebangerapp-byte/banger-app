@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import FollowTrackButton from "@/components/FollowTrackButton"
 
 type RadarItem = {
   track_title: string
@@ -109,6 +110,7 @@ function Section(props: {
                   {item.scans} scans
                 </div>
               )}
+              <FollowTrackButton trackTitle={item.track_title} trackSubtitle={item.track_subtitle || ""} />
             </div>
           ))
         )}

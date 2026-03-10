@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import FollowTrackButton from "@/components/FollowTrackButton"
 
 export default function Library() {
 
@@ -36,6 +37,8 @@ marginBottom:"12px"
 <div style={{marginTop:"6px",fontSize:"12px",color:"#00eaff"}}>
 {t.scans} scans
 </div>
+
+<FollowTrackButton trackTitle={t.track_title} trackSubtitle={t.track_subtitle || ""} />
 
 </div>
 ))}
