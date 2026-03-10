@@ -12,9 +12,9 @@ const HIDDEN_PREFIXES = [
 
 const ITEMS = [
   { label: "Profile", href: "/profile" },
-  { label: "Charts", href: "/concerts" },
+  { label: "Radar", href: "/concerts" },
   { label: "Scan", href: "/" },
-  { label: "Radar", href: "/library" },
+  { label: "Charts", href: "/library" },
   { label: "BPRO", href: "/bpro" },
 ];
 
