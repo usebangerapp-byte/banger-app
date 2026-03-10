@@ -62,9 +62,6 @@ export default function UnlockPage() {
         const nextCount = Number(j?.count || 0);
         setCount(nextCount);
 
-        if (j?.unlocked) {
-          router.replace("/");
-        }
       } finally {
         if (mounted) setChecking(false);
       }
@@ -92,7 +89,7 @@ export default function UnlockPage() {
           <div style={{ fontSize: 12, opacity: 0.6, letterSpacing: "0.10em" }}>BANGER</div>
           <h1 style={{ fontSize: 30, margin: "8px 0 6px" }}>Unlock Banger</h1>
           <div style={{ opacity: 0.75, fontSize: 14 }}>
-            Upload 3 tracks to unlock scanning and full app access.
+            Upload 1 unreleased / demo / snippet to unlock Banger.
           </div>
         </div>
 
@@ -105,13 +102,13 @@ export default function UnlockPage() {
           gap: 10
         }}>
           <div style={{ fontSize: 18, fontWeight: 700 }}>
-            {count} / 3 tracks uploaded
+            {count} / 1 track uploaded
           </div>
           <div style={{ opacity: 0.78, fontSize: 14 }}>
-            Your track will not be leaked.
+            Full tracks are not stored for access unlock.
           </div>
           <div style={{ opacity: 0.78, fontSize: 14 }}>
-            Banger stores only an audio fingerprint used for recognition.
+            Banger keeps only an audio fingerprint for recognition, so there is no risk of leak.
           </div>
           <div style={{ opacity: 0.78, fontSize: 14 }}>
             Optional public preview: 30 seconds.
@@ -120,7 +117,7 @@ export default function UnlockPage() {
             Upload only tracks you own or have permission to use.
           </div>
           <div style={{ marginTop: 8, fontSize: 14, opacity: 0.9 }}>
-            {remaining > 0 ? `${remaining} more track${remaining > 1 ? "s" : ""} required to unlock Banger.` : "Banger unlocked."}
+            {remaining > 0 ? "Upload 1 accepted track to unlock Banger." : "Banger unlocked."}
           </div>
         </section>
 
@@ -142,20 +139,40 @@ export default function UnlockPage() {
           Upload a track
         </Link>
 
-        <button
-          type="button"
-          onClick={() => location.reload()}
-          style={{
-            padding: "12px 16px",
-            borderRadius: 14,
-            border: "1px solid rgba(255,255,255,0.12)",
-            background: "rgba(255,255,255,0.05)",
-            color: "#fff",
-            fontWeight: 700,
-          }}
-        >
-          Refresh status
-        </button>
+        {count >= 1 ? (
+          <Link
+            href="/"
+            style={{
+              display: "inline-flex",
+              justifyContent: "center",
+              alignItems: "center",
+              padding: "14px 16px",
+              borderRadius: 14,
+              border: "1px solid rgba(255,255,255,0.14)",
+              background: "#fff",
+              color: "#000",
+              fontWeight: 800,
+              textDecoration: "none",
+            }}
+          >
+            Access BANGER
+          </Link>
+        ) : (
+          <button
+            type="button"
+            onClick={() => location.reload()}
+            style={{
+              padding: "12px 16px",
+              borderRadius: 14,
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "rgba(255,255,255,0.05)",
+              color: "#fff",
+              fontWeight: 700,
+            }}
+          >
+            Refresh status
+          </button>
+        )}
       </div>
     </main>
   );

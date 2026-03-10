@@ -31,8 +31,8 @@ export async function GET(req: Request) {
   const accepted = data || [];
 
   return NextResponse.json({
-    unlocked: accepted.length >= 3,
+    unlocked: accepted.length >= 1,
     count: accepted.length,
-    remaining: Math.max(0, 3 - accepted.length),
+    remaining: Math.max(0, 1 - accepted.length),
   });
 }
