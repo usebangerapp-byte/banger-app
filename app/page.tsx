@@ -3,7 +3,6 @@
 import Image from "next/image";
 import BottomNav from "@/components/BottomNav";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 
 type Status = "idle" | "listening" | "recognizing";
@@ -28,11 +27,6 @@ const PARTICLES = [
 ];
 
 export default function Home() {
-  if (typeof window !== "undefined") {
-    window.location.replace("/unlock");
-    return null;
-  }
-  const router = useRouter();
   const supabase = createSupabaseBrowser();
 
   const [sessionOk, setSessionOk] = useState(false);
@@ -62,53 +56,9 @@ export default function Home() {
   const recognizing = status === "recognizing";
 
   useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const isAdmin =
-          typeof document !== "undefined" &&
-          document.cookie.includes("banger_admin=1");
-
-        if (isAdmin) {
-          if (!mounted) return;
-          setSessionOk(true);
-          setSessionLoading(false);
-          return;
-        }
-
-        const { data } = await supabase!.auth.getSession();
-        const session = data.session;
-        if (!mounted) return;
-
-        setSessionOk(!!session);
-
-        if (!session?.user?.email) {
-          return;
-        }
-
-        try {
-          const r = await fetch(`/api/bpro/unlock-status?email=${encodeURIComponent(session.user.email)}`, {
-            cache: "no-store",
-          });
-          const j = await r.json().catch(() => null);
-          if (!mounted) return;
-          if (!j?.unlocked) {
-            router.replace("/unlock");
-            return;
-          }
-        } catch {}
-      } catch {
-        if (!mounted) return;
-        setSessionOk(false);
-      } finally {
-        if (!mounted) return;
-        setSessionLoading(false);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, [router, supabase]);
+    setSessionOk(true);
+    setSessionLoading(false);
+  }, []);
 
   async function signInWithGoogle() {
     setLoginLoading(true);

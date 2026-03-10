@@ -35,7 +35,7 @@ export default function BproPage() {
   const [info, setInfo] = useState("");
 
   const [releaseStatus, setReleaseStatus] = useState<ReleaseStatus>("unreleased");
-  const forceUnreleasedForUnlock = true;
+  const forceUnreleasedForUnlock = false;
   const [releaseDate, setReleaseDate] = useState("");
   const [allowPublicPreview, setAllowPublicPreview] = useState(true);
   const [agreeRights, setAgreeRights] = useState(false);
@@ -418,14 +418,10 @@ fd.append("file", uploadFile);
                 Unreleased
               </SelectButton>
               <div style={{ display: "grid", gap: 6 }}>
-                <SelectButton active={releaseStatus === "released"} onClick={() => { if(!forceUnreleasedForUnlock) setReleaseStatus("released"); }}>
+                <SelectButton active={releaseStatus === "released"} onClick={() => setReleaseStatus("released")}>
                   Released
                 </SelectButton>
-                {forceUnreleasedForUnlock && (
-                  <div style={{ fontSize: 12, opacity: 0.58, textAlign: "center" }}>
-                    Available after unlock
-                  </div>
-                )}
+                
               </div>
             </div>
 
