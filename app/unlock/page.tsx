@@ -60,9 +60,6 @@ export default function UnlockPage() {
         const nextCount = Number(j?.count || 0);
         setCount(nextCount);
 
-        if (j?.unlocked) {
-          router.replace("/");
-        }
       } finally {
         if (mounted) setChecking(false);
       }
@@ -171,20 +168,40 @@ export default function UnlockPage() {
           Upload 1 Unreleased Track
         </Link>
 
-        <button
-          type="button"
-          onClick={() => location.reload()}
-          style={{
-            padding: "13px 16px",
-            borderRadius: 16,
-            border: "1px solid rgba(255,255,255,0.12)",
-            background: "rgba(255,255,255,0.05)",
-            color: "#fff",
-            fontWeight: 700,
-          }}
-        >
-          Refresh status
-        </button>
+        {count >= 1 ? (
+          <Link
+            href="/"
+            style={{
+              display: "inline-flex",
+              justifyContent: "center",
+              alignItems: "center",
+              padding: "15px 16px",
+              borderRadius: 16,
+              border: "1px solid rgba(255,255,255,0.14)",
+              background: "#fff",
+              color: "#000",
+              fontWeight: 800,
+              textDecoration: "none",
+            }}
+          >
+            Access BANGER
+          </Link>
+        ) : (
+          <button
+            type="button"
+            onClick={() => location.reload()}
+            style={{
+              padding: "13px 16px",
+              borderRadius: 16,
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "rgba(255,255,255,0.05)",
+              color: "#fff",
+              fontWeight: 700,
+            }}
+          >
+            Refresh status
+          </button>
+        )}
       </div>
     </main>
   );
