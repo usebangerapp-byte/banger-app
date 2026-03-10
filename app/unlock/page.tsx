@@ -56,10 +56,7 @@ export default function UnlockPage() {
         );
         const j = await r.json().catch(() => null);
         if (!mounted) return;
-
-        const nextCount = Number(j?.count || 0);
-        setCount(nextCount);
-
+        setCount(Number(j?.count || 0));
       } finally {
         if (mounted) setChecking(false);
       }
@@ -68,7 +65,7 @@ export default function UnlockPage() {
     return () => {
       mounted = false;
     };
-  }, [email, router]);
+  }, [email]);
 
   if (sessionLoading || checking) {
     return (
@@ -150,27 +147,9 @@ export default function UnlockPage() {
           </div>
         </section>
 
-        <Link
-          href="/bpro?unlock=1"
-          style={{
-            display: "inline-flex",
-            justifyContent: "center",
-            alignItems: "center",
-            padding: "15px 16px",
-            borderRadius: 16,
-            border: "1px solid rgba(255,255,255,0.14)",
-            background: "#fff",
-            color: "#000",
-            fontWeight: 800,
-            textDecoration: "none",
-          }}
-        >
-          Upload 1 Unreleased Track
-        </Link>
-
         {count >= 1 ? (
           <Link
-            href="/"
+            href="/onboarding"
             style={{
               display: "inline-flex",
               justifyContent: "center",
@@ -184,24 +163,37 @@ export default function UnlockPage() {
               textDecoration: "none",
             }}
           >
-            Access BANGER
+            Enter BANGER
           </Link>
         ) : (
-          <button
-            type="button"
-            onClick={() => location.reload()}
+          <Link
+            href="/bpro?unlock=1"
             style={{
-              padding: "13px 16px",
+              display: "inline-flex",
+              justifyContent: "center",
+              alignItems: "center",
+              padding: "15px 16px",
               borderRadius: 16,
-              border: "1px solid rgba(255,255,255,0.12)",
-              background: "rgba(255,255,255,0.05)",
-              color: "#fff",
-              fontWeight: 700,
+              border: "1px solid rgba(255,255,255,0.14)",
+              background: "#fff",
+              color: "#000",
+              fontWeight: 800,
+              textDecoration: "none",
             }}
           >
-            Refresh status
-          </button>
+            Upload 1 Unreleased Track
+          </Link>
         )}
+
+        <div style={{ textAlign: "center", fontSize: 13, opacity: 0.78, marginTop: 4 }}>
+          <Link href="/privacy" style={{ color: "#fff", textDecoration: "none" }}>
+            Privacy Policy
+          </Link>
+          {" · "}
+          <Link href="/terms" style={{ color: "#fff", textDecoration: "none" }}>
+            Terms of Service
+          </Link>
+        </div>
       </div>
     </main>
   );

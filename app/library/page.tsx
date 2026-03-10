@@ -1,7 +1,10 @@
-"use client"
+"use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react"
 import FollowTrackButton from "@/components/FollowTrackButton"
+
+
 
 export default function Library() {
 

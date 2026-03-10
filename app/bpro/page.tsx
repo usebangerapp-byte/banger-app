@@ -1,9 +1,12 @@
 "use client";
 
+import Image from "next/image";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import WaveSurfer from "wavesurfer.js";
 import { FFmpeg } from "@ffmpeg/ffmpeg";
+
+
 
 type Mode = "DJ" | "LABEL";
 type ReleaseStatus = "released" | "unreleased";
@@ -77,8 +80,12 @@ export default function BproPage() {
   }, []);
 
   useEffect(() => {
-    if (forceUnreleasedForUnlock) setReleaseStatus("unreleased");
-  }, [forceUnreleasedForUnlock]);
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const isUnlock = params.get("unlock") === "1";
+    setForceUnreleasedForUnlock(isUnlock);
+    if (isUnlock) setReleaseStatus("unreleased");
+  }, []);
 
   const maxPreviewStart = useMemo(() => {
     if (!durationSec) return 0;
@@ -381,6 +388,17 @@ fd.append("file", uploadFile);
 
   return (
     <main style={{ minHeight: "100vh", background: "#000", color: "#fff", padding: 20 }}>
+        <div style={{ display: "grid", placeItems: "center", marginBottom: 14 }}>
+          <Image
+            src="/b-logo.png"
+            alt="Banger"
+            width={72}
+            height={72}
+            style={{ width: 72, height: 72, objectFit: "contain" }}
+            priority
+          />
+        </div>
+
       <div style={{ maxWidth: 760, margin: "0 auto", paddingBottom: 220 }}>
         <div style={{ textAlign: "center", marginBottom: 18 }}>
           <div style={{ fontSize: 12, opacity: 0.6, letterSpacing: "0.10em" }}>BPRO</div>
@@ -428,7 +446,7 @@ fd.append("file", uploadFile);
                 Unreleased
               </SelectButton>
               <div style={{ display: "grid", gap: 6 }}>
-                <SelectButton active={releaseStatus === "released"} onClick={() => setReleaseStatus("released")}>
+                <SelectButton active={releaseStatus === "released"} onClick={() => { if (!forceUnreleasedForUnlock) setReleaseStatus("released"); }}>
                   Released
                 </SelectButton>
                 

@@ -1,7 +1,10 @@
-"use client"
+"use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react"
 import FollowTrackButton from "@/components/FollowTrackButton"
+
+
 
 type RadarItem = {
   track_title: string
@@ -138,6 +141,17 @@ export default function ConcertsPage() {
         padding: "40px 22px 140px",
       }}
     >
+        <div style={{ display: "grid", placeItems: "center", marginBottom: 14 }}>
+          <Image
+            src="/b-logo.png"
+            alt="Banger"
+            width={72}
+            height={72}
+            style={{ width: 72, height: 72, objectFit: "contain" }}
+            priority
+          />
+        </div>
+
       <div style={{ maxWidth: 720, margin: "0 auto" }}>
         <div style={{ marginBottom: 40 }}>
           <div

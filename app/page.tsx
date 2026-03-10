@@ -298,7 +298,16 @@ export default function Home() {
 
   if (sessionLoading) {
     return (
-      <main style={styles.page}>
+      <main style={styles.page}><div style={{ display: "grid", placeItems: "center", marginBottom: 12 }}>
+          <Image
+            src="/banger-findids.png"
+            alt="Banger Find IDs"
+            width={260}
+            height={90}
+            style={{ width: "min(260px, 72vw)", height: "auto", objectFit: "contain" }}
+            priority
+          />
+        </div>
         <div style={styles.loading}>Loading…</div>
       </main>
     );

@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
@@ -71,25 +71,18 @@ export default function LoginPage() {
         padding: 24,
       }}
     >
-      <div
-        style={{
-          width: "100%",
-          maxWidth: 460,
-          display: "grid",
-          gap: 18,
-        }}
-      >
+      <div style={{ width: "100%", maxWidth: 460, display: "grid", gap: 18 }}>
         <div style={{ display: "grid", placeItems: "center", gap: 14 }}>
-          <Image
-            src="/banger-findids.png"
-            alt="Banger"
-            width={220}
-            height={220}
-            style={{ width: "min(220px, 60vw)", height: "auto" }}
-            priority
+          <video
+            src="/logobangeranim.mp4"
+            autoPlay
+            loop
+            muted
+            playsInline
+            style={{ width: "min(220px, 60vw)", height: "auto", objectFit: "contain" }}
           />
           <div style={{ fontSize: 14, opacity: 0.74, textAlign: "center" }}>
-            Sign in to unlock Banger.
+            Log with
           </div>
         </div>
 
@@ -153,6 +146,16 @@ export default function LoginPage() {
             {soon}
           </div>
         ) : null}
+
+        <div style={{ textAlign: "center", fontSize: 13, opacity: 0.78, marginTop: 4 }}>
+          <Link href="/privacy" style={{ color: "#fff", textDecoration: "none" }}>
+            Privacy Policy
+          </Link>
+          {" · "}
+          <Link href="/terms" style={{ color: "#fff", textDecoration: "none" }}>
+            Terms of Service
+          </Link>
+        </div>
       </div>
     </main>
   );
