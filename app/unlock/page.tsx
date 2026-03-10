@@ -6,6 +6,20 @@ import { createSupabaseBrowser } from "@/lib/supabase/client";
 import Link from "next/link";
 
 export default function UnlockPage() {
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const params = new URLSearchParams(window.location.search);
+    const adminKey = params.get("admin");
+
+    if (adminKey === "BANGER_ADMIN_ACCESS_001") {
+      window.location.href = "/";
+    }
+  }, []);
+
+
+  
   const router = useRouter();
   const supabase = createSupabaseBrowser();
 
