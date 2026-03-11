@@ -11,6 +11,7 @@ type TrackRow = {
   title: string | null;
   artist: string | null;
   scan_count: number | null;
+  release_date?: string | null;
 };
 
 type UploadRow = {
@@ -36,7 +37,7 @@ export default function ChartsPage() {
         const [{ data: chartRows, error: chartError }, { data: uploadRows, error: uploadError }] = await Promise.all([
           supabase!
             .from("unreleased_tracks")
-            .select("id,title,artist,scan_count")
+            .select("id,title,artist,scan_count,release_date")
             .order("scan_count", { ascending: false })
             .limit(10),
           supabase!
@@ -80,7 +81,7 @@ export default function ChartsPage() {
         ...track,
         previewAllowed: !!upload?.allow_preview && !!upload?.snippet_path,
         snippetPath: upload?.snippet_path || null,
-        releaseDate: upload?.release_date || null,
+        releaseDate: track.release_date || upload?.release_date || null,
       };
     });
   }, [tracks, uploads]);
@@ -91,11 +92,25 @@ export default function ChartsPage() {
   }
 
   return (
-    <main style={{ minHeight: "100vh", background: "#000", color: "#fff", padding: "24px 16px 120px" }}>
+    <main
+      style={{
+        minHeight: "100vh",
+        background: "#000",
+        color: "#fff",
+        padding: "24px 16px 120px",
+      }}
+    >
       <AppGate />
       <div style={{ maxWidth: 820, margin: "0 auto", display: "grid", gap: 18 }}>
         <div style={{ display: "grid", placeItems: "center", gap: 10 }}>
-          <Image src="/B-logo.png" alt="Banger" width={70} height={70} style={{ width: 70, height: 70 }} priority />
+          <Image
+            src="/B-logo.png"
+            alt="Banger"
+            width={70}
+            height={70}
+            style={{ width: 70, height: 70 }}
+            priority
+          />
           <div style={{ fontSize: 30, fontWeight: 900, letterSpacing: "-0.02em" }}>Charts</div>
           <div style={{ opacity: 0.72, textAlign: "center", maxWidth: 560 }}>
             Top unreleased tracks by total scans on BANGER.
