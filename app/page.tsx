@@ -16,16 +16,6 @@ const PAGE_BG =
   "rgba(18,18,18,1) 0%, rgba(8,8,8,1) 42%, " +
   "rgba(5,5,5,1) 70%, rgba(2,2,2,1) 100%)";
 
-const PARTICLES = [
-  { x: -120, y: -70, s: 1.0, o: 0.70, d: 0 },
-  { x: 115, y: -60, s: 0.9, o: 0.55, d: 120 },
-  { x: -140, y: 35, s: 0.8, o: 0.50, d: 260 },
-  { x: 130, y: 42, s: 1.1, o: 0.65, d: 380 },
-  { x: -75, y: 120, s: 0.9, o: 0.45, d: 520 },
-  { x: 75, y: 118, s: 1.0, o: 0.55, d: 640 },
-  { x: -10, y: -145, s: 0.7, o: 0.40, d: 780 },
-  { x: 12, y: 150, s: 0.8, o: 0.40, d: 860 },
-];
 
 export default function Home() {
   const router = useRouter();
@@ -427,20 +417,7 @@ Discover what the scene is playing
                   }}
                 />
 
-                {PARTICLES.map((p, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      ...styles.particle,
-                      ["--x" as any]: `${p.x}px`,
-                      ["--y" as any]: `${p.y}px`,
-                      ["--s" as any]: `${p.s}`,
-                      ["--o" as any]: `${p.o}`,
-                      animationDelay: `${p.d}ms`,
-                      animation: "particleFloat 1.15s ease-out infinite",
-                    }}
-                  />
-                ))}
+                
               </>
             ) : null}
 

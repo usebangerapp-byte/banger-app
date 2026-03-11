@@ -1,192 +1,141 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react"
-import FollowTrackButton from "@/components/FollowTrackButton"
+import { useEffect, useState } from "react";
+import { createSupabaseBrowser } from "@/lib/supabase/client";
 
+type ChartTrack = {
+  id: string;
+  title: string;
+  artist: string | null;
+  label: string | null;
+  scan_count: number | null;
+};
 
-
-type RadarItem = {
-  track_title: string
-  track_subtitle?: string
-  scans?: number
-  created_at?: string | null
-}
-
-type RadarData = {
-  mysterious: RadarItem[]
-  trending: RadarItem[]
-  recentlyAdded: RadarItem[]
-  mostWanted: RadarItem[]
-}
-
-const emptyData: RadarData = {
-  mysterious: [],
-  trending: [],
-  recentlyAdded: [],
-  mostWanted: [],
-}
-
-function Section(props: {
-  title: string
-  icon: string
-  items: RadarItem[]
-  accent?: string
-}) {
-  const { title, icon, items, accent = "#00eaff" } = props
-
-  return (
-    <section
-      style={{
-        padding: 20,
-        borderRadius: 20,
-        background: "linear-gradient(160deg,#0a0a0d,#0b1015)",
-        border: "1px solid rgba(0,234,255,0.10)",
-        boxShadow: "0 0 30px rgba(0,234,255,0.06)",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: 14,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            fontWeight: 700,
-            fontSize: 18,
-          }}
-        >
-          <span>{icon}</span>
-          <span>{title}</span>
-        </div>
-
-        <div
-          style={{
-            width: 10,
-            height: 10,
-            borderRadius: 999,
-            background: accent,
-            boxShadow: `0 0 14px ${accent}`,
-            opacity: 0.9,
-          }}
-        />
-      </div>
-
-      <div style={{ display: "grid", gap: 10 }}>
-        {items.length === 0 ? (
-          <div
-            style={{
-              padding: "12px 14px",
-              borderRadius: 14,
-              background: "rgba(255,255,255,0.04)",
-              opacity: 0.55,
-              fontSize: 14,
-            }}
-          >
-            No signal yet
-          </div>
-        ) : (
-          items.map((item, i) => (
-            <div
-              key={item.track_title + "|" + (item.track_subtitle || "") + "|" + i}
-              style={{
-                padding: "12px 14px",
-                borderRadius: 14,
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.04)",
-              }}
-            >
-              <div style={{ fontWeight: 600, fontSize: 14 }}>
-                {item.track_title || "Unknown ID"}
-              </div>
-              <div style={{ opacity: 0.55, fontSize: 12, marginTop: 4 }}>
-                {item.track_subtitle || "Unknown ID"}
-              </div>
-              {typeof item.scans === "number" && (
-                <div style={{ marginTop: 8, fontSize: 12, color: "#00eaff" }}>
-                  {item.scans} scans
-                </div>
-              )}
-              <FollowTrackButton trackTitle={item.track_title} trackSubtitle={item.track_subtitle || ""} />
-            </div>
-          ))
-        )}
-      </div>
-    </section>
-  )
-}
-
-export default function ConcertsPage() {
-  const [data, setData] = useState<RadarData>(emptyData)
+export default function ChartsPage() {
+  const supabase = createSupabaseBrowser();
+  const [tracks, setTracks] = useState<ChartTrack[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch("/api/radar")
-      .then((r) => r.json())
-      .then((d) => setData({ ...emptyData, ...d }))
-      .catch(() => setData(emptyData))
-  }, [])
+    let mounted = true;
+
+    (async () => {
+      try {
+        const { data, error } = await supabase!
+          .from("unreleased_tracks")
+          .select("id,title,artist,label,scan_count")
+          .order("scan_count", { ascending: false })
+          .limit(10);
+
+        if (!mounted) return;
+        if (error) throw error;
+
+        setTracks((data || []) as ChartTrack[]);
+      } catch (e: any) {
+        if (!mounted) return;
+        setError(e?.message || "Unable to load charts.");
+      } finally {
+        if (!mounted) return;
+        setLoading(false);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [supabase]);
 
   return (
     <main
       style={{
         minHeight: "100vh",
-        background: "#050507",
+        background: "#000",
         color: "#fff",
-        padding: "40px 22px 140px",
+        padding: "24px 16px 120px",
       }}
     >
-        <div style={{ display: "grid", placeItems: "center", marginBottom: 14 }}>
+      <div style={{ maxWidth: 760, margin: "0 auto", display: "grid", gap: 18 }}>
+        <div style={{ display: "grid", placeItems: "center", gap: 10 }}>
           <Image
             src="/b-logo.png"
             alt="Banger"
             width={72}
             height={72}
-            style={{ width: 72, height: 72, objectFit: "contain" }}
+            style={{ width: 72, height: 72 }}
             priority
           />
-        </div>
-
-      <div style={{ maxWidth: 720, margin: "0 auto" }}>
-        <div style={{ marginBottom: 40 }}>
-          <div
-            style={{
-              fontSize: 12,
-              letterSpacing: "0.18em",
-              opacity: 0.55,
-              textTransform: "uppercase",
-            }}
-          >
-            Radar
-          </div>
-
-          <h1
-            style={{
-              fontSize: 38,
-              margin: "10px 0",
-              fontWeight: 800,
-            }}
-          >
-            Scene Signals
-          </h1>
-
-          <div style={{ opacity: 0.65 }}>
-            Discover what the scene is playing right now
+          <div style={{ fontSize: 28, fontWeight: 800 }}>Charts</div>
+          <div style={{ opacity: 0.7, textAlign: "center" }}>
+            Most scanned unreleased tracks on BANGER.
           </div>
         </div>
 
-        <div style={{ display: "grid", gap: 22 }}>
-          <Section title="Mysterious" icon="👀" items={data.mysterious} accent="#35e8ff" />
-          <Section title="Trending" icon="🔥" items={data.trending} accent="#00eaff" />
-          <Section title="Recently Added" icon="🆕" items={data.recentlyAdded} accent="#55f3ff" />
-          <Section title="Most Wanted" icon="⭐" items={data.mostWanted} accent="#7df7ff" />
-        </div>
+        {loading ? (
+          <div style={cardStyle}>Loading charts...</div>
+        ) : error ? (
+          <div style={cardStyle}>{error}</div>
+        ) : tracks.length === 0 ? (
+          <div style={cardStyle}>No chart data yet.</div>
+        ) : (
+          <div style={{ display: "grid", gap: 12 }}>
+            {tracks.map((track, index) => (
+              <div key={track.id} style={rowStyle}>
+                <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+                  <div
+                    style={{
+                      width: 42,
+                      height: 42,
+                      borderRadius: 12,
+                      display: "grid",
+                      placeItems: "center",
+                      background: "rgba(255,255,255,0.06)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      fontWeight: 800,
+                    }}
+                  >
+                    {index + 1}
+                  </div>
+                  <div style={{ display: "grid", gap: 4 }}>
+                    <div style={{ fontSize: 18, fontWeight: 700 }}>
+                      {track.title || "Untitled"}
+                    </div>
+                    <div style={{ fontSize: 14, opacity: 0.68 }}>
+                      {track.artist || "unknown"}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontSize: 20, fontWeight: 800 }}>
+                    {track.scan_count || 0}
+                  </div>
+                  <div style={{ fontSize: 12, opacity: 0.62 }}>scans</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </main>
-  )
+  );
 }
+
+const cardStyle: React.CSSProperties = {
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(255,255,255,0.03)",
+  borderRadius: 20,
+  padding: 18,
+};
+
+const rowStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 14,
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(255,255,255,0.03)",
+  borderRadius: 20,
+  padding: 16,
+};
