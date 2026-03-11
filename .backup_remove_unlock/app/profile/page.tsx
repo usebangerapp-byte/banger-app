@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
-
+import AppGate from "@/components/AppGate";
 
 type FollowRow = {
   id: number;
@@ -73,7 +73,7 @@ export default function ProfilePage() {
 
   return (
     <main style={{ minHeight: "100vh", background: "#000", color: "#fff", padding: "24px 16px 120px" }}>
-      
+      <AppGate />
       <div style={{ maxWidth: 820, margin: "0 auto", display: "grid", gap: 18 }}>
         <div style={{ display: "grid", placeItems: "center", gap: 10 }}>
           <Image src="/B-logo.png" alt="Banger" width={80} height={80} style={{ width: 80, height: 80 }} priority />

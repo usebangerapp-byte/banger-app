@@ -1,12 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { createSupabaseBrowser } from "@/lib/supabase/client";
 import WaveSurfer from "wavesurfer.js";
-import { FFmpeg } from "@ffmpeg/ffmpeg";
-
-
 
 type Mode = "DJ" | "LABEL";
 type ReleaseStatus = "released" | "unreleased";
@@ -22,14 +17,10 @@ type UploadResult = {
 };
 
 export default function BproPage() {
-  const [uploaderEmail, setUploaderEmail] = useState("");
-  const supabase = createSupabaseBrowser();
   const audioInputRef = useRef<HTMLInputElement | null>(null);
   const artworkInputRef = useRef<HTMLInputElement | null>(null);
   const waveformRef = useRef<HTMLDivElement | null>(null);
   const waveRef = useRef<WaveSurfer | null>(null);
-  const ffmpegRef = useRef<FFmpeg | null>(null);
-  const ffmpegLoadedRef = useRef(false);
   const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
 
   const [mode, setMode] = useState<Mode | null>(null);
@@ -38,7 +29,6 @@ export default function BproPage() {
   const [info, setInfo] = useState("");
 
   const [releaseStatus, setReleaseStatus] = useState<ReleaseStatus>("unreleased");
-  const [forceUnreleasedForUnlock, setForceUnreleasedForUnlock] = useState(false);
   const [releaseDate, setReleaseDate] = useState("");
   const [allowPublicPreview, setAllowPublicPreview] = useState(true);
   const [agreeRights, setAgreeRights] = useState(false);
@@ -73,23 +63,6 @@ export default function BproPage() {
   }, [durationSec]);
 
   const previewEnd = previewStart + previewDuration;
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    setForceUnreleasedForUnlock(params.get("unlock") === "1");
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    const isUnlock = params.get("unlock") === "1";
-    setForceUnreleasedForUnlock(isUnlock);
-    if (isUnlock) setReleaseStatus("unreleased");
-  }, []);
-
-
-  const showUnlockAccess = false && flow === "done";
-
   const maxPreviewStart = useMemo(() => {
     if (!durationSec) return 0;
     return Math.max(0, durationSec - previewDuration);
@@ -224,79 +197,6 @@ export default function BproPage() {
     setSuccess("");
   }
 
-  async function buildUploadFile() {
-    if (!audioFile) {
-      throw new Error("Audio file missing.");
-    }
-
-    if (!isLong) {
-      return audioFile;
-    }
-
-    setStatus("Building preview segment...");
-
-    if (!ffmpegRef.current) {
-      ffmpegRef.current = new FFmpeg();
-    }
-
-    const ffmpeg = ffmpegRef.current;
-
-    if (!ffmpegLoadedRef.current) {
-      await ffmpeg.load();
-      ffmpegLoadedRef.current = true;
-    }
-
-    const inputExt = audioFile.name.includes(".")
-      ? audioFile.name.split(".").pop()
-      : "wav";
-
-    const inputName = `input.${inputExt}`;
-    const outputName = "snippet.mp3";
-
-    const inputBytes = new Uint8Array(await audioFile.arrayBuffer());
-    await ffmpeg.writeFile(inputName, inputBytes);
-
-    await ffmpeg.exec([
-      "-ss",
-      String(previewStart),
-      "-t",
-      String(previewDuration),
-      "-i",
-      inputName,
-      "-vn",
-      "-acodec",
-      "libmp3lame",
-      "-b:a",
-      "192k",
-      outputName,
-    ]);
-
-    const data = await ffmpeg.readFile(outputName);
-
-    if (typeof data === "string") {
-      throw new Error("Invalid ffmpeg output");
-    }
-
-    const safeBytes = new Uint8Array(data.length);
-    safeBytes.set(data);
-    const blob = new Blob([safeBytes.buffer], { type: "audio/mpeg" });
-
-    const baseName = (trackTitle.trim() || audioFile.name.replace(/\.[^/.]+$/, ""))
-      .replace(/[^a-zA-Z0-9._-]+/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/^-|-$/g, "") || "snippet";
-
-    try {
-      await ffmpeg.deleteFile(inputName);
-    } catch {}
-
-    try {
-      await ffmpeg.deleteFile(outputName);
-    } catch {}
-
-    return new File([blob], `${baseName}.mp3`, { type: "audio/mpeg" });
-  }
-
   function testPreview() {
     if (!audioPreviewRef.current || !audioUrl) return;
     const audio = audioPreviewRef.current;
@@ -329,10 +229,7 @@ export default function BproPage() {
 
     try {
       const fd = new FormData();
-      
-const uploadFile = await buildUploadFile();
-fd.append("file", uploadFile);
-
+      fd.append("file", audioFile);
       fd.append("mode", mode);
       fd.append("name", name.trim());
       fd.append("title", trackTitle.trim());
@@ -342,7 +239,6 @@ fd.append("file", uploadFile);
       fd.append("allow_preview", allowPublicPreview ? "1" : "0");
       fd.append("delete_after", "1");
       fd.append("has_rights", agreeRights ? "1" : "0");
-      fd.append("uploader_email", uploaderEmail || "");
 
       if (artwork) fd.append("artwork", artwork);
 
@@ -391,17 +287,6 @@ fd.append("file", uploadFile);
 
   return (
     <main style={{ minHeight: "100vh", background: "#000", color: "#fff", padding: 20 }}>
-        <div style={{ display: "grid", placeItems: "center", marginBottom: 14 }}>
-          <Image
-            src="/B-logo.png"
-            alt="Banger"
-            width={72}
-            height={72}
-            style={{ width: 72, height: 72, objectFit: "contain" }}
-            priority
-          />
-        </div>
-
       <div style={{ maxWidth: 760, margin: "0 auto", paddingBottom: 220 }}>
         <div style={{ textAlign: "center", marginBottom: 18 }}>
           <div style={{ fontSize: 12, opacity: 0.6, letterSpacing: "0.10em" }}>BPRO</div>
@@ -448,12 +333,9 @@ fd.append("file", uploadFile);
               <SelectButton active={releaseStatus === "unreleased"} onClick={() => setReleaseStatus("unreleased")}>
                 Unreleased
               </SelectButton>
-              <div style={{ display: "grid", gap: 6 }}>
-                <SelectButton active={releaseStatus === "released"} onClick={() => { if (!false) setReleaseStatus("released"); }}>
-                  Released
-                </SelectButton>
-                
-              </div>
+              <SelectButton active={releaseStatus === "released"} onClick={() => setReleaseStatus("released")}>
+                Released
+              </SelectButton>
             </div>
 
             <div style={{ height: 12 }} />
@@ -561,7 +443,7 @@ fd.append("file", uploadFile);
               <input
                 ref={audioInputRef}
                 type="file"
-                accept=".mp3,.wav,.wave,.aiff,.aif,.flac,.m4a,.aac,.ogg,.opus,audio/*"
+                accept="audio/*"
                 onChange={onPickAudio}
                 style={{ display: "none" }}
               />
@@ -711,7 +593,7 @@ fd.append("file", uploadFile);
 
               {flow === "done" && (
                 <button type="button" onClick={resetAll} style={secondaryButton}>
-                  {true ? "Access now" : "Upload another track"}
+                  Upload another track
                 </button>
               )}
             </div>

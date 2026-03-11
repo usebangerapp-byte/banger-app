@@ -1,0 +1,239 @@
+import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+import { randomUUID } from "crypto";
+import { spawn } from "child_process";
+import { tmpdir } from "os";
+import { join } from "path";
+import { mkdir, readFile, rm, writeFile } from "fs/promises";
+
+export const runtime = "nodejs";
+
+
+const STORAGE_BUCKET = "bpro_uploads";
+
+function sanitizeName(name: string) {
+  return name.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/-+/g, "-");
+}
+
+async function runFfmpeg(args: string[]) {
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn("ffmpeg", ["-y", ...args]);
+    let stderr = "";
+
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk.toString();
+    });
+
+    child.on("error", (err) => reject(err));
+    child.on("close", (code) => {
+      if (code === 0) return resolve();
+      reject(new Error(stderr || "ffmpeg failed"));
+    });
+  });
+}
+
+export async function POST(req: Request) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    return NextResponse.json({ error: "Missing Supabase env" }, { status: 500 });
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  console.log("[BPRO] SUPABASE URL =", process.env.NEXT_PUBLIC_SUPABASE_URL);
+  console.log("[BPRO] STORAGE_BUCKET =", STORAGE_BUCKET);
+
+  const token = process.env.ACR_CONSOLE_TOKEN;
+  const bucketId = process.env.ACR_BUCKET_ID;
+
+  if (!token || !bucketId) {
+    return NextResponse.json({ error: "Missing ACR env" }, { status: 500 });
+  }
+
+  const form = await req.formData();
+
+  const source = form.get("file");
+  if (!(source instanceof File)) {
+    return NextResponse.json({ error: "Audio file missing" }, { status: 400 });
+  }
+
+  const artwork = form.get("artwork");
+  const mode = String(form.get("mode") || "");
+  const name = String(form.get("name") || "");
+  const title = String(form.get("title") || "");
+  const info = String(form.get("info") || "");
+  const releaseStatus = String(form.get("release_status") || "");
+  const releaseDate = String(form.get("release_date") || "");
+  const allowPreview = String(form.get("allow_preview") || "1") === "1";
+  const hasRights = String(form.get("has_rights") || "0") === "1";
+  const snippetStartRaw = Number(form.get("snippet_start") || 0);
+  const snippetDurationRaw = Number(form.get("snippet_duration") || 0);
+
+  if (!mode || !name.trim() || !title.trim()) {
+    return NextResponse.json({ error: "Missing required metadata" }, { status: 400 });
+  }
+
+  if (!hasRights) {
+    return NextResponse.json({ error: "Rights confirmation required" }, { status: 400 });
+  }
+
+  const workDir = join(tmpdir(), `bpro-${randomUUID()}`);
+  await mkdir(workDir, { recursive: true });
+
+  const safeBase = sanitizeName(source.name || "track");
+  const inputPath = join(workDir, `input-${safeBase}`);
+  const outputPath = join(workDir, `snippet-${randomUUID()}.mp3`);
+
+  let snippetPath: string | null = null;
+  let artworkPath: string | null = null;
+
+  try {
+    const inputBuffer = Buffer.from(await source.arrayBuffer());
+    await writeFile(inputPath, inputBuffer);
+
+    const hasSnippet = Number.isFinite(snippetDurationRaw) && snippetDurationRaw > 0;
+    const snippetDuration = hasSnippet ? Math.min(60, Math.max(1, Math.floor(snippetDurationRaw))) : null;
+    const snippetStart = hasSnippet ? Math.max(0, Math.floor(snippetStartRaw)) : 0;
+
+    if (hasSnippet && snippetDuration) {
+      await runFfmpeg([
+        "-ss", String(snippetStart),
+        "-t", String(snippetDuration),
+        "-i", inputPath,
+        "-vn",
+        "-acodec", "libmp3lame",
+        "-b:a", "192k",
+        outputPath,
+      ]);
+    } else {
+      await runFfmpeg([
+        "-i", inputPath,
+        "-vn",
+        "-acodec", "libmp3lame",
+        "-b:a", "192k",
+        outputPath,
+      ]);
+    }
+
+    const snippetBuffer = await readFile(outputPath);
+
+    snippetPath = `snippets/${Date.now()}-${randomUUID()}-${sanitizeName(title)}.mp3`;
+    const { error: storageError } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .upload(snippetPath, snippetBuffer, {
+        contentType: "audio/mpeg",
+        upsert: false,
+      });
+
+    if (storageError) {
+      throw new Error(`Snippet storage failed: ${storageError.message}`);
+    }
+
+    if (artwork instanceof File && artwork.size > 0) {
+      const artworkBuffer = Buffer.from(await artwork.arrayBuffer());
+      const ext = artwork.name.includes(".") ? artwork.name.split(".").pop() : "jpg";
+      artworkPath = `artwork/${Date.now()}-${randomUUID()}-${sanitizeName(title)}.${ext}`;
+
+      const { error: artworkError } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .upload(artworkPath, artworkBuffer, {
+          contentType: artwork.type || "image/jpeg",
+          upsert: false,
+        });
+
+      if (artworkError) {
+        throw new Error(`Artwork storage failed: ${artworkError.message}`);
+      }
+    }
+
+    const acrForm = new FormData();
+    acrForm.append(
+      "file",
+      new Blob([snippetBuffer], { type: "audio/mpeg" }),
+      "snippet.mp3"
+    );
+    acrForm.append("title", title);
+    acrForm.append("data_type", "audio");
+    acrForm.append(
+      "user_defined",
+      JSON.stringify({
+        mode,
+        name,
+        info,
+        release_status: releaseStatus,
+        release_date: releaseDate || null,
+        allow_preview: allowPreview,
+        storage_bucket: STORAGE_BUCKET,
+        snippet_path: snippetPath,
+        artwork_path: artworkPath,
+      })
+    );
+
+    const acrRes = await fetch(`https://api-v2.acrcloud.com/api/buckets/${bucketId}/files`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: acrForm,
+    });
+
+    const acrJson = await acrRes.json().catch(() => null);
+
+    if (!acrRes.ok) {
+      return NextResponse.json(
+        {
+          error: acrJson?.error || "ACR upload failed",
+          snippet_path: snippetPath,
+          artwork_path: artworkPath,
+        },
+        { status: 500 }
+      );
+    }
+
+    const acrItem = Array.isArray(acrJson?.data) ? acrJson.data[0] : acrJson?.data;
+    const fingerprintStatus =
+      acrItem?.state === 1 ? "ready" : "processing";
+
+    try {
+      await supabase.from("bpro_uploads").insert({
+        mode,
+        name,
+        title,
+        info: info || null,
+        release_status: releaseStatus || null,
+        release_date: releaseDate || null,
+        allow_preview: allowPreview,
+        storage_bucket: STORAGE_BUCKET,
+        snippet_path: snippetPath,
+        artwork_path: artworkPath,
+        snippet_start: hasSnippet ? snippetStart : 0,
+        snippet_duration: hasSnippet ? snippetDuration : null,
+        source_file_name: source.name,
+        source_size: source.size,
+        acr_id: acrItem?.acr_id || null,
+        fingerprint_status: fingerprintStatus,
+      });
+    } catch {
+      // non-blocking if table schema differs
+    }
+
+    return NextResponse.json({
+      ok: true,
+      snippet_path: snippetPath,
+      artwork_path: artworkPath,
+      acr_id: acrItem?.acr_id || null,
+      acr_state: acrItem?.state ?? null,
+      fingerprint_status: fingerprintStatus,
+    });
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: err?.message || "Upload failed" },
+      { status: 500 }
+    );
+  } finally {
+    await rm(workDir, { recursive: true, force: true }).catch(() => {});
+  }
+}

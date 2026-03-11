@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
-
+import AppGate from "@/components/AppGate";
 import FollowTrackButton from "@/components/FollowTrackButton";
 
 type ScanRow = {
@@ -80,7 +80,7 @@ export default function Library() {
         padding: "24px 16px 120px",
       }}
     >
-      
+      <AppGate />
       <div style={{ maxWidth: 820, margin: "0 auto", display: "grid", gap: 18 }}>
         <div style={{ display: "grid", placeItems: "center", gap: 10 }}>
           <Image src="/B-logo.png" alt="Banger" width={72} height={72} style={{ width: 72, height: 72 }} priority />

@@ -87,8 +87,9 @@ export default function BproPage() {
     if (isUnlock) setReleaseStatus("unreleased");
   }, []);
 
+  const unlockReady = forceUnreleasedForUnlock;
 
-  const showUnlockAccess = false && flow === "done";
+  const showUnlockAccess = forceUnreleasedForUnlock && flow === "done";
 
   const maxPreviewStart = useMemo(() => {
     if (!durationSec) return 0;
@@ -449,7 +450,7 @@ fd.append("file", uploadFile);
                 Unreleased
               </SelectButton>
               <div style={{ display: "grid", gap: 6 }}>
-                <SelectButton active={releaseStatus === "released"} onClick={() => { if (!false) setReleaseStatus("released"); }}>
+                <SelectButton active={releaseStatus === "released"} onClick={() => { if (!forceUnreleasedForUnlock) setReleaseStatus("released"); }}>
                   Released
                 </SelectButton>
                 
@@ -711,7 +712,7 @@ fd.append("file", uploadFile);
 
               {flow === "done" && (
                 <button type="button" onClick={resetAll} style={secondaryButton}>
-                  {true ? "Access now" : "Upload another track"}
+                  {unlockReady ? "Access now" : "Upload another track"}
                 </button>
               )}
             </div>

@@ -1,12 +1,10 @@
 "use client";
-import { useRouter } from "next/navigation";
 
 import Image from "next/image";
 import BottomNav from "@/components/BottomNav";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
-
-
 
 type Status = "idle" | "listening" | "recognizing";
 type Tag = "UNRELEASED" | "RELEASED" | "NOT FOUND";
@@ -18,6 +16,16 @@ const PAGE_BG =
   "rgba(18,18,18,1) 0%, rgba(8,8,8,1) 42%, " +
   "rgba(5,5,5,1) 70%, rgba(2,2,2,1) 100%)";
 
+const PARTICLES = [
+  { x: -120, y: -70, s: 1.0, o: 0.70, d: 0 },
+  { x: 115, y: -60, s: 0.9, o: 0.55, d: 120 },
+  { x: -140, y: 35, s: 0.8, o: 0.50, d: 260 },
+  { x: 130, y: 42, s: 1.1, o: 0.65, d: 380 },
+  { x: -75, y: 120, s: 0.9, o: 0.45, d: 520 },
+  { x: 75, y: 118, s: 1.0, o: 0.55, d: 640 },
+  { x: -10, y: -145, s: 0.7, o: 0.40, d: 780 },
+  { x: 12, y: 150, s: 0.8, o: 0.40, d: 860 },
+];
 
 export default function Home() {
   const router = useRouter();
@@ -50,9 +58,42 @@ export default function Home() {
   const recognizing = status === "recognizing";
 
   useEffect(() => {
-    setSessionOk(true);
-    setSessionLoading(false);
-  }, []);
+    let mounted = true;
+    (async () => {
+      try {
+        const { data } = await supabase!.auth.getSession();
+        const session = data.session;
+        if (!mounted) return;
+
+        setSessionOk(!!session);
+
+        if (!session?.user?.email) {
+          return;
+        }
+
+        try {
+          const r = await fetch(`/api/bpro/unlock-status?email=${encodeURIComponent(session.user.email)}`, {
+            cache: "no-store",
+          });
+          const j = await r.json().catch(() => null);
+          if (!mounted) return;
+          if (!j?.unlocked) {
+            router.replace("/unlock");
+            return;
+          }
+        } catch {}
+      } catch {
+        if (!mounted) return;
+        setSessionOk(false);
+      } finally {
+        if (!mounted) return;
+        setSessionLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [router, supabase]);
 
   async function signInWithGoogle() {
     setLoginLoading(true);
@@ -291,17 +332,6 @@ export default function Home() {
   if (sessionLoading) {
     return (
       <main style={styles.page}>
-      
-      <div style={{ display: "grid", placeItems: "center", marginBottom: 12 }}>
-          <Image
-            src="/banger-findids.png"
-            alt="Banger Find IDs"
-            width={260}
-            height={90}
-            style={{ width: "min(260px, 72vw)", height: "auto", objectFit: "contain" }}
-            priority
-          />
-        </div>
         <div style={styles.loading}>Loading…</div>
       </main>
     );
@@ -320,9 +350,6 @@ export default function Home() {
             </button>
             <div style={styles.loginHint}>
               Après login → Home (Scan) + onglets.
-
-Scan the music around you
-Discover what the scene is playing
             </div>
           </div>
         </div>
@@ -421,7 +448,20 @@ Discover what the scene is playing
                   }}
                 />
 
-                
+                {PARTICLES.map((p, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      ...styles.particle,
+                      ["--x" as any]: `${p.x}px`,
+                      ["--y" as any]: `${p.y}px`,
+                      ["--s" as any]: `${p.s}`,
+                      ["--o" as any]: `${p.o}`,
+                      animationDelay: `${p.d}ms`,
+                      animation: "particleFloat 1.15s ease-out infinite",
+                    }}
+                  />
+                ))}
               </>
             ) : null}
 

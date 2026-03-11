@@ -1,0 +1,510 @@
+"use client";
+
+import React, { useMemo, useRef, useState } from "react";
+
+type Mode = "DJ" | "LABEL";
+type FlowStep = "form" | "snippet" | "done";
+
+export default function BproPage() {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const [mode, setMode] = useState<Mode | null>(null);
+  const [name, setName] = useState("");
+  const [info, setInfo] = useState("");
+  const [agreeRights, setAgreeRights] = useState(false);
+  const [releaseStatus, setReleaseStatus] = useState<"released" | "unreleased" | "">("");
+
+  const [file, setFile] = useState<File | null>(null);
+  const [fileUrl, setFileUrl] = useState("");
+  const [durationSec, setDurationSec] = useState<number | null>(null);
+
+  const [flowStep, setFlowStep] = useState<FlowStep>("form");
+
+  const [snippetStart, setSnippetStart] = useState(0);
+  const [snippetDuration, setSnippetDuration] = useState(60);
+
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const identityOk = useMemo(() => !!mode && name.trim().length > 0, [mode, name]);
+  const canPickFile = identityOk && !!releaseStatus && agreeRights && !busy;
+  const isShortFile = durationSec !== null && durationSec <= 60;
+  const isLongFile = durationSec !== null && durationSec > 60;
+
+  async function detectDuration(picked: File) {
+    return new Promise<number>((resolve, reject) => {
+      const url = URL.createObjectURL(picked);
+      const audio = document.createElement("audio");
+      audio.preload = "metadata";
+      audio.src = url;
+
+      audio.onloadedmetadata = () => {
+        const d = Math.floor(audio.duration || 0);
+        URL.revokeObjectURL(url);
+        resolve(d);
+      };
+
+      audio.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error("Impossible de lire la durée du fichier."));
+      };
+    });
+  }
+
+  function resetMessages() {
+    setError("");
+    setSuccess("");
+    setStatus("");
+  }
+
+  function resetAll() {
+    resetMessages();
+    setFile(null);
+    setDurationSec(null);
+    setFlowStep("form");
+    setSnippetStart(0);
+    setSnippetDuration(60);
+    if (fileUrl) URL.revokeObjectURL(fileUrl);
+    setFileUrl("");
+    if (inputRef.current) inputRef.current.value = "";
+  }
+
+  async function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const picked = e.target.files?.[0];
+    if (!picked) return;
+
+    resetMessages();
+    setBusy(false);
+
+    try {
+      if (fileUrl) URL.revokeObjectURL(fileUrl);
+      const nextUrl = URL.createObjectURL(picked);
+      setFileUrl(nextUrl);
+      setFile(picked);
+
+      setStatus("Lecture du fichier…");
+      const d = await detectDuration(picked);
+      setDurationSec(d);
+
+      if (d > 60) {
+        setSnippetStart(0);
+        setSnippetDuration(60);
+        setFlowStep("snippet");
+        setStatus("Track long détecté → crée un snippet de 60 sec max.");
+      } else {
+        setFlowStep("form");
+        setStatus("Track court détecté → prêt pour analyse directe.");
+      }
+    } catch (err: any) {
+      setError(err?.message || "Fichier non supporté.");
+      setFile(null);
+      setDurationSec(null);
+      setFlowStep("form");
+    }
+
+    e.target.value = "";
+  }
+
+  function pickFile() {
+    if (!canPickFile) return;
+    inputRef.current?.click();
+  }
+
+  async function sendToAnalyze(opts?: { start?: number; duration?: number }) {
+    if (!file || !mode || !name.trim() || !agreeRights) return;
+
+    setBusy(true);
+    setError("");
+    setSuccess("");
+    setStatus("Envoi pour analyse…");
+
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("mode", mode);
+      fd.append("name", name.trim());
+      fd.append("info", info.trim());
+      fd.append("delete_after", "1");
+      fd.append("release_status", releaseStatus);
+
+      if (typeof opts?.start === "number") {
+        fd.append("snippet_start", String(opts.start));
+      }
+      if (typeof opts?.duration === "number") {
+        fd.append("snippet_duration", String(opts.duration));
+      }
+
+      const r = await fetch("/api/bpro/upload", {
+        method: "POST",
+        body: fd,
+      });
+
+      const j = await r.json().catch(() => null);
+
+      if (!r.ok || !j?.ok) {
+        throw new Error(j?.error || "Analyse impossible pour le moment.");
+      }
+
+      setFlowStep("done");
+      setStatus("");
+      setSuccess("Analyse lancée avec succès. Le fichier est prêt pour la phase scan.");
+    } catch (err: any) {
+      setError(err?.message || "Analyse impossible pour le moment.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function confirmSnippet() {
+    resetMessages();
+    setStatus("Snippet prêt → passe à l’analyse.");
+  }
+
+  const snippetEnd = snippetStart + snippetDuration;
+
+  return (
+    <main style={{ minHeight: "100vh", background: "#000", color: "#fff", padding: 20 }}>
+      <div style={{ maxWidth: 760, margin: "0 auto", paddingBottom: 120 }}>
+        <div style={{ textAlign: "center", marginBottom: 18 }}>
+          <div style={{ fontSize: 12, opacity: 0.6, letterSpacing: "0.10em" }}>BPRO</div>
+          <h1 style={{ margin: "8px 0 6px", fontSize: 30 }}>DJ / Label Upload</h1>
+          <div style={{ opacity: 0.72, fontSize: 14 }}>
+            Upload intelligent pour analyser un track sans compliquer le process.
+          </div>
+        </div>
+
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "1fr",
+          gap: 14,
+        }}>
+          <Card title="1. Profil">
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <SelectButton active={mode === "DJ"} onClick={() => setMode("DJ")}>DJ</SelectButton>
+              <SelectButton active={mode === "LABEL"} onClick={() => setMode("LABEL")}>Label</SelectButton>
+            </div>
+          </Card>
+
+          <Card title="2. Nom et infos">
+            <div style={{ display: "grid", gap: 10 }}>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={mode === "LABEL" ? "Nom du label" : "Nom DJ / artiste"}
+                style={inputStyle}
+              />
+              <textarea
+                value={info}
+                onChange={(e) => setInfo(e.target.value)}
+                placeholder="Info utile (email, track title, note interne...)"
+                rows={3}
+                style={{ ...inputStyle, resize: "vertical" }}
+              />
+            </div>
+          </Card>
+
+          <Card title="3. Statut du son">
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <SelectButton active={releaseStatus === "released"} onClick={() => setReleaseStatus("released")}>
+                Released
+              </SelectButton>
+              <SelectButton active={releaseStatus === "unreleased"} onClick={() => setReleaseStatus("unreleased")}>
+                Unreleased
+              </SelectButton>
+            </div>
+          </Card>
+
+          <Card title="4. Droits">
+            <label style={{
+              display: "flex",
+              gap: 10,
+              alignItems: "flex-start",
+              fontSize: 14,
+              opacity: 0.92,
+              lineHeight: 1.4,
+            }}>
+              <input
+                type="checkbox"
+                checked={agreeRights}
+                onChange={(e) => setAgreeRights(e.target.checked)}
+                style={{ marginTop: 3 }}
+              />
+              <span>Je confirme avoir les droits ou l’autorisation d’analyser ce fichier audio.</span>
+            </label>
+          </Card>
+
+          <Card title="5. Audio">
+            <div style={{ display: "grid", gap: 12 }}>
+              <input
+                ref={inputRef}
+                type="file"
+                accept="audio/*"
+                onChange={onPickFile}
+                style={{ display: "none" }}
+              />
+
+              <button
+                type="button"
+                onClick={pickFile}
+                disabled={!canPickFile}
+                style={primaryButton(!canPickFile)}
+              >
+                Choisir un fichier audio
+              </button>
+
+              {!identityOk && (
+                <div style={hintStyle}>Choisis d’abord DJ ou Label puis remplis ton nom.</div>
+              )}
+
+              {identityOk && !releaseStatus && (
+                <div style={hintStyle}>Choisis si le son est released ou unreleased.</div>
+              )}
+
+              {identityOk && releaseStatus && !agreeRights && (
+                <div style={hintStyle}>Coche les droits avant d’importer un fichier.</div>
+              )}
+
+              {file && (
+                <div style={summaryBox}>
+                  <div><strong>Fichier :</strong> {file.name}</div>
+                  <div><strong>Taille :</strong> {(file.size / 1024 / 1024).toFixed(1)} MB</div>
+                  <div><strong>Durée :</strong> {durationSec !== null ? `${durationSec}s` : "…"}</div>
+                  {fileUrl && <audio controls src={fileUrl} style={{ width: "100%", marginTop: 10 }} />}
+                </div>
+              )}
+
+              {isShortFile && (
+                <div style={infoBox}>
+                  Ton fichier dure moins de 1 minute. Il peut passer directement à l’analyse.
+                </div>
+              )}
+
+              {isLongFile && (
+                <div style={infoBox}>
+                  Ton fichier dépasse 1 minute. Crée un snippet de 60 secondes max avant l’analyse.
+                </div>
+              )}
+            </div>
+          </Card>
+
+          {isLongFile && (
+            <Card title="6. Créer ton snippet">
+              <div style={{ display: "grid", gap: 12 }}>
+                <div style={{ fontSize: 14, opacity: 0.82 }}>
+                  Sélectionne un début et une durée max de 60 sec.
+                </div>
+
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span>Début (sec)</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={Math.max(0, (durationSec || 60) - 1)}
+                    value={snippetStart}
+                    onChange={(e) => setSnippetStart(Math.max(0, Number(e.target.value) || 0))}
+                    style={inputStyle}
+                  />
+                </label>
+
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span>Durée (max 60 sec)</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={60}
+                    value={snippetDuration}
+                    onChange={(e) => setSnippetDuration(Math.min(60, Math.max(1, Number(e.target.value) || 1)))}
+                    style={inputStyle}
+                  />
+                </label>
+
+                <div style={summaryBox}>
+                  <div><strong>Start :</strong> {snippetStart}s</div>
+                  <div><strong>End :</strong> {snippetEnd}s</div>
+                  <div><strong>Durée :</strong> {snippetDuration}s</div>
+                </div>
+
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <button type="button" onClick={confirmSnippet} style={secondaryButton}>
+                    Valider le snippet
+                  </button>
+                  <button type="button" onClick={resetAll} style={ghostButton}>
+                    Changer de fichier
+                  </button>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          <Card title="7. Analyse">
+            <div style={{ display: "grid", gap: 12 }}>
+              {isShortFile && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => sendToAnalyze()}
+                  style={primaryButton(busy)}
+                >
+                  {busy ? "Analyse en cours…" : "Analyser maintenant"}
+                </button>
+              )}
+
+              {isLongFile && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => sendToAnalyze({ start: snippetStart, duration: snippetDuration })}
+                  style={primaryButton(busy)}
+                >
+                  {busy ? "Analyse du snippet…" : "Analyser le snippet"}
+                </button>
+              )}
+
+              {!file && (
+                <div style={hintStyle}>Ajoute d’abord un fichier audio pour continuer.</div>
+              )}
+
+              {status && <div style={infoBox}>{status}</div>}
+              {error && <div style={errorBox}>{error}</div>}
+              {success && <div style={successBox}>{success}</div>}
+
+              {flowStep === "done" && (
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <button type="button" onClick={resetAll} style={secondaryButton}>
+                    Analyser un autre fichier
+                  </button>
+                </div>
+              )}
+            </div>
+          </Card>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function Card({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section style={{
+      border: "1px solid rgba(255,255,255,0.12)",
+      borderRadius: 18,
+      padding: 16,
+      background: "rgba(255,255,255,0.03)",
+    }}>
+      <div style={{ fontSize: 12, opacity: 0.65, letterSpacing: "0.08em", marginBottom: 12 }}>
+        {title}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function SelectButton({
+  active,
+  children,
+  onClick,
+}: {
+  active: boolean;
+  children: React.ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        padding: "14px 16px",
+        borderRadius: 14,
+        border: active ? "1px solid rgba(255,255,255,0.5)" : "1px solid rgba(255,255,255,0.12)",
+        background: active ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.04)",
+        color: "#fff",
+        fontWeight: 700,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+const inputStyle: React.CSSProperties = {
+  padding: 12,
+  borderRadius: 12,
+  border: "1px solid rgba(255,255,255,0.14)",
+  background: "#0d0d0d",
+  color: "#fff",
+  width: "100%",
+};
+
+const summaryBox: React.CSSProperties = {
+  borderRadius: 14,
+  background: "rgba(255,255,255,0.05)",
+  border: "1px solid rgba(255,255,255,0.08)",
+  padding: 12,
+  fontSize: 14,
+  display: "grid",
+  gap: 6,
+};
+
+const infoBox: React.CSSProperties = {
+  borderRadius: 14,
+  background: "rgba(255,255,255,0.06)",
+  border: "1px solid rgba(255,255,255,0.10)",
+  padding: 12,
+  fontSize: 14,
+};
+
+const errorBox: React.CSSProperties = {
+  borderRadius: 14,
+  background: "rgba(255,80,80,0.10)",
+  border: "1px solid rgba(255,80,80,0.25)",
+  padding: 12,
+  fontSize: 14,
+  color: "#ffb5b5",
+};
+
+const successBox: React.CSSProperties = {
+  borderRadius: 14,
+  background: "rgba(120,255,160,0.08)",
+  border: "1px solid rgba(120,255,160,0.20)",
+  padding: 12,
+  fontSize: 14,
+  color: "#d9ffe2",
+};
+
+const hintStyle: React.CSSProperties = {
+  fontSize: 13,
+  opacity: 0.72,
+};
+
+function primaryButton(disabled?: boolean): React.CSSProperties {
+  return {
+    padding: "14px 16px",
+    borderRadius: 14,
+    border: "1px solid rgba(255,255,255,0.14)",
+    background: disabled ? "rgba(255,255,255,0.10)" : "#fff",
+    color: disabled ? "#888" : "#000",
+    fontWeight: 800,
+    cursor: disabled ? "not-allowed" : "pointer",
+    width: "100%",
+  };
+}
+
+const secondaryButton: React.CSSProperties = {
+  padding: "12px 16px",
+  borderRadius: 14,
+  border: "1px solid rgba(255,255,255,0.14)",
+  background: "rgba(255,255,255,0.08)",
+  color: "#fff",
+  fontWeight: 700,
+};
+
+const ghostButton: React.CSSProperties = {
+  padding: "12px 16px",
+  borderRadius: 14,
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "transparent",
+  color: "#fff",
+  fontWeight: 600,
+};
