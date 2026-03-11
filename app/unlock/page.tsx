@@ -127,7 +127,7 @@ export default function UnlockPage() {
               textDecoration: "none",
             }}
           >
-            Enter BANGER
+            Access now
           </Link>
         ) : (
           <Link

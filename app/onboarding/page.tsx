@@ -42,8 +42,12 @@ export default function OnboardingPage() {
           return;
         }
         setEmail(userEmail);
-        if (typeof window !== "undefined" && localStorage.getItem(keyFor(userEmail)) === "1") {
-          router.replace("/");
+        if (typeof window !== "undefined") {
+          const params = new URLSearchParams(window.location.search);
+          const force = params.get("force") === "1";
+          if (!force && localStorage.getItem(keyFor(userEmail)) === "1") {
+            router.replace("/");
+          }
         }
       } catch {
         if (!mounted) return;

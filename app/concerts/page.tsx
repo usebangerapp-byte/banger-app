@@ -1,41 +1,70 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import AppGate from "@/components/AppGate";
+import FollowTrackButton from "@/components/FollowTrackButton";
 
-type ChartTrack = {
+type TrackRow = {
   id: string;
-  title: string;
+  title: string | null;
   artist: string | null;
   scan_count: number | null;
+  release_date?: string | null;
+};
+
+type UploadRow = {
+  title: string | null;
+  snippet_path: string | null;
+  allow_preview: boolean | null;
+  release_date: string | null;
 };
 
 export default function ChartsPage() {
   const supabase = createSupabaseBrowser();
-  const [tracks, setTracks] = useState<ChartTrack[]>([]);
+  const [tracks, setTracks] = useState<TrackRow[]>([]);
+  const [uploads, setUploads] = useState<Record<string, UploadRow>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [playing, setPlaying] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
+
     (async () => {
       try {
-        const { data, error } = await supabase!
-          .from("unreleased_tracks")
-          .select("id,title,artist,scan_count")
-          .order("scan_count", { ascending: false })
-          .limit(10);
+        const [{ data: chartRows, error: chartError }, { data: uploadRows, error: uploadError }] = await Promise.all([
+          supabase!
+            .from("unreleased_tracks")
+            .select("id,title,artist,scan_count,release_date")
+            .order("scan_count", { ascending: false })
+            .limit(10),
+          supabase!
+            .from("bpro_uploads")
+            .select("title,snippet_path,allow_preview,release_date")
+            .order("created_at", { ascending: false })
+            .limit(200),
+        ]);
 
         if (!mounted) return;
-        if (error) throw error;
-        setTracks((data || []) as ChartTrack[]);
+        if (chartError) throw chartError;
+        if (uploadError) throw uploadError;
+
+        const map: Record<string, UploadRow> = {};
+        for (const row of (uploadRows || []) as UploadRow[]) {
+          const key = String(row.title || "").trim().toLowerCase();
+          if (key && !map[key]) map[key] = row;
+        }
+
+        setUploads(map);
+        setTracks((chartRows || []) as TrackRow[]);
       } catch (e: any) {
         if (!mounted) return;
         setError(e?.message || "Unable to load charts.");
       } finally {
-        if (mounted) setLoading(false);
+        if (!mounted) return;
+        setLoading(false);
       }
     })();
 
@@ -44,96 +73,130 @@ export default function ChartsPage() {
     };
   }, [supabase]);
 
+  const rows = useMemo(() => {
+    return tracks.map((track) => {
+      const key = String(track.title || "").trim().toLowerCase();
+      const upload = uploads[key];
+      return {
+        ...track,
+        previewAllowed: !!upload?.allow_preview && !!upload?.snippet_path,
+        snippetPath: upload?.snippet_path || null,
+        releaseDate: track.release_date || upload?.release_date || null,
+      };
+    });
+  }, [tracks, uploads]);
+
+  function previewUrl(path: string) {
+    const { data } = supabase!.storage.from("bpro_uploads").getPublicUrl(path);
+    return data.publicUrl;
+  }
+
   return (
     <main
       style={{
         minHeight: "100vh",
-        background: "radial-gradient(circle at top center, rgba(0,229,255,0.08), transparent 28%), #000",
+        background: "#000",
         color: "#fff",
         padding: "24px 16px 120px",
       }}
     >
       <AppGate />
-      <div style={{ maxWidth: 860, margin: "0 auto", display: "grid", gap: 20 }}>
+      <div style={{ maxWidth: 820, margin: "0 auto", display: "grid", gap: 18 }}>
         <div style={{ display: "grid", placeItems: "center", gap: 10 }}>
-          <Image src="/B-logo.png" alt="Banger" width={76} height={76} style={{ width: 76, height: 76 }} priority />
-          <div style={{ fontSize: 34, fontWeight: 900, letterSpacing: "-0.03em" }}>Charts</div>
-          <div style={{ opacity: 0.72, textAlign: "center", maxWidth: 580, fontSize: 15 }}>
+          <Image
+            src="/B-logo.png"
+            alt="Banger"
+            width={70}
+            height={70}
+            style={{ width: 70, height: 70 }}
+            priority
+          />
+          <div style={{ fontSize: 30, fontWeight: 900, letterSpacing: "-0.02em" }}>Charts</div>
+          <div style={{ opacity: 0.72, textAlign: "center", maxWidth: 560 }}>
             Top unreleased tracks by total scans on BANGER.
           </div>
         </div>
 
-        <section
-          style={{
-            border: "1px solid rgba(255,255,255,0.10)",
-            borderRadius: 26,
-            padding: 18,
-            background: "linear-gradient(180deg, rgba(10,10,10,0.96) 0%, rgba(4,4,4,0.96) 100%)",
-            boxShadow: "0 20px 50px rgba(0,0,0,0.30)",
-            display: "grid",
-            gap: 14,
-          }}
-        >
-          {loading ? (
-            <div style={cardStyle}>Loading charts...</div>
-          ) : error ? (
-            <div style={cardStyle}>{error}</div>
-          ) : tracks.length === 0 ? (
-            <div style={cardStyle}>No chart data yet.</div>
-          ) : (
-            tracks.map((track, index) => {
-              const top3 = index < 3;
+        {loading ? (
+          <div style={cardStyle}>Loading charts...</div>
+        ) : error ? (
+          <div style={cardStyle}>{error}</div>
+        ) : rows.length === 0 ? (
+          <div style={cardStyle}>No chart data yet.</div>
+        ) : (
+          <div style={{ display: "grid", gap: 12 }}>
+            {rows.map((track, index) => {
               const scans = track.scan_count || 0;
+              const releaseDate = track.releaseDate || "Unknown";
+              const canPreview = !!track.previewAllowed && !!track.snippetPath;
+              const isPlaying = playing === track.id;
+
               return (
-                <div
-                  key={track.id}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "auto 1fr auto",
-                    gap: 16,
-                    alignItems: "center",
-                    border: top3 ? "1px solid rgba(126,242,255,0.24)" : "1px solid rgba(255,255,255,0.08)",
-                    background: top3
-                      ? "linear-gradient(180deg, rgba(126,242,255,0.08), rgba(255,255,255,0.03))"
-                      : "rgba(255,255,255,0.03)",
-                    borderRadius: 22,
-                    padding: 16,
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 46,
-                      height: 46,
-                      borderRadius: 14,
-                      display: "grid",
-                      placeItems: "center",
-                      background: top3 ? "rgba(126,242,255,0.18)" : "rgba(255,255,255,0.05)",
-                      border: top3 ? "1px solid rgba(126,242,255,0.28)" : "1px solid rgba(255,255,255,0.08)",
-                      fontWeight: 900,
-                      fontSize: 18,
-                    }}
-                  >
-                    {index + 1}
-                  </div>
+                <div key={track.id} style={rowStyle}>
+                  <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 14, alignItems: "start" }}>
+                    <div style={rankStyle}>{index + 1}</div>
 
-                  <div style={{ display: "grid", gap: 5, minWidth: 0 }}>
-                    <div style={{ fontSize: top3 ? 25 : 22, fontWeight: 900, lineHeight: 1.08, letterSpacing: "-0.02em" }}>
-                      {track.title || "Untitled"}
-                    </div>
-                    <div style={{ opacity: 0.72, fontSize: 15 }}>{track.artist || "unknown"}</div>
-                  </div>
+                    <div style={{ display: "grid", gap: 8, minWidth: 0 }}>
+                      <div style={{ fontSize: 20, fontWeight: 800, lineHeight: 1.15 }}>
+                        {track.title || "Untitled"}
+                      </div>
 
-                  <div style={{ textAlign: "right", minWidth: 86 }}>
-                    <div style={{ fontSize: top3 ? 30 : 26, fontWeight: 900, letterSpacing: "-0.03em" }}>{scans}</div>
-                    <div style={{ fontSize: 12, opacity: 0.68, textTransform: "uppercase", letterSpacing: "0.10em" }}>
-                      scans
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, opacity: 0.76, fontSize: 14 }}>
+                        <span>{scans} scans</span>
+                        <span>•</span>
+                        <span>Release date — {releaseDate}</span>
+                      </div>
+
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 2 }}>
+                        <FollowTrackButton
+                          trackTitle={track.title || "Untitled"}
+                          trackSubtitle={track.artist || "unknown"}
+                        />
+
+                        {canPreview ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const id = `preview-${track.id}`;
+                              const audio = document.getElementById(id) as HTMLAudioElement | null;
+                              if (!audio) return;
+
+                              document.querySelectorAll("audio[data-chart-preview='1']").forEach((node) => {
+                                const a = node as HTMLAudioElement;
+                                if (a !== audio) a.pause();
+                              });
+
+                              if (audio.paused) {
+                                audio.play();
+                                setPlaying(track.id);
+                              } else {
+                                audio.pause();
+                                setPlaying(null);
+                              }
+                            }}
+                            style={secondaryBtn}
+                          >
+                            {isPlaying ? "Pause preview" : "Listen preview"}
+                          </button>
+                        ) : null}
+                      </div>
+
+                      {canPreview ? (
+                        <audio
+                          id={`preview-${track.id}`}
+                          data-chart-preview="1"
+                          src={previewUrl(track.snippetPath!)}
+                          onEnded={() => setPlaying((current) => (current === track.id ? null : current))}
+                          style={{ display: "none" }}
+                        />
+                      ) : null}
                     </div>
                   </div>
                 </div>
               );
-            })
-          )}
-        </section>
+            })}
+          </div>
+        )}
       </div>
     </main>
   );
@@ -142,6 +205,34 @@ export default function ChartsPage() {
 const cardStyle: React.CSSProperties = {
   border: "1px solid rgba(255,255,255,0.10)",
   background: "rgba(255,255,255,0.03)",
-  borderRadius: 20,
+  borderRadius: 22,
   padding: 18,
+};
+
+const rowStyle: React.CSSProperties = {
+  border: "1px solid rgba(255,255,255,0.08)",
+  background: "rgba(255,255,255,0.03)",
+  borderRadius: 22,
+  padding: 16,
+};
+
+const rankStyle: React.CSSProperties = {
+  width: 40,
+  height: 40,
+  borderRadius: 12,
+  display: "grid",
+  placeItems: "center",
+  background: "rgba(255,255,255,0.06)",
+  border: "1px solid rgba(255,255,255,0.08)",
+  fontWeight: 900,
+};
+
+const secondaryBtn: React.CSSProperties = {
+  padding: "10px 12px",
+  borderRadius: 14,
+  border: "1px solid rgba(255,255,255,0.12)",
+  background: "rgba(255,255,255,0.05)",
+  color: "#fff",
+  fontWeight: 700,
+  cursor: "pointer",
 };
