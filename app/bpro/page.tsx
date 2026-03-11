@@ -390,7 +390,7 @@ fd.append("file", uploadFile);
     <main style={{ minHeight: "100vh", background: "#000", color: "#fff", padding: 20 }}>
         <div style={{ display: "grid", placeItems: "center", marginBottom: 14 }}>
           <Image
-            src="/b-logo.png"
+            src="/B-logo.png"
             alt="Banger"
             width={72}
             height={72}

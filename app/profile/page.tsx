@@ -1,364 +1,174 @@
 "use client";
 
+import Image from "next/image";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { createSupabaseBrowser } from "@/lib/supabase/client";
+import AppGate from "@/components/AppGate";
 
+type FollowRow = {
+  id: number;
+  track_title: string | null;
+  track_subtitle: string | null;
+};
 
-import { useEffect, useMemo, useState } from "react"
-import { createClient } from "@supabase/supabase-js"
-
-type ProfileData = {
-  myIds: Array<{
-    created_at?: string | null
-    track_title: string
-    track_subtitle?: string | null
-  }>
-  myScans: Array<{
-    created_at?: string | null
-    track_title: string
-    track_subtitle?: string | null
-    result_type?: string | null
-  }>
-  myUploads: Array<{
-    created_at?: string | null
-    title: string
-    subtitle?: string | null
-    status?: string | null
-  }>
-  stats: {
-    ids_followed: number
-    scans: number
-    uploads: number
-  }
-}
-
-const emptyData: ProfileData = {
-  myIds: [],
-  myScans: [],
-  myUploads: [],
-  stats: {
-    ids_followed: 0,
-    scans: 0,
-    uploads: 0,
-  },
-}
-
-function getDeviceId() {
-  if (typeof window === "undefined") return ""
-  const key = "banger_device_id"
-  const existing = window.localStorage.getItem(key)
-  if (existing) return existing
-  const id = "dev_" + Math.random().toString(36).slice(2) + Date.now().toString(36)
-  window.localStorage.setItem(key, id)
-  return id
-}
-
-function Section(props: { title: string; children: React.ReactNode }) {
-  return (
-    <section
-      style={{
-        padding: 20,
-        borderRadius: 20,
-        background: "linear-gradient(160deg,#0a0a0d,#0b1015)",
-        border: "1px solid rgba(0,234,255,0.10)",
-        boxShadow: "0 0 30px rgba(0,234,255,0.06)",
-      }}
-    >
-      <div
-        style={{
-          fontSize: 12,
-          letterSpacing: "0.14em",
-          opacity: 0.6,
-          textTransform: "uppercase",
-          marginBottom: 14,
-        }}
-      >
-        {props.title}
-      </div>
-      {props.children}
-    </section>
-  )
-}
-
-function Card(props: {
-  title: string
-  subtitle?: string | null
-  meta?: string | null
-}) {
-  return (
-    <div
-      style={{
-        padding: "12px 14px",
-        borderRadius: 14,
-        background: "rgba(255,255,255,0.04)",
-        border: "1px solid rgba(255,255,255,0.04)",
-      }}
-    >
-      <div style={{ fontWeight: 600, fontSize: 14 }}>{props.title}</div>
-      {!!props.subtitle && (
-        <div style={{ opacity: 0.55, fontSize: 12, marginTop: 4 }}>{props.subtitle}</div>
-      )}
-      {!!props.meta && (
-        <div style={{ marginTop: 8, fontSize: 12, color: "#00eaff" }}>{props.meta}</div>
-      )}
-    </div>
-  )
-}
+type ScanRow = {
+  id: number;
+  track_title: string | null;
+  track_subtitle: string | null;
+};
 
 export default function ProfilePage() {
   const router = useRouter();
-
-  async function handleLogout() {
-    await supabase!.auth.signOut();
-    router.replace("/login");
-    router.refresh();
-  }
-
-  const [data, setData] = useState<ProfileData>(emptyData)
-  const [email, setEmail] = useState("")
-  const [userId, setUserId] = useState("")
-  const [ready, setReady] = useState(false)
-
-  const supabase = useMemo(() => {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    if (!url || !anon) return null
-    return createClient(url, anon)
-  }, [])
+  const supabase = createSupabaseBrowser();
+  const [email, setEmail] = useState("");
+  const [follows, setFollows] = useState<FollowRow[]>([]);
+  const [scans, setScans] = useState<ScanRow[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let mounted = true
+    let mounted = true;
+    (async () => {
+      try {
+        const { data: sessionData } = await supabase!.auth.getSession();
+        if (!mounted) return;
+        setEmail(sessionData.session?.user?.email || "");
 
-    async function boot() {
-      const deviceId = getDeviceId()
+        const [{ data: followRows }, { data: scanRows }] = await Promise.all([
+          supabase!
+            .from("track_followers")
+            .select("id,track_title,track_subtitle")
+            .order("created_at", { ascending: false })
+            .limit(8),
+          supabase!
+            .from("scan_events")
+            .select("id,track_title,track_subtitle")
+            .order("created_at", { ascending: false })
+            .limit(8),
+        ]);
 
-      if (supabase) {
-        const { data: auth } = await supabase.auth.getUser()
-        const user = auth?.user
-        if (mounted) {
-          setEmail(user?.email || "")
-          setUserId(user?.id || "")
-        }
-
-        const qs = new URLSearchParams()
-        if (deviceId) qs.set("device_id", deviceId)
-        if (user?.id) qs.set("user_id", user.id)
-        if (user?.email) qs.set("email", user.email)
-
-        const res = await fetch("/api/profile-data?" + qs.toString())
-        const json = await res.json()
-        if (mounted) {
-          setData({ ...emptyData, ...json })
-          setReady(true)
-        }
-        return
+        if (!mounted) return;
+        setFollows((followRows || []).filter((x: any) => x.track_title) as FollowRow[]);
+        setScans((scanRows || []).filter((x: any) => x.track_title) as ScanRow[]);
+      } finally {
+        if (mounted) setLoading(false);
       }
-
-      const qs = new URLSearchParams()
-      if (deviceId) qs.set("device_id", deviceId)
-
-      const res = await fetch("/api/profile-data?" + qs.toString())
-      const json = await res.json()
-      if (mounted) {
-        setData({ ...emptyData, ...json })
-        setReady(true)
-      }
-    }
-
-    boot().catch(() => {
-      if (mounted) setReady(true)
-    })
+    })();
 
     return () => {
-      mounted = false
+      mounted = false;
+    };
+  }, [supabase]);
+
+  async function handleLogout() {
+    try {
+      await supabase!.auth.signOut();
+    } finally {
+      router.replace("/login");
+      router.refresh();
     }
-  }, [supabase])
+  }
+
+  const headerSubtitle = useMemo(() => (email ? email : "Connected"), [email]);
 
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        background: "#050507",
-        color: "#fff",
-        padding: "40px 22px 140px",
-      }}
-    >
-      <div style={{ maxWidth: 720, margin: "0 auto" }}>
-        <div style={{ marginBottom: 30 }}>
-          <div
-            style={{
-              fontSize: 12,
-              letterSpacing: "0.18em",
-              opacity: 0.55,
-              textTransform: "uppercase",
-            }}
-          >
-            Profile
-          </div>
-
-          <h1
-            style={{
-              fontSize: 38,
-              margin: "10px 0",
-              fontWeight: 800,
-            }}
-          >
-            Your Music Dashboard
-          </h1>
-
-          <div style={{ opacity: 0.65 }}>
-            Track your IDs, scans, uploads and activity
-          </div>
-
-          {(email || userId) && (
-            <div style={{ marginTop: 10, fontSize: 12, opacity: 0.55 }}>
-              {email || userId}
-            </div>
-          )}
+    <main style={{ minHeight: "100vh", background: "#000", color: "#fff", padding: "24px 16px 120px" }}>
+      <AppGate />
+      <div style={{ maxWidth: 820, margin: "0 auto", display: "grid", gap: 18 }}>
+        <div style={{ display: "grid", placeItems: "center", gap: 10 }}>
+          <Image src="/B-logo.png" alt="Banger" width={80} height={80} style={{ width: 80, height: 80 }} priority />
+          <div style={{ fontSize: 30, fontWeight: 900 }}>Profile</div>
+          <div style={{ opacity: 0.72 }}>{headerSubtitle}</div>
         </div>
 
-        <div
+        <section style={boxStyle}>
+          <div style={sectionTitle}>FOLLOWED IDs</div>
+          <div style={{ display: "grid", gap: 12, marginTop: 14 }}>
+            {loading ? (
+              <div style={innerStyle}>Loading...</div>
+            ) : follows.length === 0 ? (
+              <div style={innerStyle}>No followed IDs yet</div>
+            ) : (
+              follows.map((item) => (
+                <div key={item.id} style={innerStyle}>
+                  <div style={{ fontSize: 20, fontWeight: 800 }}>{item.track_title || "Untitled"}</div>
+                  <div style={{ opacity: 0.72, marginTop: 6 }}>{item.track_subtitle || "unknown"}</div>
+                  <div style={{ color: "#3fe7ff", marginTop: 10, fontWeight: 700 }}>Following ID</div>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+
+        <section style={boxStyle}>
+          <div style={sectionTitle}>MY SCANS</div>
+          <div style={{ display: "grid", gap: 12, marginTop: 14 }}>
+            {loading ? (
+              <div style={innerStyle}>Loading...</div>
+            ) : scans.length === 0 ? (
+              <div style={innerStyle}>
+                <div style={{ fontSize: 18, fontWeight: 800 }}>No scans yet</div>
+                <div style={{ opacity: 0.72, marginTop: 6 }}>Scan music around you to build your personal history</div>
+              </div>
+            ) : (
+              scans.map((item) => (
+                <div key={item.id} style={innerStyle}>
+                  <div style={{ fontSize: 18, fontWeight: 800 }}>{item.track_title || "Untitled"}</div>
+                  <div style={{ opacity: 0.72, marginTop: 6 }}>{item.track_subtitle || "unknown"}</div>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+
+        <section style={boxStyle}>
+          <div style={sectionTitle}>MY UPLOADS</div>
+          <div style={{ display: "grid", gap: 12, marginTop: 14 }}>
+            <div style={innerStyle}>
+              <div style={{ fontSize: 18, fontWeight: 800 }}>No uploads yet</div>
+              <div style={{ opacity: 0.72, marginTop: 6 }}>Upload from BPRO and your tracks will appear here</div>
+            </div>
+          </div>
+        </section>
+
+        <button
+          type="button"
+          onClick={handleLogout}
           style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3,minmax(0,1fr))",
-            gap: 12,
-            marginBottom: 22,
+            marginTop: 8,
+            width: "100%",
+            padding: "18px 16px",
+            borderRadius: 22,
+            border: "1px solid rgba(255,255,255,0.12)",
+            background: "#fff",
+            color: "#000",
+            fontWeight: 900,
+            fontSize: 18,
+            cursor: "pointer",
           }}
         >
-          <div
-            style={{
-              padding: 16,
-              borderRadius: 18,
-              background: "linear-gradient(160deg,#0a0a0d,#0b1015)",
-              border: "1px solid rgba(0,234,255,0.10)",
-            }}
-          >
-            <div style={{ fontSize: 12, opacity: 0.55, textTransform: "uppercase" }}>IDs</div>
-            <div style={{ fontSize: 28, fontWeight: 800, marginTop: 6 }}>{data.stats.ids_followed}</div>
-          </div>
-
-          <div
-            style={{
-              padding: 16,
-              borderRadius: 18,
-              background: "linear-gradient(160deg,#0a0a0d,#0b1015)",
-              border: "1px solid rgba(0,234,255,0.10)",
-            }}
-          >
-            <div style={{ fontSize: 12, opacity: 0.55, textTransform: "uppercase" }}>Scans</div>
-            <div style={{ fontSize: 28, fontWeight: 800, marginTop: 6 }}>{data.stats.scans}</div>
-          </div>
-
-          <div
-            style={{
-              padding: 16,
-              borderRadius: 18,
-              background: "linear-gradient(160deg,#0a0a0d,#0b1015)",
-              border: "1px solid rgba(0,234,255,0.10)",
-            }}
-          >
-            <div style={{ fontSize: 12, opacity: 0.55, textTransform: "uppercase" }}>Uploads</div>
-            <div style={{ fontSize: 28, fontWeight: 800, marginTop: 6 }}>{data.stats.uploads}</div>
-          </div>
-        </div>
-
-        <div style={{ display: "grid", gap: 22 }}>
-          <Section title="My IDs">
-            <div style={{ display: "grid", gap: 10 }}>
-              {data.myIds.length === 0 ? (
-                <Card
-                  title={ready ? "No IDs followed yet" : "Loading..."}
-                  subtitle="Follow an ID from Charts or Radar to track it here"
-                />
-              ) : (
-                data.myIds.map((item, i) => (
-                  <Card
-                    key={item.track_title + "|" + (item.track_subtitle || "") + "|" + i}
-                    title={item.track_title || "Unknown ID"}
-                    subtitle={item.track_subtitle || "Following"}
-                    meta="Following ID"
-                  />
-                ))
-              )}
-            </div>
-          </Section>
-
-          <Section title="My Scans">
-            <div style={{ display: "grid", gap: 10 }}>
-              {data.myScans.length === 0 ? (
-                <Card
-                  title={ready ? "No scans yet" : "Loading..."}
-                  subtitle="Scan music around you to build your personal history"
-                />
-              ) : (
-                data.myScans.map((item, i) => (
-                  <Card
-                    key={item.track_title + "|" + (item.track_subtitle || "") + "|" + i}
-                    title={item.track_title || "Unknown Track"}
-                    subtitle={item.track_subtitle || "Unknown ID"}
-                    meta={item.result_type || "Recognized"}
-                  />
-                ))
-              )}
-            </div>
-          </Section>
-
-          <Section title="My Uploads">
-            <div style={{ display: "grid", gap: 10 }}>
-              {data.myUploads.length === 0 ? (
-                <Card
-                  title={ready ? "No uploads yet" : "Loading..."}
-                  subtitle="Upload from BPRO and your tracks will appear here"
-                />
-              ) : (
-                data.myUploads.map((item, i) => (
-                  <Card
-                    key={item.title + "|" + (item.subtitle || "") + "|" + i}
-                    title={item.title || "Untitled Upload"}
-                    subtitle={item.subtitle || ""}
-                    meta={item.status || "Uploaded"}
-                  />
-                ))
-              )}
-            </div>
-          </Section>
-        </div>
+          Log out
+        </button>
       </div>
-    
-        <button
-          onClick={handleLogout}
-          style={{
-            marginTop: 20,
-            width: "100%",
-            padding: "14px",
-            borderRadius: 16,
-            border: "1px solid rgba(255,255,255,0.12)",
-            background: "#fff",
-            color: "#000",
-            fontWeight: 800,
-            cursor: "pointer"
-          }}
-        >
-          Log out
-        </button>
-
-
-        <button
-          onClick={handleLogout}
-          style={{
-            marginTop: 20,
-            width: "100%",
-            padding: "14px",
-            borderRadius: 16,
-            border: "1px solid rgba(255,255,255,0.12)",
-            background: "#fff",
-            color: "#000",
-            fontWeight: 800,
-            cursor: "pointer"
-          }}
-        >
-          Log out
-        </button>
-
-</main>
-  )
+    </main>
+  );
 }
+
+const boxStyle: React.CSSProperties = {
+  border: "1px solid rgba(0,229,255,0.14)",
+  borderRadius: 24,
+  padding: 18,
+  background: "radial-gradient(circle at top right, rgba(0,229,255,0.07), transparent 38%), rgba(255,255,255,0.02)",
+};
+
+const sectionTitle: React.CSSProperties = {
+  letterSpacing: "0.16em",
+  opacity: 0.72,
+  fontSize: 15,
+};
+
+const innerStyle: React.CSSProperties = {
+  borderRadius: 18,
+  background: "rgba(255,255,255,0.04)",
+  padding: 18,
+};

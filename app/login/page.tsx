@@ -1,16 +1,20 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
+
+function keyFor(email: string) {
+  return `banger_onboarding_done:${email.toLowerCase()}`;
+}
 
 export default function LoginPage() {
   const router = useRouter();
   const supabase = createSupabaseBrowser();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [soon, setSoon] = useState("");
 
   useEffect(() => {
     let mounted = true;
@@ -18,10 +22,27 @@ export default function LoginPage() {
     (async () => {
       try {
         const { data } = await supabase!.auth.getSession();
+        const email = data.session?.user?.email?.toLowerCase();
+        if (!mounted || !email) return;
+
+        const r = await fetch(`/api/bpro/unlock-status?email=${encodeURIComponent(email)}`, {
+          cache: "no-store",
+        });
+        const j = await r.json().catch(() => null);
+
         if (!mounted) return;
-        if (data.session?.user?.email) {
+
+        if (!j?.unlocked) {
           router.replace("/unlock");
+          return;
         }
+
+        if (typeof window !== "undefined" && localStorage.getItem(keyFor(email)) !== "1") {
+          router.replace("/onboarding");
+          return;
+        }
+
+        router.replace("/");
       } catch {}
     })();
 
@@ -33,7 +54,6 @@ export default function LoginPage() {
   async function continueWithGoogle() {
     setBusy(true);
     setError("");
-    setSoon("");
 
     try {
       const origin =
@@ -43,21 +63,14 @@ export default function LoginPage() {
 
       const { error } = await supabase!.auth.signInWithOAuth({
         provider: "google",
-        options: {
-          redirectTo: `${origin}/auth/callback`,
-        },
+        options: { redirectTo: `${origin}/auth/callback` },
       });
 
       if (error) throw error;
-    } catch (err: any) {
-      setError(err?.message || "Unable to start Google login.");
+    } catch (e: any) {
+      setError(e?.message || "Unable to start Google login.");
       setBusy(false);
     }
-  }
-
-  function comingSoon(provider: string) {
-    setError("");
-    setSoon(`${provider} login coming soon.`);
   }
 
   return (
@@ -71,19 +84,18 @@ export default function LoginPage() {
         padding: 24,
       }}
     >
-      <div style={{ width: "100%", maxWidth: 460, display: "grid", gap: 18 }}>
+      <div style={{ width: "100%", maxWidth: 420, display: "grid", gap: 18 }}>
         <div style={{ display: "grid", placeItems: "center", gap: 14 }}>
-          <video
-            src="/logobangeranim.mp4"
-            autoPlay
-            loop
-            muted
-            playsInline
-            style={{ width: "min(220px, 60vw)", height: "auto", objectFit: "contain" }}
+          <Image
+            src="/B-logo.png"
+            alt="Banger"
+            width={120}
+            height={120}
+            style={{ width: 120, height: 120, objectFit: "contain" }}
+            priority
           />
-          <div style={{ fontSize: 14, opacity: 0.74, textAlign: "center" }}>
-            Log with
-          </div>
+          <div style={{ fontSize: 34, fontWeight: 900, letterSpacing: "-0.03em" }}>BANGER</div>
+          <div style={{ opacity: 0.74, textAlign: "center" }}>Log in to access Banger.</div>
         </div>
 
         <button
@@ -98,6 +110,7 @@ export default function LoginPage() {
             color: "#000",
             fontWeight: 800,
             fontSize: 17,
+            cursor: "pointer",
           }}
         >
           {busy ? "Connecting..." : "Continue with Google"}
@@ -105,56 +118,42 @@ export default function LoginPage() {
 
         <button
           type="button"
-          onClick={() => comingSoon("Apple")}
+          disabled
           style={{
             padding: "15px 18px",
             borderRadius: 18,
             border: "1px solid rgba(255,255,255,0.12)",
             background: "rgba(255,255,255,0.05)",
-            color: "#fff",
+            color: "rgba(255,255,255,0.55)",
             fontWeight: 700,
             fontSize: 16,
           }}
         >
-          Continue with Apple
+          Apple — Coming soon
         </button>
 
         <button
           type="button"
-          onClick={() => comingSoon("Instagram")}
+          disabled
           style={{
             padding: "15px 18px",
             borderRadius: 18,
             border: "1px solid rgba(255,255,255,0.12)",
             background: "rgba(255,255,255,0.05)",
-            color: "#fff",
+            color: "rgba(255,255,255,0.55)",
             fontWeight: 700,
             fontSize: 16,
           }}
         >
-          Continue with Instagram
+          Instagram — Coming soon
         </button>
 
-        {error ? (
-          <div style={{ color: "#ffb7b7", fontSize: 14, textAlign: "center" }}>
-            {error}
-          </div>
-        ) : null}
+        {error ? <div style={{ color: "#ffb7b7", textAlign: "center" }}>{error}</div> : null}
 
-        {soon ? (
-          <div style={{ color: "rgba(255,255,255,0.72)", fontSize: 14, textAlign: "center" }}>
-            {soon}
-          </div>
-        ) : null}
-
-        <div style={{ textAlign: "center", fontSize: 13, opacity: 0.78, marginTop: 4 }}>
-          <Link href="/privacy" style={{ color: "#fff", textDecoration: "none" }}>
-            Privacy Policy
-          </Link>
+        <div style={{ textAlign: "center", fontSize: 13, opacity: 0.78 }}>
+          <Link href="/privacy" style={{ color: "#fff", textDecoration: "none" }}>Privacy Policy</Link>
           {" · "}
-          <Link href="/terms" style={{ color: "#fff", textDecoration: "none" }}>
-            Terms of Service
-          </Link>
+          <Link href="/terms" style={{ color: "#fff", textDecoration: "none" }}>Terms of Service</Link>
         </div>
       </div>
     </main>

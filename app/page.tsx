@@ -5,6 +5,7 @@ import Image from "next/image";
 import BottomNav from "@/components/BottomNav";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
+import AppGate from "@/components/AppGate";
 
 type Status = "idle" | "listening" | "recognizing";
 type Tag = "UNRELEASED" | "RELEASED" | "NOT FOUND";
@@ -288,7 +289,8 @@ export default function Home() {
 
   if (sessionLoading) {
     return (
-      <main style={styles.page}><div style={{ display: "grid", placeItems: "center", marginBottom: 12 }}>
+      <main style={styles.page}>
+      <AppGate /><div style={{ display: "grid", placeItems: "center", marginBottom: 12 }}>
           <Image
             src="/banger-findids.png"
             alt="Banger Find IDs"

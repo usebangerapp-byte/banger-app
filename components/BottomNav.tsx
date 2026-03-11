@@ -3,38 +3,26 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const HIDDEN_PREFIXES = [
-  "/login",
-  "/unlock",
-  "/admin-access",
-  "/auth/callback",
-];
+const HIDDEN = ["/login", "/unlock", "/onboarding", "/auth/callback"];
 
 const ITEMS = [
   { label: "Profile", href: "/profile" },
-  { label: "Radar", href: "/concerts" },
+  { label: "Radar", href: "/library" },
   { label: "Scan", href: "/" },
-  { label: "Charts", href: "/library" },
+  { label: "Charts", href: "/concerts" },
   { label: "BPRO", href: "/bpro" },
 ];
 
 export default function BottomNav() {
   const pathname = usePathname() || "/";
 
-  const hidden = HIDDEN_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(prefix + "/")
-  );
-
-  if (hidden) return null;
+  if (HIDDEN.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
+    return null;
+  }
 
   return (
     <>
-      <div
-        style={{
-          height: 98,
-          background: "#000",
-        }}
-      />
+      <div style={{ height: 96, background: "#000" }} />
       <nav
         aria-label="Primary"
         style={{
@@ -42,23 +30,22 @@ export default function BottomNav() {
           left: 12,
           right: 12,
           bottom: 12,
-          zIndex: 60,
+          zIndex: 70,
           border: "1px solid rgba(255,255,255,0.08)",
-          background: "rgba(8,8,8,0.94)",
+          background: "rgba(5,5,5,0.94)",
           backdropFilter: "blur(18px)",
           WebkitBackdropFilter: "blur(18px)",
-          borderRadius: 22,
-          boxShadow: "0 12px 40px rgba(0,0,0,0.45)",
+          borderRadius: 24,
+          boxShadow: "0 14px 40px rgba(0,0,0,0.45)",
           overflow: "hidden",
         }}
       >
         <div
           style={{
-            maxWidth: 760,
+            maxWidth: 860,
             margin: "0 auto",
             display: "grid",
             gridTemplateColumns: "repeat(5, 1fr)",
-            alignItems: "center",
             gap: 6,
             padding: "10px 10px calc(10px + env(safe-area-inset-bottom))",
             background: "#050505",
@@ -76,7 +63,7 @@ export default function BottomNav() {
                 href={item.href}
                 style={{
                   textDecoration: "none",
-                  color: active ? "#fff" : "rgba(255,255,255,0.68)",
+                  color: active ? "#fff" : "rgba(255,255,255,0.72)",
                   textAlign: "center",
                   fontSize: 13,
                   fontWeight: active ? 800 : 600,
@@ -88,10 +75,6 @@ export default function BottomNav() {
                   border: active
                     ? "1px solid rgba(255,255,255,0.08)"
                     : "1px solid transparent",
-                  boxShadow: active
-                    ? "inset 0 1px 0 rgba(255,255,255,0.06)"
-                    : "none",
-                  letterSpacing: "0.01em",
                 }}
               >
                 {item.label}
