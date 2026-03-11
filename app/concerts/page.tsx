@@ -10,19 +10,14 @@ type TrackRow = {
   title: string | null;
   artist: string | null;
   scan_count: number | null;
-};
-
-type UploadRow = {
-  title: string | null;
   snippet_path: string | null;
-  allow_preview: boolean | null;
-  release_date: string | null;
+  allow_preview?: boolean | null;
+  release_date?: string | null;
 };
 
 export default function ChartsPage() {
   const supabase = createSupabaseBrowser();
   const [tracks, setTracks] = useState<TrackRow[]>([]);
-  const [uploads, setUploads] = useState<Record<string, UploadRow>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [playing, setPlaying] = useState<string | null>(null);
@@ -32,31 +27,25 @@ export default function ChartsPage() {
 
     (async () => {
       try {
-        const [{ data: chartRows, error: chartError }, { data: uploadRows, error: uploadError }] = await Promise.all([
-          supabase!
+        let data: any[] | null = null;
+        let error: any = null;
+
+        try {
+          const res = await supabase!
             .from("unreleased_tracks")
-            .select("id,title,artist,scan_count")
+            .select("id,title,artist,scan_count,snippet_path,allow_preview,release_date")
             .order("scan_count", { ascending: false })
-            .limit(10),
-          supabase!
-            .from("bpro_uploads")
-            .select("title,snippet_path,allow_preview,release_date")
-            .order("created_at", { ascending: false })
-            .limit(200),
-        ]);
-
-        if (!mounted) return;
-        if (chartError) throw chartError;
-        if (uploadError) throw uploadError;
-
-        const map: Record<string, UploadRow> = {};
-        for (const row of (uploadRows || []) as UploadRow[]) {
-          const key = String(row.title || "").trim().toLowerCase();
-          if (key && !map[key]) map[key] = row;
+            .limit(10);
+          data = res.data as any[] | null;
+          error = res.error;
+        } catch (e: any) {
+          error = e;
         }
 
-        setUploads(map);
-        setTracks((chartRows || []) as TrackRow[]);
+        if (error) throw error;
+        if (!mounted) return;
+
+        setTracks((data || []) as TrackRow[]);
       } catch (e: any) {
         if (!mounted) return;
         setError(e?.message || "Unable to load charts.");
@@ -72,20 +61,18 @@ export default function ChartsPage() {
   }, [supabase]);
 
   const rows = useMemo(() => {
-    return tracks.map((track) => {
-      const key = String(track.title || "").trim().toLowerCase();
-      const upload = uploads[key];
-      return {
-        ...track,
-        previewAllowed: !!upload?.allow_preview && !!upload?.snippet_path,
-        snippetPath: upload?.snippet_path || null,
-        releaseDate: upload?.release_date || null,
-      };
-    });
-  }, [tracks, uploads]);
+    return tracks.map((track) => ({
+      ...track,
+      previewAllowed:
+        !!track.snippet_path &&
+        (track.allow_preview === null || track.allow_preview === undefined || track.allow_preview === true),
+      releaseDate: track.release_date || "Unknown",
+    }));
+  }, [tracks]);
 
   function previewUrl(path: string) {
-    const { data } = supabase!.storage.from("bpro_uploads").getPublicUrl(path);
+    const clean = path.startsWith("snippets/") ? path.slice("snippets/".length) : path;
+    const { data } = supabase!.storage.from("snippets").getPublicUrl(clean);
     return data.publicUrl;
   }
 
@@ -110,8 +97,7 @@ export default function ChartsPage() {
           <div style={{ display: "grid", gap: 12 }}>
             {rows.map((track, index) => {
               const scans = track.scan_count || 0;
-              const releaseDate = track.releaseDate || "Unknown";
-              const canPreview = !!track.previewAllowed && !!track.snippetPath;
+              const canPreview = !!track.previewAllowed && !!track.snippet_path;
               const isPlaying = playing === track.id;
 
               return (
@@ -127,11 +113,12 @@ export default function ChartsPage() {
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 10, opacity: 0.76, fontSize: 14 }}>
                         <span>{scans} scans</span>
                         <span>•</span>
-                        <span>Release date — {releaseDate}</span>
+                        <span>Release date — {track.releaseDate}</span>
                       </div>
 
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 2 }}>
                         <FollowTrackButton
+                          trackId={track.id}
                           trackTitle={track.title || "Untitled"}
                           trackSubtitle={track.artist || "unknown"}
                         />
@@ -168,7 +155,7 @@ export default function ChartsPage() {
                         <audio
                           id={`preview-${track.id}`}
                           data-chart-preview="1"
-                          src={previewUrl(track.snippetPath!)}
+                          src={previewUrl(track.snippet_path!)}
                           onEnded={() => setPlaying((current) => (current === track.id ? null : current))}
                           style={{ display: "none" }}
                         />

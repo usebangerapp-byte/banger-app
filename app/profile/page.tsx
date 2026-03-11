@@ -1,21 +1,28 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 
-
 type FollowRow = {
-  id: number;
+  id: number | string;
+  track_id?: string | null;
   track_title: string | null;
   track_subtitle: string | null;
 };
 
 type ScanRow = {
-  id: number;
+  id: number | string;
+  track_id?: string | null;
   track_title: string | null;
   track_subtitle: string | null;
+};
+
+type UploadRow = {
+  id: number | string;
+  title: string | null;
+  artist: string | null;
 };
 
 export default function ProfilePage() {
@@ -24,32 +31,57 @@ export default function ProfilePage() {
   const [email, setEmail] = useState("");
   const [follows, setFollows] = useState<FollowRow[]>([]);
   const [scans, setScans] = useState<ScanRow[]>([]);
+  const [uploads, setUploads] = useState<UploadRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
+
     (async () => {
       try {
-        const { data: sessionData } = await supabase!.auth.getSession();
+        const { data: userData } = await supabase!.auth.getUser();
+        const userEmail = userData.user?.email?.toLowerCase() || "";
         if (!mounted) return;
-        setEmail(sessionData.session?.user?.email || "");
+        setEmail(userEmail);
 
-        const [{ data: followRows }, { data: scanRows }] = await Promise.all([
-          supabase!
+        let followRows: any[] = [];
+        let scanRows: any[] = [];
+        let uploadRows: any[] = [];
+
+        try {
+          const { data } = await supabase!
             .from("track_followers")
-            .select("id,track_title,track_subtitle")
-            .order("created_at", { ascending: false })
-            .limit(8),
-          supabase!
+            .select("id,track_id,track_title,track_subtitle,user_email")
+            .eq("user_email", userEmail)
+            .order("id", { ascending: false })
+            .limit(20);
+          followRows = data || [];
+        } catch {}
+
+        try {
+          const { data } = await supabase!
             .from("scan_events")
-            .select("id,track_title,track_subtitle")
-            .order("created_at", { ascending: false })
-            .limit(8),
-        ]);
+            .select("id,track_id,track_title,track_subtitle,user_email")
+            .eq("user_email", userEmail)
+            .order("id", { ascending: false })
+            .limit(20);
+          scanRows = data || [];
+        } catch {}
+
+        try {
+          const { data } = await supabase!
+            .from("unreleased_tracks")
+            .select("id,title,artist,uploader_email")
+            .eq("uploader_email", userEmail)
+            .order("id", { ascending: false })
+            .limit(20);
+          uploadRows = data || [];
+        } catch {}
 
         if (!mounted) return;
-        setFollows((followRows || []).filter((x: any) => x.track_title) as FollowRow[]);
-        setScans((scanRows || []).filter((x: any) => x.track_title) as ScanRow[]);
+        setFollows(followRows as FollowRow[]);
+        setScans(scanRows as ScanRow[]);
+        setUploads(uploadRows as UploadRow[]);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -69,16 +101,13 @@ export default function ProfilePage() {
     }
   }
 
-  const headerSubtitle = useMemo(() => (email ? email : "Connected"), [email]);
-
   return (
     <main style={{ minHeight: "100vh", background: "#000", color: "#fff", padding: "24px 16px 120px" }}>
-      
       <div style={{ maxWidth: 820, margin: "0 auto", display: "grid", gap: 18 }}>
         <div style={{ display: "grid", placeItems: "center", gap: 10 }}>
           <Image src="/B-logo.png" alt="Banger" width={80} height={80} style={{ width: 80, height: 80 }} priority />
           <div style={{ fontSize: 30, fontWeight: 900 }}>Profile</div>
-          <div style={{ opacity: 0.72 }}>{headerSubtitle}</div>
+          <div style={{ opacity: 0.72 }}>{email || "Connected"}</div>
         </div>
 
         <section style={boxStyle}>
@@ -124,10 +153,21 @@ export default function ProfilePage() {
         <section style={boxStyle}>
           <div style={sectionTitle}>MY UPLOADS</div>
           <div style={{ display: "grid", gap: 12, marginTop: 14 }}>
-            <div style={innerStyle}>
-              <div style={{ fontSize: 18, fontWeight: 800 }}>No uploads yet</div>
-              <div style={{ opacity: 0.72, marginTop: 6 }}>Upload from BPRO and your tracks will appear here</div>
-            </div>
+            {loading ? (
+              <div style={innerStyle}>Loading...</div>
+            ) : uploads.length === 0 ? (
+              <div style={innerStyle}>
+                <div style={{ fontSize: 18, fontWeight: 800 }}>No uploads yet</div>
+                <div style={{ opacity: 0.72, marginTop: 6 }}>Your BPRO uploads will appear here</div>
+              </div>
+            ) : (
+              uploads.map((item) => (
+                <div key={item.id} style={innerStyle}>
+                  <div style={{ fontSize: 18, fontWeight: 800 }}>{item.title || "Untitled"}</div>
+                  <div style={{ opacity: 0.72, marginTop: 6 }}>{item.artist || "unknown"}</div>
+                </div>
+              ))
+            )}
           </div>
         </section>
 
