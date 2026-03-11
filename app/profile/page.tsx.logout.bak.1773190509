@@ -1,7 +1,4 @@
-"use client";
-
-import { useRouter } from "next/navigation";
-
+"use client"
 
 import { useEffect, useMemo, useState } from "react"
 import { createClient } from "@supabase/supabase-js"
@@ -105,14 +102,6 @@ function Card(props: {
 }
 
 export default function ProfilePage() {
-  const router = useRouter();
-
-  async function handleLogout() {
-    await supabase!.auth.signOut();
-    router.replace("/login");
-    router.refresh();
-  }
-
   const [data, setData] = useState<ProfileData>(emptyData)
   const [email, setEmail] = useState("")
   const [userId, setUserId] = useState("")
@@ -323,42 +312,6 @@ export default function ProfilePage() {
           </Section>
         </div>
       </div>
-    
-        <button
-          onClick={handleLogout}
-          style={{
-            marginTop: 20,
-            width: "100%",
-            padding: "14px",
-            borderRadius: 16,
-            border: "1px solid rgba(255,255,255,0.12)",
-            background: "#fff",
-            color: "#000",
-            fontWeight: 800,
-            cursor: "pointer"
-          }}
-        >
-          Log out
-        </button>
-
-
-        <button
-          onClick={handleLogout}
-          style={{
-            marginTop: 20,
-            width: "100%",
-            padding: "14px",
-            borderRadius: 16,
-            border: "1px solid rgba(255,255,255,0.12)",
-            background: "#fff",
-            color: "#000",
-            fontWeight: 800,
-            cursor: "pointer"
-          }}
-        >
-          Log out
-        </button>
-
-</main>
+    </main>
   )
 }
