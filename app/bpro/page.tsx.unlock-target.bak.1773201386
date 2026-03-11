@@ -87,8 +87,6 @@ export default function BproPage() {
     if (isUnlock) setReleaseStatus("unreleased");
   }, []);
 
-  const unlockReady = forceUnreleasedForUnlock;
-
   const maxPreviewStart = useMemo(() => {
     if (!durationSec) return 0;
     return Math.max(0, durationSec - previewDuration);
@@ -710,7 +708,7 @@ fd.append("file", uploadFile);
 
               {flow === "done" && (
                 <button type="button" onClick={resetAll} style={secondaryButton}>
-                  {unlockReady ? "Access now" : "Upload another track"}
+                  Upload another track
                 </button>
               )}
             </div>
