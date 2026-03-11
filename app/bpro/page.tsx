@@ -89,6 +89,8 @@ export default function BproPage() {
 
   const unlockReady = forceUnreleasedForUnlock;
 
+  const showUnlockAccess = forceUnreleasedForUnlock && flow === "done";
+
   const maxPreviewStart = useMemo(() => {
     if (!durationSec) return 0;
     return Math.max(0, durationSec - previewDuration);

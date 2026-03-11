@@ -33,7 +33,7 @@ export default function LoginPage() {
         if (!mounted) return;
 
         if (!j?.unlocked) {
-          router.replace("/unlock");
+          router.replace("/home");
           return;
         }
 
@@ -63,7 +63,7 @@ export default function LoginPage() {
 
       const { error } = await supabase!.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: `${origin}/auth/callback` },
+        options: { redirectTo: `${origin}/home` },
       });
 
       if (error) throw error;

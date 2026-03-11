@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const HIDDEN = ["/login", "/unlock", "/onboarding", "/auth/callback"];
+const HIDDEN = ["/login", "/unlock", "/onboarding", "/onboarding", "/auth/callback"];
 
 const ITEMS = [
   { label: "Profile", href: "/profile" },
   { label: "Radar", href: "/library" },
-  { label: "Scan", href: "/" },
+  { label: "Scan", href: "/home" },
   { label: "Charts", href: "/concerts" },
   { label: "BPRO", href: "/bpro" },
 ];
