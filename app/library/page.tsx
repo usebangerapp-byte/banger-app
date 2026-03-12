@@ -1,98 +1,77 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from "@supabase/supabase-js";
 
 type Track = {
-  id: string
-  title: string
-  artist: string
-  snippet_path: string | null
-  scan_count: number | null
-}
+  id: string;
+  title: string;
+  artist: string;
+  snippet_path: string | null;
+  scan_count: number | null;
+};
 
-async function getData() {
+async function getRadar() {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  );
 
-  // Most scanned (top global)
-  const { data: mostScanned } = await supabase
-    .from('tracks')
-    .select('id,title,artist,snippet_path,scan_count')
-    .order('scan_count', { ascending: false })
-    .limit(10)
+  // Top chart
+  const { data: top } = await supabase
+    .from("tracks")
+    .select("id,title,artist,snippet_path,scan_count")
+    .order("scan_count", { ascending: false })
+    .limit(10);
 
-  // Banger of the Week (on prend le #1 des plus scannés)
-  const bangerOfWeek = (mostScanned || [])[0] || null
+  const banger = top?.[0] || null;
+  const rising = top?.slice(1, 10) || [];
 
-  // Rising Bangers (top récents/hauts scans – simple v1)
-  const { data: rising } = await supabase
-    .from('tracks')
-    .select('id,title,artist,snippet_path,scan_count')
-    .order('scan_count', { ascending: false })
-    .limit(5)
+  const { data: most } = await supabase
+    .from("tracks")
+    .select("id,title,artist,snippet_path,scan_count")
+    .gte("scan_count", 5)
+    .order("scan_count", { ascending: false })
+    .limit(5);
 
   return {
-    bangerOfWeek,
-    rising: rising || [],
-    mostScanned: mostScanned || [],
-  }
+    banger,
+    rising,
+    most: most || []
+  };
 }
 
-export default async function LibraryPage() {
-  const { bangerOfWeek, rising, mostScanned } = await getData()
-
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-
-  const previewUrl = (path: string | null) => {
-    if (!path) return null
-    const { data } = supabase.storage.from('bpro_uploads').getPublicUrl(path)
-    return data.publicUrl
-  }
+export default async function RadarPage() {
+  const { banger, rising, most } = await getRadar();
 
   return (
-    <main className="mx-auto max-w-3xl p-6 space-y-10">
-      <h1 className="text-2xl font-bold">RADAR</h1>
+    <main className="max-w-3xl mx-auto p-6 text-white">
+      <h1 className="text-2xl mb-8 font-semibold tracking-wide">RADAR</h1>
 
       {/* Banger of the Week */}
-      <section>
-        <h2 className="text-xl font-semibold mb-3">🔥 Banger of the Week</h2>
-        {bangerOfWeek ? (
-          <div className="border rounded-xl p-4">
-            <div className="font-semibold">{bangerOfWeek.title}</div>
-            <div className="text-sm opacity-70">{bangerOfWeek.artist}</div>
-            {previewUrl(bangerOfWeek.snippet_path) && (
-              <audio className="mt-2 w-full" controls preload="none">
-                <source src={previewUrl(bangerOfWeek.snippet_path)!} type="audio/mpeg" />
-              </audio>
-            )}
-            <div className="text-xs opacity-60 mt-1">
-              {bangerOfWeek.scan_count ?? 0} scans
-            </div>
+      <section className="mb-10">
+        <h2 className="text-sm uppercase text-gray-400 mb-2">
+          Banger of the Week
+        </h2>
+
+        {banger ? (
+          <div className="text-lg">
+            <div>{banger.title}</div>
+            <div className="text-gray-400 text-sm">{banger.artist}</div>
           </div>
         ) : (
-          <p className="opacity-60 text-sm">No data yet</p>
+          <div className="text-gray-500 text-sm">No signal yet</div>
         )}
       </section>
 
       {/* Rising Bangers */}
-      <section>
-        <h2 className="text-xl font-semibold mb-3">⬆ Rising Bangers</h2>
-        <div className="space-y-3">
+      <section className="mb-10">
+        <h2 className="text-sm uppercase text-gray-400 mb-3">
+          Rising Bangers
+        </h2>
+
+        <div className="space-y-2">
           {rising.map((t) => (
-            <div key={t.id} className="border rounded-xl p-4">
-              <div className="font-semibold">{t.title}</div>
-              <div className="text-sm opacity-70">{t.artist}</div>
-              {previewUrl(t.snippet_path) && (
-                <audio className="mt-2 w-full" controls preload="none">
-                  <source src={previewUrl(t.snippet_path)!} type="audio/mpeg" />
-                </audio>
-              )}
-              <div className="text-xs opacity-60 mt-1">
-                {t.scan_count ?? 0} scans
-              </div>
+            <div key={t.id}>
+              <div>{t.title}</div>
+              <div className="text-gray-500 text-sm">{t.artist}</div>
             </div>
           ))}
         </div>
@@ -100,24 +79,19 @@ export default async function LibraryPage() {
 
       {/* Most Scanned */}
       <section>
-        <h2 className="text-xl font-semibold mb-3">📈 Most Scanned</h2>
-        <div className="space-y-3">
-          {mostScanned.slice(0,5).map((t) => (
-            <div key={t.id} className="border rounded-xl p-4">
-              <div className="font-semibold">{t.title}</div>
-              <div className="text-sm opacity-70">{t.artist}</div>
-              {previewUrl(t.snippet_path) && (
-                <audio className="mt-2 w-full" controls preload="none">
-                  <source src={previewUrl(t.snippet_path)!} type="audio/mpeg" />
-                </audio>
-              )}
-              <div className="text-xs opacity-60 mt-1">
-                {t.scan_count ?? 0} scans
-              </div>
+        <h2 className="text-sm uppercase text-gray-400 mb-3">
+          Most Scanned
+        </h2>
+
+        <div className="space-y-2">
+          {most.map((t) => (
+            <div key={t.id}>
+              <div>{t.title}</div>
+              <div className="text-gray-500 text-sm">{t.artist}</div>
             </div>
           ))}
         </div>
       </section>
     </main>
-  )
+  );
 }
