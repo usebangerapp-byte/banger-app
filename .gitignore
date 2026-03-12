@@ -39,3 +39,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local backups
+*.bak
+*.bak_*
+*.bak_before_*
+*.bak_final_*
+*.bak_logo*
+.env*.local
+
+.env.local
+.env.*
+.vercel
+.safety-backups/

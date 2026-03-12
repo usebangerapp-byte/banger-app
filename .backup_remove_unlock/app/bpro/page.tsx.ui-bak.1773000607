@@ -1,0 +1,591 @@
+"use client";
+
+import React, { useMemo, useRef, useState } from "react";
+
+type Mode = "DJ" | "LABEL";
+type ReleaseStatus = "released" | "unreleased";
+type Flow = "idle" | "snippet" | "done";
+
+type UploadResult = {
+  ok?: boolean;
+  acr_id?: string | null;
+  fingerprint_status?: string | null;
+  snippet_path?: string | null;
+  artwork_path?: string | null;
+  error?: string;
+};
+
+export default function BproPage() {
+  const audioInputRef = useRef<HTMLInputElement | null>(null);
+  const artworkInputRef = useRef<HTMLInputElement | null>(null);
+
+  const [mode, setMode] = useState<Mode | null>(null);
+  const [name, setName] = useState("");
+  const [trackTitle, setTrackTitle] = useState("");
+  const [info, setInfo] = useState("");
+
+  const [releaseStatus, setReleaseStatus] = useState<ReleaseStatus>("unreleased");
+  const [releaseDate, setReleaseDate] = useState("");
+  const [allowPreview, setAllowPreview] = useState(true);
+  const [agreeRights, setAgreeRights] = useState(false);
+
+  const [artwork, setArtwork] = useState<File | null>(null);
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [audioUrl, setAudioUrl] = useState("");
+  const [durationSec, setDurationSec] = useState<number | null>(null);
+
+  const [snippetStart, setSnippetStart] = useState(0);
+  const [snippetDuration, setSnippetDuration] = useState(60);
+  const [snippetConfirmed, setSnippetConfirmed] = useState(false);
+
+  const [busy, setBusy] = useState(false);
+  const [flow, setFlow] = useState<Flow>("idle");
+  const [status, setStatus] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [result, setResult] = useState<UploadResult | null>(null);
+
+  const identityOk = useMemo(() => !!mode && name.trim().length > 0, [mode, name]);
+  const metaOk = useMemo(() => trackTitle.trim().length > 0, [trackTitle]);
+  const canPickAudio = identityOk && metaOk && agreeRights && !busy;
+  const isShort = durationSec !== null && durationSec <= 60;
+  const isLong = durationSec !== null && durationSec > 60;
+  const snippetEnd = snippetStart + snippetDuration;
+
+  async function detectDuration(file: File) {
+    return await new Promise<number>((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const audio = document.createElement("audio");
+      audio.preload = "metadata";
+      audio.src = url;
+
+      audio.onloadedmetadata = () => {
+        const d = Math.floor(audio.duration || 0);
+        URL.revokeObjectURL(url);
+        resolve(d);
+      };
+
+      audio.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error("Impossible de lire la durée du fichier audio."));
+      };
+    });
+  }
+
+  function resetMessages() {
+    setError("");
+    setSuccess("");
+    setStatus("");
+    setResult(null);
+  }
+
+  function resetAudio() {
+    resetMessages();
+    setAudioFile(null);
+    setDurationSec(null);
+    setSnippetStart(0);
+    setSnippetDuration(60);
+    setSnippetConfirmed(false);
+    setFlow("idle");
+    if (audioUrl) URL.revokeObjectURL(audioUrl);
+    setAudioUrl("");
+    if (audioInputRef.current) audioInputRef.current.value = "";
+  }
+
+  function resetAll() {
+    resetAudio();
+    setArtwork(null);
+    if (artworkInputRef.current) artworkInputRef.current.value = "";
+  }
+
+  async function onPickAudio(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    resetMessages();
+    setSnippetConfirmed(false);
+    setFlow("idle");
+
+    try {
+      if (audioUrl) URL.revokeObjectURL(audioUrl);
+      const nextUrl = URL.createObjectURL(file);
+      setAudioUrl(nextUrl);
+      setAudioFile(file);
+
+      setStatus("Lecture du fichier…");
+      const d = await detectDuration(file);
+      setDurationSec(d);
+
+      if (d > 60) {
+        setFlow("snippet");
+        setSnippetStart(0);
+        setSnippetDuration(60);
+        setStatus("Track long détecté → confirme un snippet de 60 sec max avant l’analyse.");
+      } else {
+        setFlow("idle");
+        setStatus("Track court détecté → prêt pour l’analyse directe.");
+      }
+    } catch (err: any) {
+      setError(err?.message || "Audio non supporté.");
+      setAudioFile(null);
+      setDurationSec(null);
+      setFlow("idle");
+    }
+
+    e.target.value = "";
+  }
+
+  function onPickArtwork(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setArtwork(file);
+    e.target.value = "";
+  }
+
+  function confirmSnippet() {
+    setSnippetConfirmed(true);
+    setStatus("Snippet confirmé → prêt à être découpé et envoyé.");
+    setError("");
+    setSuccess("");
+  }
+
+  async function sendForAnalysis() {
+    if (!audioFile || !mode || !name.trim() || !trackTitle.trim() || !agreeRights) return;
+    if (isLong && !snippetConfirmed) {
+      setError("Confirme d’abord le snippet.");
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+    setSuccess("");
+    setResult(null);
+    setStatus(isLong ? "Découpe du snippet + envoi…" : "Envoi pour analyse…");
+
+    try {
+      const fd = new FormData();
+      fd.append("file", audioFile);
+      fd.append("mode", mode);
+      fd.append("name", name.trim());
+      fd.append("title", trackTitle.trim());
+      fd.append("info", info.trim());
+      fd.append("release_status", releaseStatus);
+      fd.append("release_date", releaseDate || "");
+      fd.append("allow_preview", allowPreview ? "1" : "0");
+      fd.append("delete_after", "1");
+      fd.append("has_rights", agreeRights ? "1" : "0");
+
+      if (artwork) fd.append("artwork", artwork);
+
+      if (isLong) {
+        fd.append("snippet_start", String(snippetStart));
+        fd.append("snippet_duration", String(snippetDuration));
+      }
+
+      const r = await fetch("/api/bpro/upload", {
+        method: "POST",
+        body: fd,
+      });
+
+      const j = (await r.json().catch(() => null)) as UploadResult | null;
+
+      if (!r.ok || !j?.ok) {
+        throw new Error(j?.error || "Analyse impossible.");
+      }
+
+      setResult(j);
+      setFlow("done");
+      setStatus("");
+      setSuccess(
+        j.fingerprint_status === "ready"
+          ? "Tout est OK : snippet stocké, fingerprint prêt, track scannable."
+          : "Snippet stocké et envoyé à ACR. Fingerprint en cours de préparation."
+      );
+    } catch (err: any) {
+      setError(err?.message || "Analyse impossible.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <main style={{ minHeight: "100vh", background: "#000", color: "#fff", padding: 20 }}>
+      <div style={{ maxWidth: 760, margin: "0 auto", paddingBottom: 120 }}>
+        <div style={{ textAlign: "center", marginBottom: 18 }}>
+          <div style={{ fontSize: 12, opacity: 0.6, letterSpacing: "0.10em" }}>BPRO</div>
+          <h1 style={{ margin: "8px 0 6px", fontSize: 30 }}>DJ / Label Upload</h1>
+          <div style={{ opacity: 0.72, fontSize: 14 }}>
+            Upload intelligent pour protéger l’audio, stocker le snippet et préparer le scan.
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gap: 14 }}>
+          <Card title="1. Profil">
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <SelectButton active={mode === "DJ"} onClick={() => setMode("DJ")}>DJ</SelectButton>
+              <SelectButton active={mode === "LABEL"} onClick={() => setMode("LABEL")}>Label</SelectButton>
+            </div>
+          </Card>
+
+          <Card title="2. Infos">
+            <div style={{ display: "grid", gap: 10 }}>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={mode === "LABEL" ? "Nom du label" : "Nom DJ / artiste"}
+                style={inputStyle}
+              />
+              <input
+                value={trackTitle}
+                onChange={(e) => setTrackTitle(e.target.value)}
+                placeholder="Titre du track"
+                style={inputStyle}
+              />
+              <textarea
+                value={info}
+                onChange={(e) => setInfo(e.target.value)}
+                placeholder="Info utile (email, note interne, remix, version...)"
+                rows={3}
+                style={{ ...inputStyle, resize: "vertical" }}
+              />
+            </div>
+          </Card>
+
+          <Card title="3. Statut">
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <SelectButton active={releaseStatus === "unreleased"} onClick={() => setReleaseStatus("unreleased")}>
+                Unreleased
+              </SelectButton>
+              <SelectButton active={releaseStatus === "released"} onClick={() => setReleaseStatus("released")}>
+                Released
+              </SelectButton>
+            </div>
+
+            <div style={{ height: 12 }} />
+
+            <label style={{ display: "grid", gap: 6 }}>
+              <span style={labelStyle}>Release date (optionnelle)</span>
+              <input
+                type="date"
+                value={releaseDate}
+                onChange={(e) => setReleaseDate(e.target.value)}
+                style={inputStyle}
+              />
+            </label>
+
+            <div style={{ height: 12 }} />
+
+            <label style={checkboxRow}>
+              <input
+                type="checkbox"
+                checked={allowPreview}
+                onChange={(e) => setAllowPreview(e.target.checked)}
+              />
+              <span>Autoriser preview 10 secondes</span>
+            </label>
+          </Card>
+
+          <Card title="4. Cover">
+            <div style={{ display: "grid", gap: 12 }}>
+              <input
+                ref={artworkInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={onPickArtwork}
+                style={{ display: "none" }}
+              />
+              <button
+                type="button"
+                onClick={() => artworkInputRef.current?.click()}
+                style={secondaryButton}
+              >
+                Ajouter une cover carrée (1:1)
+              </button>
+
+              {artwork && (
+                <div style={summaryBox}>
+                  <div><strong>Cover :</strong> {artwork.name}</div>
+                  <div><strong>Taille :</strong> {(artwork.size / 1024 / 1024).toFixed(1)} MB</div>
+                </div>
+              )}
+            </div>
+          </Card>
+
+          <Card title="5. Droits">
+            <label style={checkboxRow}>
+              <input
+                type="checkbox"
+                checked={agreeRights}
+                onChange={(e) => setAgreeRights(e.target.checked)}
+              />
+              <span>Je confirme avoir les droits ou l’autorisation d’analyser ce fichier audio.</span>
+            </label>
+          </Card>
+
+          <Card title="6. Audio">
+            <div style={{ display: "grid", gap: 12 }}>
+              <input
+                ref={audioInputRef}
+                type="file"
+                accept="audio/*"
+                onChange={onPickAudio}
+                style={{ display: "none" }}
+              />
+
+              <button
+                type="button"
+                onClick={() => audioInputRef.current?.click()}
+                disabled={!canPickAudio}
+                style={primaryButton(!canPickAudio)}
+              >
+                Choisir un fichier audio
+              </button>
+
+              {!identityOk && <div style={hintStyle}>Choisis DJ ou Label puis remplis ton nom.</div>}
+              {identityOk && !metaOk && <div style={hintStyle}>Ajoute le titre du track.</div>}
+              {identityOk && metaOk && !agreeRights && <div style={hintStyle}>Coche les droits avant d’importer un fichier.</div>}
+
+              {audioFile && (
+                <div style={summaryBox}>
+                  <div><strong>Fichier :</strong> {audioFile.name}</div>
+                  <div><strong>Taille :</strong> {(audioFile.size / 1024 / 1024).toFixed(1)} MB</div>
+                  <div><strong>Durée :</strong> {durationSec !== null ? `${durationSec}s` : "…"}</div>
+                  {audioUrl && <audio controls src={audioUrl} style={{ width: "100%", marginTop: 10 }} />}
+                </div>
+              )}
+
+              {isShort && <div style={infoBox}>Le track dure 60 sec ou moins → il sera converti et envoyé directement.</div>}
+              {isLong && <div style={infoBox}>Le track dépasse 60 sec → crée un snippet puis envoie-le.</div>}
+            </div>
+          </Card>
+
+          {isLong && (
+            <Card title="7. Snippet">
+              <div style={{ display: "grid", gap: 12 }}>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span style={labelStyle}>Début (sec)</span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={snippetStart}
+                    onChange={(e) => setSnippetStart(Math.max(0, Number(e.target.value) || 0))}
+                    style={inputStyle}
+                  />
+                </label>
+
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span style={labelStyle}>Durée (max 60 sec)</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={60}
+                    value={snippetDuration}
+                    onChange={(e) => setSnippetDuration(Math.min(60, Math.max(1, Number(e.target.value) || 1)))}
+                    style={inputStyle}
+                  />
+                </label>
+
+                <div style={summaryBox}>
+                  <div><strong>Start :</strong> {snippetStart}s</div>
+                  <div><strong>End :</strong> {snippetEnd}s</div>
+                  <div><strong>Durée :</strong> {snippetDuration}s</div>
+                </div>
+
+                <div style={{ display: "grid", gap: 10 }}>
+                  <button type="button" onClick={confirmSnippet} style={secondaryButton}>
+                    Confirmer le snippet
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={busy || !snippetConfirmed}
+                    onClick={sendForAnalysis}
+                    style={primaryButton(busy || !snippetConfirmed)}
+                  >
+                    {busy ? "Découpe + envoi…" : "Découper + envoyer à ACR"}
+                  </button>
+
+                  <button type="button" onClick={resetAudio} style={ghostButton}>
+                    Changer de fichier
+                  </button>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          <Card title={isLong ? "8. Analyse" : "7. Analyse"}>
+            <div style={{ display: "grid", gap: 12 }}>
+              {isShort && (
+                <button
+                  type="button"
+                  disabled={busy || !audioFile}
+                  onClick={sendForAnalysis}
+                  style={primaryButton(busy || !audioFile)}
+                >
+                  {busy ? "Envoi…" : "Envoyer et analyser"}
+                </button>
+              )}
+
+              {status && <div style={infoBox}>{status}</div>}
+              {error && <div style={errorBox}>{error}</div>}
+              {success && <div style={successBox}>{success}</div>}
+
+              {result?.snippet_path && (
+                <div style={summaryBox}>
+                  <div><strong>Snippet bucket :</strong> {result.snippet_path}</div>
+                  <div><strong>ACR ID :</strong> {result.acr_id || "—"}</div>
+                  <div><strong>Fingerprint :</strong> {result.fingerprint_status || "processing"}</div>
+                </div>
+              )}
+
+              {flow === "done" && (
+                <button type="button" onClick={resetAll} style={secondaryButton}>
+                  Uploader un autre track
+                </button>
+              )}
+            </div>
+          </Card>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function Card({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section style={{
+      border: "1px solid rgba(255,255,255,0.12)",
+      borderRadius: 18,
+      padding: 16,
+      background: "rgba(255,255,255,0.03)",
+    }}>
+      <div style={{ fontSize: 12, opacity: 0.65, letterSpacing: "0.08em", marginBottom: 12 }}>
+        {title}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function SelectButton({
+  active,
+  children,
+  onClick,
+}: {
+  active: boolean;
+  children: React.ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        padding: "14px 16px",
+        borderRadius: 14,
+        border: active ? "1px solid rgba(255,255,255,0.5)" : "1px solid rgba(255,255,255,0.12)",
+        background: active ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.04)",
+        color: "#fff",
+        fontWeight: 700,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+const labelStyle: React.CSSProperties = {
+  fontSize: 13,
+  opacity: 0.82,
+};
+
+const checkboxRow: React.CSSProperties = {
+  display: "flex",
+  gap: 10,
+  alignItems: "flex-start",
+  fontSize: 14,
+  lineHeight: 1.4,
+};
+
+const inputStyle: React.CSSProperties = {
+  padding: 12,
+  borderRadius: 12,
+  border: "1px solid rgba(255,255,255,0.14)",
+  background: "#0d0d0d",
+  color: "#fff",
+  width: "100%",
+};
+
+const summaryBox: React.CSSProperties = {
+  borderRadius: 14,
+  background: "rgba(255,255,255,0.05)",
+  border: "1px solid rgba(255,255,255,0.08)",
+  padding: 12,
+  fontSize: 14,
+  display: "grid",
+  gap: 6,
+};
+
+const infoBox: React.CSSProperties = {
+  borderRadius: 14,
+  background: "rgba(255,255,255,0.06)",
+  border: "1px solid rgba(255,255,255,0.10)",
+  padding: 12,
+  fontSize: 14,
+};
+
+const errorBox: React.CSSProperties = {
+  borderRadius: 14,
+  background: "rgba(255,80,80,0.10)",
+  border: "1px solid rgba(255,80,80,0.25)",
+  padding: 12,
+  fontSize: 14,
+  color: "#ffb5b5",
+};
+
+const successBox: React.CSSProperties = {
+  borderRadius: 14,
+  background: "rgba(120,255,160,0.08)",
+  border: "1px solid rgba(120,255,160,0.20)",
+  padding: 12,
+  fontSize: 14,
+  color: "#d9ffe2",
+};
+
+const hintStyle: React.CSSProperties = {
+  fontSize: 13,
+  opacity: 0.72,
+};
+
+function primaryButton(disabled?: boolean): React.CSSProperties {
+  return {
+    padding: "14px 16px",
+    borderRadius: 14,
+    border: "1px solid rgba(255,255,255,0.14)",
+    background: disabled ? "rgba(255,255,255,0.10)" : "#fff",
+    color: disabled ? "#888" : "#000",
+    fontWeight: 800,
+    cursor: disabled ? "not-allowed" : "pointer",
+    width: "100%",
+  };
+}
+
+const secondaryButton: React.CSSProperties = {
+  padding: "12px 16px",
+  borderRadius: 14,
+  border: "1px solid rgba(255,255,255,0.14)",
+  background: "rgba(255,255,255,0.08)",
+  color: "#fff",
+  fontWeight: 700,
+  width: "100%",
+};
+
+const ghostButton: React.CSSProperties = {
+  padding: "12px 16px",
+  borderRadius: 14,
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "transparent",
+  color: "#fff",
+  fontWeight: 600,
+  width: "100%",
+};

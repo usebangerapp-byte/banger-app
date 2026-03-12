@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 
@@ -34,11 +35,57 @@ function signRequest(params: {
   return hmac.digest("base64");
 }
 
+function clean(v: unknown) {
+  return typeof v === "string" ? v.trim() : "";
+}
+
+function mapRecognition(payload: any, fallbackCountry = "") {
+  const custom = payload?.metadata?.custom_files?.[0] || null;
+  const music = payload?.metadata?.music?.[0] || null;
+
+  if (custom?.title) {
+    return {
+      result_type: "recognized",
+      track_title: clean(custom.title) || "Unknown",
+      track_subtitle:
+        clean(custom.artist) ||
+        clean(custom.label) ||
+        "(Private DB)",
+      acr_code:
+        clean(custom.acrid) ||
+        clean(custom.custom_id) ||
+        null,
+      country: clean(fallbackCountry) || null,
+    };
+  }
+
+  if (music?.title) {
+    return {
+      result_type: "recognized",
+      track_title: clean(music.title) || "Unknown",
+      track_subtitle:
+        clean(music?.artists?.[0]?.name) || "Unknown",
+      acr_code: clean(music.acrid) || null,
+      country: clean(fallbackCountry) || null,
+    };
+  }
+
+  return {
+    result_type: "not_found",
+    track_title: "Unknown",
+    track_subtitle: "Unknown",
+    acr_code: null,
+    country: clean(fallbackCountry) || null,
+  };
+}
+
 export async function POST(req: Request) {
   try {
     const host = process.env.ACR_HOST;
     const accessKey = process.env.ACR_ACCESS_KEY;
     const accessSecret = process.env.ACR_ACCESS_SECRET;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!host || !accessKey || !accessSecret) {
       return Response.json(
@@ -49,6 +96,8 @@ export async function POST(req: Request) {
 
     const incoming = await req.formData();
     const file = incoming.get("audio");
+    const userId = clean(incoming.get("user_id"));
+    const country = clean(incoming.get("country"));
 
     if (!(file instanceof File)) {
       return Response.json(
@@ -96,10 +145,35 @@ export async function POST(req: Request) {
 
     const text = await acrRes.text();
 
-    return new Response(text, {
-      status: acrRes.status,
-      headers: { "Content-Type": "application/json" },
-    });
+    let payload: any = null;
+    try {
+      payload = text ? JSON.parse(text) : {};
+    } catch {
+      return new Response(text, {
+        status: acrRes.status,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (supabaseUrl && serviceRoleKey) {
+      try {
+        const supabase = createClient(supabaseUrl, serviceRoleKey);
+        const mapped = mapRecognition(payload, country);
+
+        await supabase.from("scan_events").insert({
+          track_title: mapped.track_title,
+          track_subtitle: mapped.track_subtitle,
+          result_type: mapped.result_type,
+          acr_code: mapped.acr_code,
+          country: mapped.country,
+          user_id: userId || null,
+        });
+      } catch (insertError) {
+        console.error("scan_events insert failed:", insertError);
+      }
+    }
+
+    return Response.json(payload, { status: acrRes.status });
   } catch (e: any) {
     return Response.json(
       { ok: false, error: e?.message || "Server error" },

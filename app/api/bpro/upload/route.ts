@@ -1,71 +1,79 @@
-import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 
-export const runtime = "nodejs"
+export const runtime = 'nodejs'
 
 const supabase = createClient(
-process.env.NEXT_PUBLIC_SUPABASE_URL!,
-process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-export async function POST(req: Request){
+export async function POST(req: Request) {
+  try {
+    const formData = await req.formData()
 
-const token = process.env.ACR_CONSOLE_TOKEN
-const bucketId = process.env.ACR_BUCKET_ID
+    const file = formData.get('file') as File | null
+    const title = String(formData.get('title') || '').trim()
+    const artist = String(formData.get('artist') || '').trim()
+    const uploaderEmail = String(formData.get('uploader_email') || '').trim()
+    const releaseDateRaw = String(formData.get('release_date') || '').trim()
+    const allowPreviewRaw = String(formData.get('allow_preview') || 'true').trim()
 
-if(!token || !bucketId){
-return NextResponse.json(
-{ error:"Missing ACR env" },
-{ status:500 }
-)
-}
+    const allowPreview = allowPreviewRaw === 'true'
+    const releaseDate = releaseDateRaw || null
 
-const form = await req.formData()
-const file = form.get("file")
+    if (!file) {
+      return NextResponse.json({ error: 'Missing file' }, { status: 400 })
+    }
 
-if(!(file instanceof File)){
-return NextResponse.json(
-{ error:"No file received" },
-{ status:400 }
-)
-}
+    if (!title || !artist || !uploaderEmail) {
+      return NextResponse.json(
+        { error: 'Missing title, artist or uploader_email' },
+        { status: 400 }
+      )
+    }
 
-const upload = new FormData()
-upload.append("file",file)
-upload.append("title",file.name)
-upload.append("data_type","audio")
+    const extension = file.name.split('.').pop() || 'mp3'
+    const objectPath = `snippets/${crypto.randomUUID()}.${extension}`
+    const buffer = Buffer.from(await file.arrayBuffer())
 
-const res = await fetch(
-"https://api-v2.acrcloud.com/api/buckets/" +
-bucketId +
-"/files",
-{
-method:"POST",
-headers:{
-Authorization:"Bearer " + token
-},
-body:upload
-}
-)
+    const { error: uploadError } = await supabase.storage
+      .from('bpro_uploads')
+      .upload(objectPath, buffer, {
+        contentType: file.type || 'audio/mpeg',
+        upsert: false,
+      })
 
-const text = await res.text()
+    if (uploadError) {
+      return NextResponse.json({ error: uploadError.message }, { status: 500 })
+    }
 
-let acr = null
-try{ acr = JSON.parse(text) }catch{}
+    const { data: inserted, error: insertError } = await supabase
+      .from('bpro_tracks')
+      .insert({
+        title,
+        artist,
+        snippet_path: objectPath,
+        release_date: releaseDate,
+        allow_preview: allowPreview,
+        uploader_email: uploaderEmail,
+        status: 'ready',
+      })
+      .select('id, title, artist, snippet_path, allow_preview, release_date')
+      .single()
 
-await supabase
-.from("unreleased_tracks")
-.insert({
-title:file.name,
-artist:"unknown",
-label:"unknown",
-bucket_id:bucketId,
-acr_id:acr?.data?.id || null
-})
+    if (insertError) {
+      return NextResponse.json({ error: insertError.message }, { status: 500 })
+    }
 
-return NextResponse.json({
-ok:true,
-acr
-})
-
+    return NextResponse.json({
+      ok: true,
+      track: inserted,
+      message: 'Upload BPro créé et synchronisé automatiquement',
+    })
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Unexpected server error'
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
 }

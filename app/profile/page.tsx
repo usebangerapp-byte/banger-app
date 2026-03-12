@@ -1,22 +1,214 @@
 "use client";
-import BottomNav from "@/components/BottomNav";
-export default function Profile() {
+
+import Image from "next/image";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createSupabaseBrowser } from "@/lib/supabase/client";
+
+type FollowRow = {
+  id: number | string;
+  track_id?: string | null;
+  track_title: string | null;
+  track_subtitle: string | null;
+};
+
+type ScanRow = {
+  id: number | string;
+  track_id?: string | null;
+  track_title: string | null;
+  track_subtitle: string | null;
+};
+
+type UploadRow = {
+  id: number | string;
+  title: string | null;
+  artist: string | null;
+};
+
+export default function ProfilePage() {
+  const router = useRouter();
+  const supabase = createSupabaseBrowser();
+  const [email, setEmail] = useState("");
+  const [follows, setFollows] = useState<FollowRow[]>([]);
+  const [scans, setScans] = useState<ScanRow[]>([]);
+  const [uploads, setUploads] = useState<UploadRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      try {
+        const { data: userData } = await supabase!.auth.getUser();
+        const userEmail = userData.user?.email?.toLowerCase() || "";
+        if (!mounted) return;
+        setEmail(userEmail);
+
+        let followRows: any[] = [];
+        let scanRows: any[] = [];
+        let uploadRows: any[] = [];
+
+        try {
+          const { data } = await supabase!
+            .from("track_followers")
+            .select("id,track_id,track_title,track_subtitle,user_email")
+            .eq("user_email", userEmail)
+            .order("id", { ascending: false })
+            .limit(20);
+          followRows = data || [];
+        } catch {}
+
+        try {
+          const { data } = await supabase!
+            .from("scan_events")
+            .select("id,track_id,track_title,track_subtitle,user_email")
+            .eq("user_email", userEmail)
+            .order("id", { ascending: false })
+            .limit(20);
+          scanRows = data || [];
+        } catch {}
+
+        try {
+          const { data } = await supabase!
+            .from("unreleased_tracks")
+            .select("id,title,artist,uploader_email")
+            .eq("uploader_email", userEmail)
+            .order("id", { ascending: false })
+            .limit(20);
+          uploadRows = data || [];
+        } catch {}
+
+        if (!mounted) return;
+        setFollows(followRows as FollowRow[]);
+        setScans(scanRows as ScanRow[]);
+        setUploads(uploadRows as UploadRow[]);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [supabase]);
+
+  async function handleLogout() {
+    try {
+      await supabase!.auth.signOut();
+    } finally {
+      router.replace("/login");
+      router.refresh();
+    }
+  }
+
   return (
-    <main style={s.page}>
-      <div style={s.phone}>
-        <div style={s.body}>
-          <div style={s.h}>PROFILE</div>
-          <div style={s.p}>Logout later (we’ll add it after).</div>
+    <main style={{ minHeight: "100vh", background: "#000", color: "#fff", padding: "24px 16px 120px" }}>
+      <div style={{ maxWidth: 820, margin: "0 auto", display: "grid", gap: 18 }}>
+        <div style={{ display: "grid", placeItems: "center", gap: 10 }}>
+          <Image src="/B-logo.png" alt="Banger" width={80} height={80} style={{ width: 80, height: 80 }} priority />
+          <div style={{ fontSize: 30, fontWeight: 900 }}>Profile</div>
+          <div style={{ opacity: 0.72 }}>{email || "Connected"}</div>
         </div>
-        <BottomNav />
+
+        <section style={boxStyle}>
+          <div style={sectionTitle}>FOLLOWED IDs</div>
+          <div style={{ display: "grid", gap: 12, marginTop: 14 }}>
+            {loading ? (
+              <div style={innerStyle}>Loading...</div>
+            ) : follows.length === 0 ? (
+              <div style={innerStyle}>No followed IDs yet</div>
+            ) : (
+              follows.map((item) => (
+                <div key={item.id} style={innerStyle}>
+                  <div style={{ fontSize: 20, fontWeight: 800 }}>{item.track_title || "Untitled"}</div>
+                  <div style={{ opacity: 0.72, marginTop: 6 }}>{item.track_subtitle || "unknown"}</div>
+                  <div style={{ color: "#3fe7ff", marginTop: 10, fontWeight: 700 }}>Following ID</div>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+
+        <section style={boxStyle}>
+          <div style={sectionTitle}>MY SCANS</div>
+          <div style={{ display: "grid", gap: 12, marginTop: 14 }}>
+            {loading ? (
+              <div style={innerStyle}>Loading...</div>
+            ) : scans.length === 0 ? (
+              <div style={innerStyle}>
+                <div style={{ fontSize: 18, fontWeight: 800 }}>No scans yet</div>
+                <div style={{ opacity: 0.72, marginTop: 6 }}>Scan music around you to build your personal history</div>
+              </div>
+            ) : (
+              scans.map((item) => (
+                <div key={item.id} style={innerStyle}>
+                  <div style={{ fontSize: 18, fontWeight: 800 }}>{item.track_title || "Untitled"}</div>
+                  <div style={{ opacity: 0.72, marginTop: 6 }}>{item.track_subtitle || "unknown"}</div>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+
+        <section style={boxStyle}>
+          <div style={sectionTitle}>MY UPLOADS</div>
+          <div style={{ display: "grid", gap: 12, marginTop: 14 }}>
+            {loading ? (
+              <div style={innerStyle}>Loading...</div>
+            ) : uploads.length === 0 ? (
+              <div style={innerStyle}>
+                <div style={{ fontSize: 18, fontWeight: 800 }}>No uploads yet</div>
+                <div style={{ opacity: 0.72, marginTop: 6 }}>Your BPRO uploads will appear here</div>
+              </div>
+            ) : (
+              uploads.map((item) => (
+                <div key={item.id} style={innerStyle}>
+                  <div style={{ fontSize: 18, fontWeight: 800 }}>{item.title || "Untitled"}</div>
+                  <div style={{ opacity: 0.72, marginTop: 6 }}>{item.artist || "unknown"}</div>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+
+        <button
+          type="button"
+          onClick={handleLogout}
+          style={{
+            marginTop: 8,
+            width: "100%",
+            padding: "18px 16px",
+            borderRadius: 22,
+            border: "1px solid rgba(255,255,255,0.12)",
+            background: "#fff",
+            color: "#000",
+            fontWeight: 900,
+            fontSize: 18,
+            cursor: "pointer",
+          }}
+        >
+          Log out
+        </button>
       </div>
     </main>
   );
 }
-const s: any = {
-  page: { minHeight: "100vh", background: "#0b0b0c", color: "#fff", display: "flex", justifyContent: "center" },
-  phone: { width: "100%", maxWidth: 420, minHeight: "100vh", display: "flex", flexDirection: "column" },
-  body: { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column" },
-  h: { letterSpacing: "0.12em", fontWeight: 900, opacity: 0.9 },
-  p: { marginTop: 8, opacity: 0.6, textAlign: "center", padding: "0 18px" },
+
+const boxStyle: React.CSSProperties = {
+  border: "1px solid rgba(0,229,255,0.14)",
+  borderRadius: 24,
+  padding: 18,
+  background: "radial-gradient(circle at top right, rgba(0,229,255,0.07), transparent 38%), rgba(255,255,255,0.02)",
+};
+
+const sectionTitle: React.CSSProperties = {
+  letterSpacing: "0.16em",
+  opacity: 0.72,
+  fontSize: 15,
+};
+
+const innerStyle: React.CSSProperties = {
+  borderRadius: 18,
+  background: "rgba(255,255,255,0.04)",
+  padding: 18,
 };
