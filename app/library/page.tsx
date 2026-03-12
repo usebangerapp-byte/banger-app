@@ -1,31 +1,24 @@
 import { createClient } from "@supabase/supabase-js";
 
+type Row = { track_title: string; scans: number };
+
 async function getRadar() {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  const { data: top } = await supabase
-    .from("tracks")
-    .select("id,title,artist,scan_count")
-    .order("scan_count", { ascending: false })
-    .limit(10);
+  const { data } = await supabase.rpc("top_scanned_tracks");
 
-  const banger = top?.[0] || null;
-  const rising = top?.slice(1, 10) || [];
-
-  const { data: most } = await supabase
-    .from("tracks")
-    .select("id,title,artist,scan_count")
-    .gte("scan_count", 5)
-    .order("scan_count", { ascending: false })
-    .limit(5);
+  const rows: Row[] = data || [];
+  const banger = rows[0] || null;
+  const rising = rows.slice(1, 10);
+  const most = rows.filter(r => r.scans >= 5).slice(0, 5);
 
   return { banger, rising, most };
 }
 
-export default async function Radar() {
+export default async function RadarPage() {
   const { banger, rising, most } = await getRadar();
 
   return (
@@ -33,11 +26,11 @@ export default async function Radar() {
       <h1 className="text-xl mb-8">RADAR</h1>
 
       <section className="mb-10">
-        <h2 className="text-xs uppercase text-gray-400 mb-3">Banger of the Week</h2>
+        <h2 className="text-xs uppercase text-gray-400 mb-2">Banger of the Week</h2>
         {banger ? (
           <>
-            <div>{banger.title}</div>
-            <div className="text-gray-500 text-sm">{banger.artist}</div>
+            <div>{banger.track_title}</div>
+            <div className="text-gray-500 text-sm">{banger.scans} scans</div>
           </>
         ) : (
           <div className="text-gray-500 text-sm">No signal yet</div>
@@ -45,21 +38,21 @@ export default async function Radar() {
       </section>
 
       <section className="mb-10">
-        <h2 className="text-xs uppercase text-gray-400 mb-3">Rising Bangers</h2>
-        {rising.map((t:any) => (
-          <div key={t.id} className="mb-2">
-            <div>{t.title}</div>
-            <div className="text-gray-500 text-sm">{t.artist}</div>
+        <h2 className="text-xs uppercase text-gray-400 mb-2">Rising Bangers</h2>
+        {rising.map((t, i) => (
+          <div key={i}>
+            <div>{t.track_title}</div>
+            <div className="text-gray-500 text-sm">{t.scans} scans</div>
           </div>
         ))}
       </section>
 
       <section>
-        <h2 className="text-xs uppercase text-gray-400 mb-3">Most Scanned</h2>
-        {most?.map((t:any) => (
-          <div key={t.id} className="mb-2">
-            <div>{t.title}</div>
-            <div className="text-gray-500 text-sm">{t.artist}</div>
+        <h2 className="text-xs uppercase text-gray-400 mb-2">Most Scanned</h2>
+        {most.map((t, i) => (
+          <div key={i}>
+            <div>{t.track_title}</div>
+            <div className="text-gray-500 text-sm">{t.scans} scans</div>
           </div>
         ))}
       </section>
