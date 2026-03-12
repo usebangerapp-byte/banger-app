@@ -200,19 +200,6 @@ export default function Home() {
           const fd = new FormData();
           fd.append("audio", blob, "sample.webm");
 
-          try {
-            const mod = await import("@supabase/supabase-js");
-            const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-            const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-            if (url && anon) {
-              const supabase = mod.createClient(url, anon);
-              const { data: auth } = await supabase.auth.getUser();
-              const userId = auth?.user?.id || "";
-              if (userId) fd.append("user_id", userId);
-            }
-          } catch {}
-
           const res = await fetch("/api/recognize", { method: "POST", body: fd });
           const data = await res.json();
 
