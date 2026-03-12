@@ -15,45 +15,6 @@ type TrackRow = {
   release_date?: string | null;
 };
 
-function MarqueeText({
-  text,
-  fontSize = 20,
-  fontWeight = 800,
-  opacity = 1,
-}: {
-  text: string;
-  fontSize?: number;
-  fontWeight?: number;
-  opacity?: number;
-}) {
-  const [active, setActive] = useState(false);
-
-  return (
-    <div
-      onClick={() => setActive((v) => !v)}
-      style={{
-        overflow: "hidden",
-        whiteSpace: "nowrap",
-        cursor: "pointer",
-        opacity,
-      }}
-      title="Click to scroll"
-    >
-      <div
-        style={{
-          display: "inline-block",
-          minWidth: "100%",
-          fontSize,
-          fontWeight,
-          animation: active ? "banger-marquee 8s linear infinite" : "none",
-        }}
-      >
-        {text}
-      </div>
-    </div>
-  );
-}
-
 export default function ChartsPage() {
   const supabase = createSupabaseBrowser();
   const [tracks, setTracks] = useState<TrackRow[]>([]);
@@ -66,14 +27,24 @@ export default function ChartsPage() {
 
     (async () => {
       try {
-        const { data, error } = await supabase!
-          .from("unreleased_tracks")
-          .select("id,title,artist,scan_count,snippet_path,allow_preview,release_date")
-          .order("scan_count", { ascending: false })
-          .limit(10);
+        let data: any[] | null = null;
+        let error: any = null;
 
-        if (!mounted) return;
+        try {
+          const res = await supabase!
+            .from("unreleased_tracks")
+            .select("id,title,artist,scan_count,snippet_path,allow_preview,release_date")
+            .order("scan_count", { ascending: false })
+            .limit(10);
+          data = res.data as any[] | null;
+          error = res.error;
+        } catch (e: any) {
+          error = e;
+        }
+
         if (error) throw error;
+        if (!mounted) return;
+
         setTracks((data || []) as TrackRow[]);
       } catch (e: any) {
         if (!mounted) return;
@@ -100,22 +71,13 @@ export default function ChartsPage() {
   }, [tracks]);
 
   function previewUrl(path: string) {
-    const clean = path.startsWith("snippets/") ? path : `snippets/${path}`;
-    const { data } = supabase!.storage.from("bpro_uploads").getPublicUrl(clean);
+    const clean = path.startsWith("snippets/") ? path.slice("snippets/".length) : path;
+    const { data } = supabase!.storage.from("snippets").getPublicUrl(clean);
     return data.publicUrl;
   }
 
   return (
     <main style={{ minHeight: "100vh", background: "#000", color: "#fff", padding: "24px 16px 120px" }}>
-      <style jsx global>{`
-        @keyframes banger-marquee {
-          0% { transform: translateX(0); }
-          10% { transform: translateX(0); }
-          90% { transform: translateX(calc(-100% + 260px)); }
-          100% { transform: translateX(0); }
-        }
-      `}</style>
-
       <div style={{ maxWidth: 820, margin: "0 auto", display: "grid", gap: 18 }}>
         <div style={{ display: "grid", placeItems: "center", gap: 10 }}>
           <Image src="/B-logo.png" alt="Banger" width={70} height={70} style={{ width: 70, height: 70 }} priority />
@@ -144,8 +106,9 @@ export default function ChartsPage() {
                     <div style={rankStyle}>{index + 1}</div>
 
                     <div style={{ display: "grid", gap: 8, minWidth: 0 }}>
-                      <MarqueeText text={track.title || "Untitled"} fontSize={20} fontWeight={800} />
-                      <MarqueeText text={track.artist || "unknown"} fontSize={16} fontWeight={600} opacity={0.72} />
+                      <div style={{ fontSize: 20, fontWeight: 800, lineHeight: 1.15 }}>
+                        {track.title || "Untitled"}
+                      </div>
 
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 10, opacity: 0.76, fontSize: 14 }}>
                         <span>{scans} scans</span>
@@ -170,16 +133,12 @@ export default function ChartsPage() {
 
                               document.querySelectorAll("audio[data-chart-preview='1']").forEach((node) => {
                                 const a = node as HTMLAudioElement;
-                                if (a !== audio) {
-                                  a.pause();
-                                  a.currentTime = 0;
-                                }
+                                if (a !== audio) a.pause();
                               });
 
                               if (audio.paused) {
-                                audio.play().then(() => {
-                                  setPlaying(track.id);
-                                }).catch(() => {});
+                                audio.play();
+                                setPlaying(track.id);
                               } else {
                                 audio.pause();
                                 setPlaying(null);
@@ -196,10 +155,7 @@ export default function ChartsPage() {
                         <audio
                           id={`preview-${track.id}`}
                           data-chart-preview="1"
-                          preload="none"
                           src={previewUrl(track.snippet_path!)}
-                          onPlay={() => setPlaying(track.id)}
-                          onPause={() => setPlaying((current) => (current === track.id ? null : current))}
                           onEnded={() => setPlaying((current) => (current === track.id ? null : current))}
                           style={{ display: "none" }}
                         />
