@@ -28,6 +28,7 @@ export default function FollowTrackButton({ trackTitle, trackSubtitle }: Props) 
         track_title: trackTitle,
         track_subtitle: trackSubtitle || "",
         user_id: userId,
+        device_id: userId,
       });
 
       if (error) {
