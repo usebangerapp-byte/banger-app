@@ -59,10 +59,11 @@ export default function ProfilePage() {
         } catch {}
 
         try {
+          const userId = userData.user?.id || "";
           const { data } = await supabase!
             .from("scan_events")
-            .select("id,track_id,track_title,track_subtitle,user_email")
-            .eq("user_email", userEmail)
+            .select("id,track_title,track_subtitle,user_id")
+            .eq("user_id", userId)
             .order("id", { ascending: false })
             .limit(20);
           scanRows = data || [];
