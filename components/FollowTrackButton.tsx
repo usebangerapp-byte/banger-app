@@ -9,14 +9,16 @@ type Props = {
   trackSubtitle?: string | null;
 };
 
-export default function FollowTrackButton({ trackId, trackTitle, trackSubtitle }: Props) {
+export default function FollowTrackButton({ trackTitle, trackSubtitle }: Props) {
   const supabase = createSupabaseBrowser();
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   async function handleFollow() {
     if (busy || done) return;
     setBusy(true);
+    setErrorMsg("");
 
     try {
       const { data } = await supabase!.auth.getUser();
@@ -29,7 +31,7 @@ export default function FollowTrackButton({ trackId, trackTitle, trackSubtitle }
       });
 
       if (error) {
-        console.error("follow error", error);
+        setErrorMsg(error.message || "Follow failed");
         return;
       }
 
@@ -40,21 +42,29 @@ export default function FollowTrackButton({ trackId, trackTitle, trackSubtitle }
   }
 
   return (
-    <button
-      type="button"
-      onClick={handleFollow}
-      disabled={busy || done}
-      style={{
-        padding: "10px 12px",
-        borderRadius: 14,
-        border: "1px solid rgba(255,255,255,0.12)",
-        background: done ? "#fff" : "rgba(255,255,255,0.05)",
-        color: done ? "#000" : "#fff",
-        fontWeight: 700,
-        cursor: busy || done ? "default" : "pointer",
-      }}
-    >
-      {done ? "Following ID" : busy ? "Saving..." : "Follow this ID"}
-    </button>
+    <div style={{ display: "grid", gap: 6 }}>
+      <button
+        type="button"
+        onClick={handleFollow}
+        disabled={busy || done}
+        style={{
+          padding: "10px 12px",
+          borderRadius: 14,
+          border: "1px solid rgba(255,255,255,0.12)",
+          background: done ? "#fff" : "rgba(255,255,255,0.05)",
+          color: done ? "#000" : "#fff",
+          fontWeight: 700,
+          cursor: busy || done ? "default" : "pointer",
+        }}
+      >
+        {done ? "Following ID" : busy ? "Saving..." : "Follow this ID"}
+      </button>
+
+      {errorMsg ? (
+        <div style={{ color: "#ff6b6b", fontSize: 12, maxWidth: 220 }}>
+          {errorMsg}
+        </div>
+      ) : null}
+    </div>
   );
 }
