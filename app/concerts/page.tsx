@@ -269,18 +269,28 @@ export default function ChartsPage() {
                         <button
                           type="button"
                           onClick={() => {
-                            const id = `preview-${track.id}`;
-                            let audio = (window as any)._bangerAudio;
-if(!audio){audio = new Audio();(window as any)._bangerAudio = audio;}
+                            let audio = (window as any)._bangerAudio as HTMLAudioElement | undefined;
+
+                            if (!audio) {
+                              audio = new Audio();
+                              (window as any)._bangerAudio = audio;
+                            }
+
                             if (!audio) return;
 
-                            document.querySelectorAll("audio[data-chart-preview='1']").forEach((node) => {
-                              const a = node as HTMLAudioElement;
-                              if (a !== audio) {
-                                a.pause();
-                                a.currentTime = 0;
-                              }
-                            });
+                            const nextSrc = previewUrl(track.snippet_path!);
+                            const currentTrackId = (window as any)._bangerAudioTrackId || null;
+
+                            if (currentTrackId !== track.id) {
+                              audio.pause();
+                              audio.currentTime = 0;
+                              audio.src = nextSrc;
+                              (window as any)._bangerAudioTrackId = track.id;
+
+                              audio.onplay = () => setPlaying(track.id);
+                              audio.onpause = () => setPlaying((current) => (current === track.id ? null : current));
+                              audio.onended = () => setPlaying((current) => (current === track.id ? null : current));
+                            }
 
                             if (audio.paused) {
                               audio.play().then(() => {
@@ -297,19 +307,6 @@ if(!audio){audio = new Audio();(window as any)._bangerAudio = audio;}
                         </button>
                       ) : null}
                     </div>
-
-                    {canPreview ? (
-                      <audio
-                        id={`preview-${track.id}`}
-                        data-chart-preview="1"
-                        preload="none"
-                        src={previewUrl(track.snippet_path!)}
-                        onPlay={() => setPlaying(track.id)}
-                        onPause={() => setPlaying((current) => (current === track.id ? null : current))}
-                        onEnded={() => setPlaying((current) => (current === track.id ? null : current))}
-                        style={{ display: "none" }}
-                      />
-                    ) : null}
                   </div>
                 </div>
               </div>
