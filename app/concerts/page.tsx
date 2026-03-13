@@ -19,7 +19,7 @@ type TrackRow = {
 
 function MarqueeText({
   text,
-  fontSize = 20,
+  fontSize = 18,
   fontWeight = 800,
   opacity = 1,
 }: {
@@ -63,6 +63,39 @@ function isReleased(releaseDate?: string | null) {
   return parsed.getTime() <= Date.now();
 }
 
+function normalize(v: string | null | undefined) {
+  return String(v || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+function buildSuggestions(rows: any[]) {
+  const set = new Set<string>();
+
+  rows.forEach((track) => {
+    const title = String(track.title || "").trim();
+    const artist = String(track.artist || "").trim();
+    if (title) set.add(title);
+    if (artist) set.add(artist);
+    if (title && artist) set.add(`${artist} - ${title}`);
+  });
+
+  return Array.from(set).slice(0, 40);
+}
+
+function matchesSearch(track: any, query: string) {
+  const q = normalize(query);
+  if (!q) return true;
+
+  const title = normalize(track.title);
+  const artist = normalize(track.artist);
+  const combo = normalize(`${track.artist || ""} ${track.title || ""}`);
+
+  return title.includes(q) || artist.includes(q) || combo.includes(q);
+}
+
 export default function ChartsPage() {
   const supabase = createSupabaseBrowser();
   const [tracks, setTracks] = useState<TrackRow[]>([]);
@@ -71,6 +104,8 @@ export default function ChartsPage() {
   const [playing, setPlaying] = useState<string | null>(null);
   const [showAllUnreleased, setShowAllUnreleased] = useState(false);
   const [showAllReleased, setShowAllReleased] = useState(false);
+  const [searchUnreleased, setSearchUnreleased] = useState("");
+  const [searchReleased, setSearchReleased] = useState("");
 
   useEffect(() => {
     let mounted = true;
@@ -111,15 +146,28 @@ export default function ChartsPage() {
     }));
   }, [tracks]);
 
-  const unreleasedRows = useMemo(
+  const unreleasedBase = useMemo(
     () => rows.filter((track: any) => !track.released).slice(0, 10),
     [rows]
   );
 
-  const releasedRows = useMemo(
+  const releasedBase = useMemo(
     () => rows.filter((track: any) => track.released).slice(0, 10),
     [rows]
   );
+
+  const unreleasedRows = useMemo(
+    () => unreleasedBase.filter((track: any) => matchesSearch(track, searchUnreleased)),
+    [unreleasedBase, searchUnreleased]
+  );
+
+  const releasedRows = useMemo(
+    () => releasedBase.filter((track: any) => matchesSearch(track, searchReleased)),
+    [releasedBase, searchReleased]
+  );
+
+  const unreleasedSuggestions = useMemo(() => buildSuggestions(unreleasedBase), [unreleasedBase]);
+  const releasedSuggestions = useMemo(() => buildSuggestions(releasedBase), [releasedBase]);
 
   function previewUrl(path: string) {
     const clean = path.startsWith("snippets/") ? path : `snippets/${path}`;
@@ -127,12 +175,36 @@ export default function ChartsPage() {
     return data.publicUrl;
   }
 
+  function renderSearch(
+    value: string,
+    setValue: (v: string) => void,
+    listId: string,
+    suggestions: string[]
+  ) {
+    return (
+      <div style={{ display: "grid", gap: 8, marginBottom: 12 }}>
+        <input
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          list={listId}
+          placeholder="Find your favourite DJ bangers"
+          style={searchInputStyle}
+        />
+        <datalist id={listId}>
+          {suggestions.map((item) => (
+            <option key={`${listId}-${item}`} value={item} />
+          ))}
+        </datalist>
+      </div>
+    );
+  }
+
   function renderTrackList(list: any[], kind: "unreleased" | "released", showAll: boolean) {
     const visible = showAll ? list : list.slice(0, 3);
 
     return (
       <>
-        <div style={{ display: "grid", gap: 12 }}>
+        <div style={{ display: "grid", gap: 10 }}>
           {visible.map((track, index) => {
             const scans = track.scan_count || 0;
             const canPreview = !!track.previewAllowed && !!track.snippet_path;
@@ -140,20 +212,20 @@ export default function ChartsPage() {
 
             return (
               <div key={track.id} style={rowStyle}>
-                <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 14, alignItems: "start" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "34px 1fr", gap: 12, alignItems: "start" }}>
                   <div style={rankStyle}>{index + 1}</div>
 
-                  <div style={{ display: "grid", gap: 8, minWidth: 0 }}>
-                    <MarqueeText text={track.title || "Untitled"} fontSize={20} fontWeight={800} />
-                    <MarqueeText text={track.artist || "unknown"} fontSize={16} fontWeight={600} opacity={0.72} />
+                  <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
+                    <MarqueeText text={track.title || "Untitled"} fontSize={17} fontWeight={800} />
+                    <MarqueeText text={track.artist || "unknown"} fontSize={14} fontWeight={600} opacity={0.64} />
 
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 10, opacity: 0.76, fontSize: 14 }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, opacity: 0.66, fontSize: 12 }}>
                       <span>{scans} scans</span>
                       <span>•</span>
-                      <span>Release date — {track.releaseDate}</span>
+                      <span>Release — {track.releaseDate}</span>
                     </div>
 
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 2 }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 2 }}>
                       {kind === "unreleased" ? (
                         <>
                           <FollowTrackButton
@@ -178,7 +250,7 @@ export default function ChartsPage() {
                           rel="noreferrer"
                           style={secondaryBtn}
                         >
-                          Listen on Spotify
+                          Spotify
                         </a>
                       ) : null}
 
@@ -189,7 +261,7 @@ export default function ChartsPage() {
                           rel="noreferrer"
                           style={secondaryBtn}
                         >
-                          Buy on Beatport
+                          Beatport
                         </a>
                       ) : null}
 
@@ -220,7 +292,7 @@ export default function ChartsPage() {
                           }}
                           style={secondaryBtn}
                         >
-                          {isPlaying ? "Pause preview" : "Listen preview"}
+                          {isPlaying ? "Pause" : "Preview"}
                         </button>
                       ) : null}
                     </div>
@@ -261,22 +333,22 @@ export default function ChartsPage() {
   }
 
   return (
-    <main style={{ minHeight: "100vh", background: "#000", color: "#fff", padding: "24px 16px 120px" }}>
+    <main style={{ minHeight: "100vh", background: "#000", color: "#fff", padding: "20px 14px 120px" }}>
       <style jsx global>{`
         @keyframes banger-marquee {
           0% { transform: translateX(0); }
           10% { transform: translateX(0); }
-          90% { transform: translateX(calc(-100% + 260px)); }
+          90% { transform: translateX(calc(-100% + 220px)); }
           100% { transform: translateX(0); }
         }
       `}</style>
 
-      <div style={{ maxWidth: 820, margin: "0 auto", display: "grid", gap: 18 }}>
-        <div style={{ display: "grid", placeItems: "center", gap: 10 }}>
-          <Image src="/B-logo.png" alt="Banger" width={70} height={70} style={{ width: 70, height: 70 }} priority />
-          <div style={{ fontSize: 30, fontWeight: 900, letterSpacing: "-0.02em" }}>Charts</div>
-          <div style={{ opacity: 0.72, textAlign: "center", maxWidth: 560 }}>
-            Top BANGER unreleased and released tracks by total scans.
+      <div style={{ maxWidth: 760, margin: "0 auto", display: "grid", gap: 14 }}>
+        <div style={{ display: "grid", placeItems: "center", gap: 8, marginBottom: 4 }}>
+          <Image src="/B-logo.png" alt="Banger" width={62} height={62} style={{ width: 62, height: 62 }} priority />
+          <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: "-0.03em" }}>Charts</div>
+          <div style={{ opacity: 0.62, textAlign: "center", maxWidth: 520, fontSize: 13 }}>
+            Underground signals. Premium curation. BANGER scans only.
           </div>
         </div>
 
@@ -288,9 +360,16 @@ export default function ChartsPage() {
           <>
             <section style={cardStyle}>
               <div style={sectionTitle}>TOP 10 BANGER UNRELEASED</div>
-              <div style={{ marginTop: 14 }}>
+              <div style={{ marginTop: 12 }}>
+                {renderSearch(
+                  searchUnreleased,
+                  setSearchUnreleased,
+                  "unreleased-search-list",
+                  unreleasedSuggestions
+                )}
+
                 {unreleasedRows.length === 0 ? (
-                  <div>No unreleased chart data yet.</div>
+                  <div style={{ opacity: 0.62, fontSize: 13 }}>No unreleased chart data yet.</div>
                 ) : (
                   renderTrackList(unreleasedRows, "unreleased", showAllUnreleased)
                 )}
@@ -299,9 +378,16 @@ export default function ChartsPage() {
 
             <section style={cardStyle}>
               <div style={sectionTitle}>TOP 10 BANGER RELEASED</div>
-              <div style={{ marginTop: 14 }}>
+              <div style={{ marginTop: 12 }}>
+                {renderSearch(
+                  searchReleased,
+                  setSearchReleased,
+                  "released-search-list",
+                  releasedSuggestions
+                )}
+
                 {releasedRows.length === 0 ? (
-                  <div>No released chart data yet.</div>
+                  <div style={{ opacity: 0.62, fontSize: 13 }}>No released chart data yet.</div>
                 ) : (
                   renderTrackList(releasedRows, "released", showAllReleased)
                 )}
@@ -315,42 +401,45 @@ export default function ChartsPage() {
 }
 
 const cardStyle: React.CSSProperties = {
-  border: "1px solid rgba(255,255,255,0.10)",
-  background: "rgba(255,255,255,0.03)",
-  borderRadius: 22,
-  padding: 18,
+  border: "1px solid rgba(255,255,255,0.08)",
+  background: "rgba(255,255,255,0.025)",
+  borderRadius: 18,
+  padding: 14,
+  boxShadow: "0 12px 30px rgba(0,0,0,0.32)",
+  backdropFilter: "blur(10px)",
 };
 
 const rowStyle: React.CSSProperties = {
-  border: "1px solid rgba(255,255,255,0.08)",
-  background: "rgba(255,255,255,0.03)",
-  borderRadius: 22,
-  padding: 16,
+  border: "1px solid rgba(255,255,255,0.06)",
+  background: "rgba(255,255,255,0.02)",
+  borderRadius: 16,
+  padding: 12,
 };
 
 const rankStyle: React.CSSProperties = {
-  width: 40,
-  height: 40,
-  borderRadius: 12,
+  width: 34,
+  height: 34,
+  borderRadius: 10,
   display: "grid",
   placeItems: "center",
-  background: "rgba(255,255,255,0.06)",
-  border: "1px solid rgba(255,255,255,0.08)",
+  background: "rgba(255,255,255,0.05)",
+  border: "1px solid rgba(255,255,255,0.06)",
   fontWeight: 900,
+  fontSize: 13,
 };
 
 const sectionTitle: React.CSSProperties = {
-  fontSize: 14,
+  fontSize: 12,
   fontWeight: 900,
   letterSpacing: "0.18em",
-  opacity: 0.75,
+  opacity: 0.7,
 };
 
 const secondaryBtn: React.CSSProperties = {
-  padding: "10px 12px",
-  borderRadius: 14,
-  border: "1px solid rgba(255,255,255,0.12)",
-  background: "rgba(255,255,255,0.05)",
+  padding: "8px 10px",
+  borderRadius: 12,
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(255,255,255,0.04)",
   color: "#fff",
   fontWeight: 700,
   cursor: "pointer",
@@ -358,15 +447,28 @@ const secondaryBtn: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
+  fontSize: 12,
 };
 
 const showMoreBtn: React.CSSProperties = {
   marginTop: 12,
-  padding: "10px 14px",
-  background: "#111",
-  border: "1px solid #333",
+  padding: "9px 12px",
+  background: "#0d0d0d",
+  border: "1px solid rgba(255,255,255,0.10)",
   borderRadius: 10,
   color: "#fff",
   fontWeight: 700,
   cursor: "pointer",
+  fontSize: 12,
+};
+
+const searchInputStyle: React.CSSProperties = {
+  width: "100%",
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(255,255,255,0.03)",
+  color: "#fff",
+  borderRadius: 12,
+  padding: "11px 12px",
+  outline: "none",
+  fontSize: 13,
 };
