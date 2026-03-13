@@ -14,9 +14,9 @@ type FollowRow = {
 
 type ScanRow = {
   id: number | string;
-  track_id?: string | null;
   track_title: string | null;
   track_subtitle: string | null;
+  user_id?: string | null;
 };
 
 type UploadRow = {
@@ -33,6 +33,7 @@ export default function ProfilePage() {
   const [scans, setScans] = useState<ScanRow[]>([]);
   const [uploads, setUploads] = useState<UploadRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAllScans, setShowAllScans] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -41,6 +42,7 @@ export default function ProfilePage() {
       try {
         const { data: userData } = await supabase!.auth.getUser();
         const userEmail = userData.user?.email?.toLowerCase() || "";
+        const userId = userData.user?.id || "";
         if (!mounted) return;
         setEmail(userEmail);
 
@@ -59,14 +61,16 @@ export default function ProfilePage() {
         } catch {}
 
         try {
-          const userId = userData.user?.id || "";
           const { data } = await supabase!
             .from("scan_events")
             .select("id,track_title,track_subtitle,user_id")
             .eq("user_id", userId)
             .order("id", { ascending: false })
             .limit(20);
-          scanRows = data || [];
+          scanRows = (data || []).filter((row: any) => {
+            const title = (row?.track_title || "").trim().toLowerCase();
+            return title && title !== "unknown";
+          });
         } catch {}
 
         try {
@@ -141,12 +145,31 @@ export default function ProfilePage() {
                 <div style={{ opacity: 0.72, marginTop: 6 }}>Scan music around you to build your personal history</div>
               </div>
             ) : (
-              scans.map((item) => (
-                <div key={item.id} style={innerStyle}>
-                  <div style={{ fontSize: 18, fontWeight: 800 }}>{item.track_title || "Untitled"}</div>
-                  <div style={{ opacity: 0.72, marginTop: 6 }}>{item.track_subtitle || "unknown"}</div>
-                </div>
-              ))
+              <>
+                {(showAllScans ? scans : scans.slice(0, 3)).map((item) => (
+                  <div key={item.id} style={innerStyle}>
+                    <div style={{ fontSize: 18, fontWeight: 800 }}>{item.track_title || "Untitled"}</div>
+                    <div style={{ opacity: 0.72, marginTop: 6 }}>{item.track_subtitle || "unknown"}</div>
+                  </div>
+                ))}
+                {!showAllScans && scans.length > 3 && (
+                  <button
+                    onClick={() => setShowAllScans(true)}
+                    style={{
+                      marginTop: 10,
+                      padding: "10px 14px",
+                      background: "#111",
+                      border: "1px solid #333",
+                      borderRadius: 10,
+                      color: "#fff",
+                      fontWeight: 700,
+                      cursor: "pointer"
+                    }}
+                  >
+                    See all scans
+                  </button>
+                )}
+              </>
             )}
           </div>
         </section>
@@ -157,10 +180,7 @@ export default function ProfilePage() {
             {loading ? (
               <div style={innerStyle}>Loading...</div>
             ) : uploads.length === 0 ? (
-              <div style={innerStyle}>
-                <div style={{ fontSize: 18, fontWeight: 800 }}>No uploads yet</div>
-                <div style={{ opacity: 0.72, marginTop: 6 }}>Your BPRO uploads will appear here</div>
-              </div>
+              <div style={innerStyle}>No uploads yet</div>
             ) : (
               uploads.map((item) => (
                 <div key={item.id} style={innerStyle}>
@@ -172,23 +192,8 @@ export default function ProfilePage() {
           </div>
         </section>
 
-        <button
-          type="button"
-          onClick={handleLogout}
-          style={{
-            marginTop: 8,
-            width: "100%",
-            padding: "18px 16px",
-            borderRadius: 22,
-            border: "1px solid rgba(255,255,255,0.12)",
-            background: "#fff",
-            color: "#000",
-            fontWeight: 900,
-            fontSize: 18,
-            cursor: "pointer",
-          }}
-        >
-          Log out
+        <button onClick={handleLogout} style={logoutBtnStyle}>
+          Logout
         </button>
       </div>
     </main>
@@ -196,20 +201,34 @@ export default function ProfilePage() {
 }
 
 const boxStyle: React.CSSProperties = {
-  border: "1px solid rgba(0,229,255,0.14)",
-  borderRadius: 24,
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(255,255,255,0.04)",
+  borderRadius: 22,
   padding: 18,
-  background: "radial-gradient(circle at top right, rgba(0,229,255,0.07), transparent 38%), rgba(255,255,255,0.02)",
-};
-
-const sectionTitle: React.CSSProperties = {
-  letterSpacing: "0.16em",
-  opacity: 0.72,
-  fontSize: 15,
+  boxShadow: "0 14px 34px rgba(0,0,0,0.35)",
 };
 
 const innerStyle: React.CSSProperties = {
+  border: "1px solid rgba(255,255,255,0.08)",
+  background: "rgba(255,255,255,0.03)",
   borderRadius: 18,
-  background: "rgba(255,255,255,0.04)",
-  padding: 18,
+  padding: 16,
+};
+
+const sectionTitle: React.CSSProperties = {
+  fontSize: 14,
+  fontWeight: 900,
+  letterSpacing: "0.18em",
+  opacity: 0.75,
+};
+
+const logoutBtnStyle: React.CSSProperties = {
+  marginTop: 8,
+  border: "1px solid rgba(255,255,255,0.14)",
+  background: "#0f0f0f",
+  color: "#fff",
+  borderRadius: 16,
+  padding: "14px 16px",
+  fontWeight: 900,
+  cursor: "pointer",
 };
