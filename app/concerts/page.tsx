@@ -155,12 +155,18 @@ export default function ChartsPage() {
 
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 2 }}>
                         <FollowTrackButton
-
-<button onClick={() => alert("You will be notified when this track releases on Beatport")} style={secondaryBtn}>Notify me</button>
                           trackId={track.id}
                           trackTitle={track.title || "Untitled"}
                           trackSubtitle={track.artist || "unknown"}
                         />
+
+                        <button
+                          type="button"
+                          onClick={() => alert("You will be notified when this track releases on Beatport")}
+                          style={secondaryBtn}
+                        >
+                          Notify me
+                        </button>
 
                         {canPreview ? (
                           <button
