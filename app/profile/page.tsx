@@ -53,8 +53,8 @@ export default function ProfilePage() {
         try {
           const { data } = await supabase!
             .from("track_followers")
-            .select("id,track_id,track_title,track_subtitle,user_email")
-            .eq("user_email", userEmail)
+            .select("id,track_id,track_title,track_subtitle,user_id")
+            .eq("user_id", userId)
             .order("id", { ascending: false })
             .limit(20);
           followRows = data || [];

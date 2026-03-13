@@ -20,32 +20,16 @@ export default function FollowTrackButton({ trackId, trackTitle, trackSubtitle }
 
     try {
       const { data } = await supabase!.auth.getUser();
-      const email = data.user?.email?.toLowerCase() || null;
+      const userId = data.user?.id || null;
 
-      const payloadBase = {
+      const { error } = await supabase!.from("track_followers").insert({
         track_id: trackId || null,
         track_title: trackTitle,
         track_subtitle: trackSubtitle || "",
-      };
+        user_id: userId,
+      });
 
-      let ok = false;
-
-      try {
-        const { error } = await supabase!.from("track_followers").insert({
-          ...payloadBase,
-          user_email: email,
-        });
-        if (!error) ok = true;
-      } catch {}
-
-      if (!ok) {
-        try {
-          const { error } = await supabase!.from("track_followers").insert(payloadBase);
-          if (!error) ok = true;
-        } catch {}
-      }
-
-      if (ok) setDone(true);
+      if (!error) setDone(true);
     } finally {
       setBusy(false);
     }
@@ -66,7 +50,7 @@ export default function FollowTrackButton({ trackId, trackTitle, trackSubtitle }
         cursor: busy || done ? "default" : "pointer",
       }}
     >
-      {done ? "Following ID" : busy ? "Saving..." : "Notify me"}
+      {done ? "Following ID" : busy ? "Saving..." : "Follow this ID"}
     </button>
   );
 }
