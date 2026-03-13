@@ -39,6 +39,22 @@ export default function BproPage() {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      try {
+        const { data } = await createSupabaseBrowser()!.auth.getUser();
+        const email = data.user?.email || "";
+        if (mounted && email) setUploaderEmail(email);
+      } catch {}
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
   const supabase = createSupabaseBrowser();
   const audioInputRef = useRef<HTMLInputElement | null>(null);
   const artworkInputRef = useRef<HTMLInputElement | null>(null);
