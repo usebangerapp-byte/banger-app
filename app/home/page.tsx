@@ -200,6 +200,9 @@ export default function Home() {
           const fd = new FormData();
           fd.append("audio", blob, "sample.webm");
 
+const region = "Ibiza"; // temporary default
+fd.append("region", region);
+
           try {
             const mod = await import("@supabase/supabase-js");
             const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
