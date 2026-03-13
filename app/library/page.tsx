@@ -110,35 +110,35 @@ async function getRadar() {
 
   const rising24h =
     [...grouped24h]
+      .filter((t) => t.scans >= 3)
       .sort((a, b) => {
         if (b.scans !== a.scans) return b.scans - a.scans
         return String(b.latest_created_at || "").localeCompare(String(a.latest_created_at || ""))
       })[0] || null
 
-  const weekSorted = [...grouped7d].sort((a, b) => {
-    if (b.scans !== a.scans) return b.scans - a.scans
-    return String(b.latest_created_at || "").localeCompare(String(a.latest_created_at || ""))
-  })
+  const weekSorted = [...grouped7d]
+    .filter((t) => t.scans >= 5)
+    .sort((a, b) => {
+      if (b.scans !== a.scans) return b.scans - a.scans
+      return String(b.latest_created_at || "").localeCompare(String(a.latest_created_at || ""))
+    })
 
   const weekTop = weekSorted.slice(0, 3)
   const weekMore = weekSorted.slice(3, 10)
 
-  const allCounts = new Map<string, number>()
-  for (const t of groupedAll) {
-    allCounts.set(keyOf(t.track_title, t.track_subtitle || ""), t.scans)
-  }
-
   const latestSorted = [...groupedAll]
-    .filter((t) => (allCounts.get(keyOf(t.track_title, t.track_subtitle || "")) || 0) >= 10)
+    .filter((t) => t.scans >= 10)
     .sort((a, b) => String(b.latest_created_at || "").localeCompare(String(a.latest_created_at || "")))
 
   const latestTop = latestSorted.slice(0, 3)
   const latestMore = latestSorted.slice(3, 10)
 
-  const mostSorted = [...groupedAll].sort((a, b) => {
-    if (b.scans !== a.scans) return b.scans - a.scans
-    return String(b.latest_created_at || "").localeCompare(String(a.latest_created_at || ""))
-  })
+  const mostSorted = [...groupedAll]
+    .filter((t) => t.scans >= 10)
+    .sort((a, b) => {
+      if (b.scans !== a.scans) return b.scans - a.scans
+      return String(b.latest_created_at || "").localeCompare(String(a.latest_created_at || ""))
+    })
 
   const mostTop = mostSorted.slice(0, 3)
   const mostMore = mostSorted.slice(3, 10)
@@ -156,21 +156,24 @@ async function getRadar() {
     .slice(0, 3)
     .map(([region]) => region)
 
-  const trendingRegions: RegionBlock[] = topRegions.map((region) => {
-    const rows = scans7d.filter((e) => String(e.region || "").trim() === region)
-    const tracks = groupTracks(rows)
-      .sort((a, b) => {
-        if (b.scans !== a.scans) return b.scans - a.scans
-        return String(b.latest_created_at || "").localeCompare(String(a.latest_created_at || ""))
-      })
-      .slice(0, 3)
+  const trendingRegions: RegionBlock[] = topRegions
+    .map((region) => {
+      const rows = scans7d.filter((e) => String(e.region || "").trim() === region)
+      const tracks = groupTracks(rows)
+        .filter((t) => t.scans >= 3)
+        .sort((a, b) => {
+          if (b.scans !== a.scans) return b.scans - a.scans
+          return String(b.latest_created_at || "").localeCompare(String(a.latest_created_at || ""))
+        })
+        .slice(0, 3)
 
-    return {
-      region,
-      total_scans: regionTotals.get(region) || 0,
-      tracks,
-    }
-  })
+      return {
+        region,
+        total_scans: regionTotals.get(region) || 0,
+        tracks,
+      }
+    })
+    .filter((b) => b.tracks.length > 0)
 
   const wantedMap = new Map<string, WantedTrack>()
 
@@ -190,6 +193,7 @@ async function getRadar() {
   }
 
   const mostWanted = Array.from(wantedMap.values())
+    .filter((t) => t.followers >= 2)
     .sort((a, b) => b.followers - a.followers)
     .slice(0, 5)
 
@@ -206,25 +210,64 @@ async function getRadar() {
   }
 }
 
+function MetaLine({ children }: { children: React.ReactNode }) {
+  return <div style={{ fontSize: 12, color: "rgba(255,255,255,0.60)" }}>{children}</div>
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        fontSize: 11,
+        fontWeight: 900,
+        letterSpacing: "0.18em",
+        color: "rgba(255,255,255,0.62)",
+        marginBottom: 12,
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+
 function TrackRow({ t }: { t: RadarTrack }) {
   return (
-    <div className="mb-3">
-      <div>{t.track_title}</div>
-      <div className="text-gray-500 text-sm">
+    <div style={rowStyle}>
+      <div style={{ fontSize: 16, fontWeight: 800, lineHeight: 1.15 }}>{t.track_title}</div>
+      <MetaLine>
         {t.track_subtitle || "Unknown"} · {t.scans} scans
-      </div>
+      </MetaLine>
     </div>
   )
 }
 
 function WantedRow({ t }: { t: WantedTrack }) {
   return (
-    <div className="mb-3">
-      <div>{t.track_title}</div>
-      <div className="text-gray-500 text-sm">
+    <div style={rowStyle}>
+      <div style={{ fontSize: 16, fontWeight: 800, lineHeight: 1.15 }}>{t.track_title}</div>
+      <MetaLine>
         {t.track_subtitle || "Unknown"} · {t.followers} follows
-      </div>
+      </MetaLine>
     </div>
+  )
+}
+
+function ShowMoreBlock({
+  items,
+  renderItem,
+}: {
+  items: any[]
+  renderItem: (item: any, index: number) => React.ReactNode
+}) {
+  if (items.length === 0) return null
+
+  return (
+    <details style={{ marginTop: 8 }}>
+      <summary style={summaryStyle}>Show more</summary>
+      <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+        {items.map((item, index) => renderItem(item, index))}
+      </div>
+    </details>
   )
 }
 
@@ -242,112 +285,156 @@ export default async function RadarPage() {
   } = await getRadar()
 
   return (
-    <main className="max-w-3xl mx-auto p-6 text-white">
-      <h1 className="text-xl mb-8">RADAR</h1>
-
-      <section className="mb-10">
-        <h2 className="text-xs uppercase text-gray-400 mb-2">Rising 24h</h2>
-        {rising24h ? (
-          <>
-            <div>{rising24h.track_title}</div>
-            <div className="text-gray-500 text-sm">
-              {rising24h.track_subtitle || "Unknown"} · {rising24h.scans} scans
-            </div>
-          </>
-        ) : (
-          <div className="text-gray-500 text-sm">No signal yet</div>
-        )}
-      </section>
-
-      <section className="mb-10">
-        <h2 className="text-xs uppercase text-gray-400 mb-2">Bangers of the Week</h2>
-        {weekTop.length === 0 ? (
-          <div className="text-gray-500 text-sm">No signal yet</div>
-        ) : (
-          <>
-            {weekTop.map((t, i) => <TrackRow key={`week-top-${i}`} t={t} />)}
-            {weekMore.length > 0 && (
-              <details className="mt-2">
-                <summary className="cursor-pointer text-sm text-gray-400">Show more</summary>
-                <div className="mt-3">
-                  {weekMore.map((t, i) => <TrackRow key={`week-more-${i}`} t={t} />)}
-                </div>
-              </details>
-            )}
-          </>
-        )}
-      </section>
-
-      <section className="mb-10">
-        <h2 className="text-xs uppercase text-gray-400 mb-2">Latest Signals</h2>
-        {latestTop.length === 0 ? (
-          <div className="text-gray-500 text-sm">No signal yet</div>
-        ) : (
-          <>
-            {latestTop.map((t, i) => <TrackRow key={`latest-top-${i}`} t={t} />)}
-            {latestMore.length > 0 && (
-              <details className="mt-2">
-                <summary className="cursor-pointer text-sm text-gray-400">Show more</summary>
-                <div className="mt-3">
-                  {latestMore.map((t, i) => <TrackRow key={`latest-more-${i}`} t={t} />)}
-                </div>
-              </details>
-            )}
-          </>
-        )}
-      </section>
-
-      <section className="mb-10">
-        <h2 className="text-xs uppercase text-gray-400 mb-2">Trending In</h2>
-        {trendingRegions.length === 0 ? (
-          <div className="text-gray-500 text-sm">No regional signal yet</div>
-        ) : (
-          <div className="grid gap-6">
-            {trendingRegions.map((block) => (
-              <div key={block.region}>
-                <div className="mb-2 font-semibold">
-                  {block.region} · {block.total_scans} scans
-                </div>
-                {block.tracks.length === 0 ? (
-                  <div className="text-gray-500 text-sm">No signal yet</div>
-                ) : (
-                  block.tracks.map((t, i) => (
-                    <TrackRow key={`${block.region}-${i}`} t={t} />
-                  ))
-                )}
-              </div>
-            ))}
+    <main style={{ minHeight: "100vh", background: "#000", color: "#fff", padding: "20px 14px 120px" }}>
+      <div style={{ maxWidth: 760, margin: "0 auto", display: "grid", gap: 14 }}>
+        <div style={{ display: "grid", placeItems: "center", gap: 8, marginBottom: 2 }}>
+          <div style={{ fontSize: 52, lineHeight: 1, opacity: 0.92 }}>B</div>
+          <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: "-0.03em" }}>Radar</div>
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.58)", textAlign: "center", maxWidth: 520 }}>
+            Curated club signals only. No noise. No weak scans.
           </div>
-        )}
-      </section>
+        </div>
 
-      <section className="mb-10">
-        <h2 className="text-xs uppercase text-gray-400 mb-2">Most Wanted IDs</h2>
-        {mostWanted.length === 0 ? (
-          <div className="text-gray-500 text-sm">No followed IDs yet</div>
-        ) : (
-          mostWanted.map((t, i) => <WantedRow key={`wanted-${i}`} t={t} />)
-        )}
-      </section>
+        <section style={heroStyle}>
+          <SectionTitle>RISING 24H</SectionTitle>
+          {rising24h ? (
+            <>
+              <div style={{ fontSize: 24, fontWeight: 900, lineHeight: 1.05 }}>{rising24h.track_title}</div>
+              <div style={{ fontSize: 16, color: "rgba(255,255,255,0.68)", marginTop: 6 }}>
+                {rising24h.track_subtitle || "Unknown"}
+              </div>
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.54)", marginTop: 12 }}>
+                {rising24h.scans} scans in the last 24h
+              </div>
+            </>
+          ) : (
+            <div style={{ fontSize: 14, color: "rgba(255,255,255,0.55)" }}>No signal yet</div>
+          )}
+        </section>
 
-      <section>
-        <h2 className="text-xs uppercase text-gray-400 mb-2">Most Scanned</h2>
-        {mostTop.length === 0 ? (
-          <div className="text-gray-500 text-sm">No signal yet</div>
-        ) : (
-          <>
-            {mostTop.map((t, i) => <TrackRow key={`most-top-${i}`} t={t} />)}
-            {mostMore.length > 0 && (
-              <details className="mt-2">
-                <summary className="cursor-pointer text-sm text-gray-400">Show more</summary>
-                <div className="mt-3">
-                  {mostMore.map((t, i) => <TrackRow key={`most-more-${i}`} t={t} />)}
+        <section style={cardStyle}>
+          <SectionTitle>BANGERS OF THE WEEK</SectionTitle>
+          {weekTop.length === 0 ? (
+            <MetaLine>No signal yet</MetaLine>
+          ) : (
+            <>
+              <div style={{ display: "grid", gap: 8 }}>
+                {weekTop.map((t, i) => <TrackRow key={`week-top-${i}`} t={t} />)}
+              </div>
+              <ShowMoreBlock
+                items={weekMore}
+                renderItem={(t, i) => <TrackRow key={`week-more-${i}`} t={t} />}
+              />
+            </>
+          )}
+        </section>
+
+        <section style={cardStyle}>
+          <SectionTitle>LATEST SIGNALS</SectionTitle>
+          {latestTop.length === 0 ? (
+            <MetaLine>No signal yet</MetaLine>
+          ) : (
+            <>
+              <div style={{ display: "grid", gap: 8 }}>
+                {latestTop.map((t, i) => <TrackRow key={`latest-top-${i}`} t={t} />)}
+              </div>
+              <ShowMoreBlock
+                items={latestMore}
+                renderItem={(t, i) => <TrackRow key={`latest-more-${i}`} t={t} />}
+              />
+            </>
+          )}
+        </section>
+
+        <section style={cardStyle}>
+          <SectionTitle>TRENDING IN</SectionTitle>
+          {trendingRegions.length === 0 ? (
+            <MetaLine>No regional signal yet</MetaLine>
+          ) : (
+            <div style={{ display: "grid", gap: 12 }}>
+              {trendingRegions.map((block) => (
+                <div key={block.region} style={regionCardStyle}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 10 }}>
+                    <div style={{ fontSize: 15, fontWeight: 800 }}>{block.region}</div>
+                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.52)" }}>{block.total_scans} scans</div>
+                  </div>
+                  <div style={{ display: "grid", gap: 8 }}>
+                    {block.tracks.map((t, i) => (
+                      <TrackRow key={`${block.region}-${i}`} t={t} />
+                    ))}
+                  </div>
                 </div>
-              </details>
-            )}
-          </>
-        )}
-      </section>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section style={cardStyle}>
+          <SectionTitle>MOST WANTED IDS</SectionTitle>
+          {mostWanted.length === 0 ? (
+            <MetaLine>No followed IDs yet</MetaLine>
+          ) : (
+            <div style={{ display: "grid", gap: 8 }}>
+              {mostWanted.map((t, i) => <WantedRow key={`wanted-${i}`} t={t} />)}
+            </div>
+          )}
+        </section>
+
+        <section style={cardStyle}>
+          <SectionTitle>MOST SCANNED</SectionTitle>
+          {mostTop.length === 0 ? (
+            <MetaLine>No signal yet</MetaLine>
+          ) : (
+            <>
+              <div style={{ display: "grid", gap: 8 }}>
+                {mostTop.map((t, i) => <TrackRow key={`most-top-${i}`} t={t} />)}
+              </div>
+              <ShowMoreBlock
+                items={mostMore}
+                renderItem={(t, i) => <TrackRow key={`most-more-${i}`} t={t} />}
+              />
+            </>
+          )}
+        </section>
+      </div>
     </main>
   )
+}
+
+const heroStyle: React.CSSProperties = {
+  border: "1px solid rgba(255,255,255,0.08)",
+  background: "linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.015))",
+  borderRadius: 18,
+  padding: 18,
+  boxShadow: "0 12px 28px rgba(0,0,0,0.34)",
+}
+
+const cardStyle: React.CSSProperties = {
+  border: "1px solid rgba(255,255,255,0.08)",
+  background: "rgba(255,255,255,0.025)",
+  borderRadius: 18,
+  padding: 14,
+  boxShadow: "0 12px 28px rgba(0,0,0,0.28)",
+}
+
+const regionCardStyle: React.CSSProperties = {
+  border: "1px solid rgba(255,255,255,0.06)",
+  background: "rgba(255,255,255,0.018)",
+  borderRadius: 14,
+  padding: 12,
+}
+
+const rowStyle: React.CSSProperties = {
+  border: "1px solid rgba(255,255,255,0.06)",
+  background: "rgba(255,255,255,0.018)",
+  borderRadius: 14,
+  padding: 10,
+}
+
+const summaryStyle: React.CSSProperties = {
+  cursor: "pointer",
+  fontSize: 12,
+  color: "rgba(255,255,255,0.62)",
+  fontWeight: 700,
+  listStyle: "none",
 }
