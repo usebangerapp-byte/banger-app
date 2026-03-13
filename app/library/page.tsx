@@ -21,6 +21,12 @@ type RegionBlock = {
   tracks: RadarTrack[]
 }
 
+type WantedTrack = {
+  track_title: string
+  track_subtitle?: string
+  followers: number
+}
+
 function keyOf(title: string, subtitle: string) {
   return `${title}|${subtitle}`
 }
@@ -71,6 +77,7 @@ async function getRadar() {
       mostTop: [] as RadarTrack[],
       mostMore: [] as RadarTrack[],
       trendingRegions: [] as RegionBlock[],
+      mostWanted: [] as WantedTrack[],
     }
   }
 
@@ -84,6 +91,11 @@ async function getRadar() {
     .limit(2000)
 
   const scans: ScanRow[] = Array.isArray(data) ? data : []
+
+  const { data: followerRows } = await supabase
+    .from("track_followers")
+    .select("track_title,track_subtitle,device_id")
+    .limit(2000)
 
   const now = Date.now()
   const h24 = new Date(now - 24 * 60 * 60 * 1000).toISOString()
@@ -160,6 +172,27 @@ async function getRadar() {
     }
   })
 
+  const wantedMap = new Map<string, WantedTrack>()
+
+  for (const row of Array.isArray(followerRows) ? followerRows : []) {
+    const title = String(row?.track_title || "").trim()
+    const subtitle = String(row?.track_subtitle || "").trim()
+    if (!title || title.toLowerCase() === "unknown") continue
+
+    const key = keyOf(title, subtitle)
+    const current = wantedMap.get(key) || {
+      track_title: title,
+      track_subtitle: subtitle,
+      followers: 0,
+    }
+    current.followers += 1
+    wantedMap.set(key, current)
+  }
+
+  const mostWanted = Array.from(wantedMap.values())
+    .sort((a, b) => b.followers - a.followers)
+    .slice(0, 5)
+
   return {
     rising24h,
     weekTop,
@@ -169,6 +202,7 @@ async function getRadar() {
     mostTop,
     mostMore,
     trendingRegions,
+    mostWanted,
   }
 }
 
@@ -178,6 +212,17 @@ function TrackRow({ t }: { t: RadarTrack }) {
       <div>{t.track_title}</div>
       <div className="text-gray-500 text-sm">
         {t.track_subtitle || "Unknown"} · {t.scans} scans
+      </div>
+    </div>
+  )
+}
+
+function WantedRow({ t }: { t: WantedTrack }) {
+  return (
+    <div className="mb-3">
+      <div>{t.track_title}</div>
+      <div className="text-gray-500 text-sm">
+        {t.track_subtitle || "Unknown"} · {t.followers} follows
       </div>
     </div>
   )
@@ -193,6 +238,7 @@ export default async function RadarPage() {
     mostTop,
     mostMore,
     trendingRegions,
+    mostWanted,
   } = await getRadar()
 
   return (
@@ -272,6 +318,15 @@ export default async function RadarPage() {
               </div>
             ))}
           </div>
+        )}
+      </section>
+
+      <section className="mb-10">
+        <h2 className="text-xs uppercase text-gray-400 mb-2">Most Wanted IDs</h2>
+        {mostWanted.length === 0 ? (
+          <div className="text-gray-500 text-sm">No followed IDs yet</div>
+        ) : (
+          mostWanted.map((t, i) => <WantedRow key={`wanted-${i}`} t={t} />)
         )}
       </section>
 
