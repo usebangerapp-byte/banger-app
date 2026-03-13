@@ -14,7 +14,7 @@ export async function POST(req: Request) {
 
     const file = formData.get('file') as File | null
     const title = String(formData.get('title') || '').trim()
-    const artist = String(formData.get('artist') || '').trim()
+    const artist = String(formData.get('artist') || formData.get('name') || '').trim()
     const uploaderEmail = String(formData.get('uploader_email') || '').trim()
     const releaseDateRaw = String(formData.get('release_date') || '').trim()
     const allowPreviewRaw = String(formData.get('allow_preview') || 'true').trim()
