@@ -13,12 +13,10 @@ export default function FollowTrackButton({ trackTitle, trackSubtitle }: Props) 
   const supabase = createSupabaseBrowser();
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
 
   async function handleFollow() {
     if (busy || done) return;
     setBusy(true);
-    setErrorMsg("");
 
     try {
       const { data } = await supabase!.auth.getUser();
@@ -32,7 +30,12 @@ export default function FollowTrackButton({ trackTitle, trackSubtitle }: Props) 
       });
 
       if (error) {
-        setErrorMsg(error.message || "Follow failed");
+        const msg = String(error.message || "").toLowerCase();
+        const code = String((error as any).code || "");
+        if (code === "23505" || msg.includes("duplicate key")) {
+          setDone(true);
+          return;
+        }
         return;
       }
 
@@ -43,29 +46,22 @@ export default function FollowTrackButton({ trackTitle, trackSubtitle }: Props) 
   }
 
   return (
-    <div style={{ display: "grid", gap: 6 }}>
-      <button
-        type="button"
-        onClick={handleFollow}
-        disabled={busy || done}
-        style={{
-          padding: "10px 12px",
-          borderRadius: 14,
-          border: "1px solid rgba(255,255,255,0.12)",
-          background: done ? "#fff" : "rgba(255,255,255,0.05)",
-          color: done ? "#000" : "#fff",
-          fontWeight: 700,
-          cursor: busy || done ? "default" : "pointer",
-        }}
-      >
-        {done ? "Following ID" : busy ? "Saving..." : "Follow this ID"}
-      </button>
-
-      {errorMsg ? (
-        <div style={{ color: "#ff6b6b", fontSize: 12, maxWidth: 220 }}>
-          {errorMsg}
-        </div>
-      ) : null}
-    </div>
+    <button
+      type="button"
+      onClick={handleFollow}
+      disabled={busy || done}
+      style={{
+        padding: "8px 10px",
+        borderRadius: 12,
+        border: "1px solid rgba(255,255,255,0.10)",
+        background: done ? "#fff" : "rgba(255,255,255,0.04)",
+        color: done ? "#000" : "#fff",
+        fontWeight: 700,
+        cursor: busy || done ? "default" : "pointer",
+        fontSize: 12,
+      }}
+    >
+      {done ? "Following ID" : busy ? "Saving..." : "Follow this ID"}
+    </button>
   );
 }
