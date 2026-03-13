@@ -270,7 +270,8 @@ export default function ChartsPage() {
                           type="button"
                           onClick={() => {
                             const id = `preview-${track.id}`;
-                            const audio = document.getElementById(id) as HTMLAudioElement | null;
+                            let audio = (window as any)._bangerAudio;
+if(!audio){audio = new Audio();(window as any)._bangerAudio = audio;}
                             if (!audio) return;
 
                             document.querySelectorAll("audio[data-chart-preview='1']").forEach((node) => {
