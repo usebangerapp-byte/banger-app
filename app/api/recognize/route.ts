@@ -92,6 +92,7 @@ export async function POST(req: Request) {
     const file = incoming.get("audio");
     const userId = clean(incoming.get("user_id"));
     const country = clean(incoming.get("country"));
+    const region = clean(incoming.get("region"));
 
     if (!(file instanceof File)) {
       return Response.json({ ok: false, error: "No audio file received" }, { status: 400 });
@@ -147,6 +148,7 @@ export async function POST(req: Request) {
       acr_code: mapped.acr_code,
       country: mapped.country,
       user_id: userId || null,
+      region: region || null,
     };
 
     console.log("scan_events payload", row);
