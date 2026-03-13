@@ -28,7 +28,12 @@ export default function FollowTrackButton({ trackId, trackTitle, trackSubtitle }
         user_id: userId,
       });
 
-      if (!error) setDone(true);
+      if (error) {
+        console.error("follow error", error);
+        return;
+      }
+
+      setDone(true);
     } finally {
       setBusy(false);
     }
