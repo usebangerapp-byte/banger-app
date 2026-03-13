@@ -23,7 +23,6 @@ export default function FollowTrackButton({ trackId, trackTitle, trackSubtitle }
       const userId = data.user?.id || null;
 
       const { error } = await supabase!.from("track_followers").insert({
-        track_id: trackId || null,
         track_title: trackTitle,
         track_subtitle: trackSubtitle || "",
         user_id: userId,

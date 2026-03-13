@@ -7,7 +7,6 @@ import { createSupabaseBrowser } from "@/lib/supabase/client";
 
 type FollowRow = {
   id: number | string;
-  track_id?: string | null;
   track_title: string | null;
   track_subtitle: string | null;
 };
@@ -53,7 +52,7 @@ export default function ProfilePage() {
         try {
           const { data } = await supabase!
             .from("track_followers")
-            .select("id,track_id,track_title,track_subtitle,user_id")
+            .select("id,track_title,track_subtitle,user_id")
             .eq("user_id", userId)
             .order("id", { ascending: false })
             .limit(20);
