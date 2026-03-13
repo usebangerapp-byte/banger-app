@@ -1,36 +1,57 @@
-import { createClient } from "@supabase/supabase-js";
+type RadarTrack = {
+  track_title: string
+  track_subtitle?: string
+  scans?: number
+  latest_created_at?: string | null
+}
 
-type Row = { track_title: string; scans: number };
+type RadarPayload = {
+  trending?: RadarTrack[]
+  mostWanted?: RadarTrack[]
+  recentlyAdded?: RadarTrack[]
+  mysterious?: RadarTrack[]
+}
 
-async function getRadar() {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+async function getRadar(): Promise<RadarPayload> {
+  const base =
+    process.env.NEXT_PUBLIC_SITE_URL
+      || (process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : "http://localhost:3000")
 
-  const { data } = await supabase.rpc("top_scanned_tracks");
+  const res = await fetch(`${base}/api/radar`, { cache: "no-store" })
 
-  const rows: Row[] = data || [];
-  const banger = rows[0] || null;
-  const rising = rows.slice(1, 10);
-  const most = rows.filter(r => r.scans >= 5).slice(0, 5);
+  if (!res.ok) {
+    return { trending: [], mostWanted: [], recentlyAdded: [], mysterious: [] }
+  }
 
-  return { banger, rising, most };
+  return res.json()
 }
 
 export default async function RadarPage() {
-  const { banger, rising, most } = await getRadar();
+  const data = await getRadar()
+
+  const rising24h = data.trending || []
+  const week = data.mostWanted || []
+  const latestSignals = data.recentlyAdded || []
+
+  const main = rising24h[0] || null
+  const risingList = rising24h.slice(0, 6)
+  const weekList = week.slice(0, 6)
+  const latestList = latestSignals.slice(0, 6)
 
   return (
     <main className="max-w-3xl mx-auto p-6 text-white">
       <h1 className="text-xl mb-8">RADAR</h1>
 
       <section className="mb-10">
-        <h2 className="text-xs uppercase text-gray-400 mb-2">Banger of the Week</h2>
-        {banger ? (
+        <h2 className="text-xs uppercase text-gray-400 mb-2">Rising 24h</h2>
+        {main ? (
           <>
-            <div>{banger.track_title}</div>
-            <div className="text-gray-500 text-sm">{banger.scans} scans</div>
+            <div>{main.track_title}</div>
+            <div className="text-gray-500 text-sm">
+              {main.track_subtitle || "Unknown"} · {main.scans || 0} scans
+            </div>
           </>
         ) : (
           <div className="text-gray-500 text-sm">No signal yet</div>
@@ -38,24 +59,40 @@ export default async function RadarPage() {
       </section>
 
       <section className="mb-10">
-        <h2 className="text-xs uppercase text-gray-400 mb-2">Rising Bangers</h2>
-        {rising.map((t, i) => (
-          <div key={i}>
+        <h2 className="text-xs uppercase text-gray-400 mb-2">Bangers of the Week</h2>
+        {weekList.map((t, i) => (
+          <div key={i} className="mb-3">
             <div>{t.track_title}</div>
-            <div className="text-gray-500 text-sm">{t.scans} scans</div>
+            <div className="text-gray-500 text-sm">
+              {t.track_subtitle || "Unknown"} · {t.scans || 0} scans
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <section className="mb-10">
+        <h2 className="text-xs uppercase text-gray-400 mb-2">Latest Signals</h2>
+        {latestList.map((t, i) => (
+          <div key={i} className="mb-3">
+            <div>{t.track_title}</div>
+            <div className="text-gray-500 text-sm">
+              {t.track_subtitle || "Unknown"}
+            </div>
           </div>
         ))}
       </section>
 
       <section>
         <h2 className="text-xs uppercase text-gray-400 mb-2">Most Scanned</h2>
-        {most.map((t, i) => (
-          <div key={i}>
+        {weekList.map((t, i) => (
+          <div key={i} className="mb-3">
             <div>{t.track_title}</div>
-            <div className="text-gray-500 text-sm">{t.scans} scans</div>
+            <div className="text-gray-500 text-sm">
+              {t.track_subtitle || "Unknown"} · {t.scans || 0} scans
+            </div>
           </div>
         ))}
       </section>
     </main>
-  );
+  )
 }
