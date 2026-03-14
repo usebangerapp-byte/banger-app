@@ -1,0 +1,110 @@
+diff --git a/app/profile/page.tsx b/app/profile/page.tsx
+--- a/app/profile/page.tsx
++++ b/app/profile/page.tsx
+@@
+-        <div
+-          style={{
+-            display: "flex",
+-            justifyContent: "space-between",
+-            alignItems: "flex-start",
+-            gap: 16,
+-          }}
+-        >
+-          <div style={{ minWidth: 0, display: "grid", gap: 6 }}>
+-            <div style={{ fontSize: 30, fontWeight: 900, lineHeight: 1 }}>Profile</div>
+-            <div
+-              style={{
+-                opacity: 0.72,
+-                fontSize: 13,
+-                whiteSpace: "nowrap",
+-                overflow: "hidden",
+-                textOverflow: "ellipsis",
+-                maxWidth: "100%",
+-              }}
+-            >
+-              {email || "Connected"}
+-            </div>
+-          </div>
+-
+-          <Image
+-            src="/B-logo.png"
+-            alt="Banger"
+-            width={52}
+-            height={52}
+-            style={{ width: 52, height: 52, flexShrink: 0 }}
+-            priority
+-          />
+-        </div>
++        <div
++          style={{
++            position: "relative",
++            borderRadius: 28,
++            padding: "32px 20px",
++            background:
++              "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)",
++            border: "1px solid rgba(255,255,255,0.10)",
++            boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
++            overflow: "hidden",
++          }}
++        >
++          <div
++            style={{
++              position: "absolute",
++              inset: 0,
++              background:
++                "radial-gradient(circle at top, rgba(63,231,255,0.18), transparent 45%)",
++              pointerEvents: "none",
++            }}
++          />
++
++          <div
++            style={{
++              position: "relative",
++              display: "grid",
++              placeItems: "center",
++              gap: 14,
++            }}
++          >
++            <div
++              style={{
++                width: 84,
++                height: 84,
++                borderRadius: "999px",
++                border: "1px solid rgba(255,255,255,0.18)",
++                background: "rgba(255,255,255,0.06)",
++                display: "grid",
++                placeItems: "center",
++                fontSize: 26,
++                fontWeight: 900,
++                letterSpacing: "0.05em",
++                boxShadow: "0 14px 40px rgba(0,0,0,0.45)",
++              }}
++            >
++              {email?.[0]?.toUpperCase() || "B"}
++            </div>
++
++            <div
++              style={{
++                fontSize: 32,
++                fontWeight: 900,
++                letterSpacing: "-0.03em",
++              }}
++            >
++              Profile
++            </div>
++
++            <div
++              style={{
++                fontSize: 14,
++                opacity: 0.7,
++                textAlign: "center",
++                whiteSpace: "nowrap",
++                overflow: "hidden",
++                textOverflow: "ellipsis",
++                maxWidth: 280,
++              }}
++            >
++              {email || "Connected"}
++            </div>
++          </div>
++        </div>

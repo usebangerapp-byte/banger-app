@@ -1,0 +1,63 @@
+*** Begin Patch
+*** Update File: app/profile/page.tsx
+@@
+-  const [showAllScans, setShowAllScans] = useState(false);
++  const [showAllScans, setShowAllScans] = useState(false);
++  const [showAllFollows, setShowAllFollows] = useState(false);
+@@
+-              follows.map((item) => (
+-                <div key={item.id} style={innerStyle}>
+-                  <div style={{ fontSize: 20, fontWeight: 800 }}>{item.track_title || "Untitled"}</div>
+-                  <div style={{ opacity: 0.72, marginTop: 6 }}>{item.track_subtitle || "unknown"}</div>
+-                  <div style={{ color: "#3fe7ff", marginTop: 10, fontWeight: 700 }}>Following ID</div>
+-                </div>
+-              ))
++              <>
++                {(showAllFollows ? follows : follows.slice(0, 2)).map((item) => (
++                  <div key={item.id} style={innerStyle}>
++                    <div
++                      style={{
++                        fontSize: 20,
++                        fontWeight: 800,
++                        whiteSpace: "nowrap",
++                        overflow: "hidden",
++                        textOverflow: "ellipsis",
++                      }}
++                    >
++                      {item.track_title || "Untitled"}
++                    </div>
++                    <div
++                      style={{
++                        opacity: 0.72,
++                        marginTop: 6,
++                        whiteSpace: "nowrap",
++                        overflow: "hidden",
++                        textOverflow: "ellipsis",
++                      }}
++                    >
++                      {item.track_subtitle || "unknown"}
++                    </div>
++                    <div style={{ color: "#3fe7ff", marginTop: 10, fontWeight: 700 }}>
++                      Following ID
++                    </div>
++                  </div>
++                ))}
++                {follows.length > 2 && (
++                  <button
++                    onClick={() => setShowAllFollows((v) => !v)}
++                    style={{
++                      marginTop: 10,
++                      padding: "10px 14px",
++                      background: "#111",
++                      border: "1px solid #333",
++                      borderRadius: 10,
++                      color: "#fff",
++                      fontWeight: 700,
++                      cursor: "pointer"
++                    }}
++                  >
++                    {showAllFollows ? "Show -" : "Show +"}
++                  </button>
++                )}
++              </>
+*** End Patch
