@@ -200,7 +200,28 @@ export default function Home() {
           const fd = new FormData();
           fd.append("audio", blob, "sample.webm");
 
-const region = "Ibiza"; // temporary default
+let region = "Unknown";
+
+if (navigator.geolocation) {
+  await new Promise<void>((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+
+          const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
+          const j = await r.json();
+          region = j.address.city || j.address.town || j.address.village || "Unknown";
+        } catch {}
+        resolve();
+      },
+      () => resolve(),
+      { timeout: 3000 }
+    );
+  });
+}
+
 fd.append("region", region);
 
           try {
@@ -219,21 +240,20 @@ fd.append("region", region);
           const res = await fetch("/api/recognize", { method: "POST", body: fd });
           const data = await res.json();
 
+          const resultType = data?.result_type || "not_found";
           const custom = data?.metadata?.custom_files?.[0] || null;
           const music = data?.metadata?.music?.[0] || null;
 
-          if (custom?.title) {
-            setTitle(custom.title);
-            setSubtitle("(Private DB)");
-            setTag("UNRELEASED");
+          if (resultType === "recognized_world") {
+            setTitle(data?.track_title || "Unknown");
+            setSubtitle(data?.track_subtitle || "(Released)");
+            setTag("RELEASED");
             setSuccess(true);
             vib([40, 30, 80]);
-          } else if (music?.title) {
-            const a = music?.artists?.[0]?.name || "";
-            const t = a ? `${a} - ${music.title}` : music.title;
-            setTitle(t);
-            setSubtitle("(Released)");
-            setTag("RELEASED");
+          } else if (resultType === "recognized_unreleased") {
+            setTitle(data?.track_title || custom?.title || "Unknown");
+            setSubtitle(data?.track_subtitle || "(Private DB)");
+            setTag("UNRELEASED");
             setSuccess(true);
             vib([40, 30, 80]);
           } else {
