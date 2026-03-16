@@ -200,9 +200,9 @@ export default function Home() {
           const fd = new FormData();
           fd.append("audio", blob, "sample.webm");
 
-let region = "Unknown";
+let region = localStorage.getItem("banger_region") || "Unknown";
 
-if (navigator.geolocation) {
+if (region === "Unknown" && navigator.geolocation) {
   await new Promise<void>((resolve) => {
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
@@ -212,8 +212,17 @@ if (navigator.geolocation) {
 
           const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
           const j = await r.json();
-          region = j.address.city || j.address.town || j.address.village || "Unknown";
+
+          region =
+            j.address.city ||
+            j.address.town ||
+            j.address.village ||
+            j.address.state ||
+            "Unknown";
+
+          localStorage.setItem("banger_region", region);
         } catch {}
+
         resolve();
       },
       () => resolve(),
