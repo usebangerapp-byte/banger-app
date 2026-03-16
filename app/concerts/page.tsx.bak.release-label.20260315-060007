@@ -132,67 +132,52 @@ export default function ChartsPage() {
         const uploadList = (uploads || []) as any[];
         const scanList = (scans || []) as any[];
 
-        const merged = uploadList
-          .map((track) => {
-            const title = String(track.title || "").trim();
-            const artist = String(track.artist || "").trim();
+        const uploadMap = new Map<string, any>();
 
-            const titleNorm = normalize(title);
-            const artistNorm = normalize(artist);
-            const altTitleNorm = titleNorm.includes(" - ")
-              ? normalize(title.split(" - ").slice(1).join(" - "))
-              : "";
+        uploadList.forEach((track) => {
+          const key = normalize(`${track.artist || ""} ${track.title || ""}`);
+          if (key) uploadMap.set(key, track);
+          const titleOnly = normalize(track.title || "");
+          if (titleOnly && !uploadMap.has(titleOnly)) uploadMap.set(titleOnly, track);
+        });
 
-            const matchedScans = scanList.filter((scan: any) => {
-              const scanTitle = normalize(scan.track_title || "");
-              const scanArtist = normalize(scan.track_subtitle || "");
-              const scanCombo = normalize(`${scan.track_title || ""} ${scan.track_subtitle || ""}`);
+        const grouped = new Map<string, TrackRow>();
 
-              if (!scanTitle) return false;
+        scanList.forEach((scan, index) => {
+          const title = String(scan.track_title || "").trim();
+          const artist = String(scan.track_subtitle || "").trim();
+          const resultType = scan.result_type || null;
+          if (!title || title.toLowerCase() === "unknown") return;
 
-              const directTitleMatch =
-                !!titleNorm &&
-                (scanTitle === titleNorm ||
-                  scanCombo.includes(titleNorm) ||
-                  titleNorm.includes(scanTitle));
+          const scanKey = `${resultType}|${title}|${artist}`;
 
-              const altTitleMatch =
-                !!altTitleNorm &&
-                altTitleNorm.length >= 6 &&
-                (scanTitle === altTitleNorm ||
-                  scanTitle.includes(altTitleNorm) ||
-                  altTitleNorm.includes(scanTitle) ||
-                  scanCombo.includes(altTitleNorm));
+          if (!grouped.has(scanKey)) {
+            const uploadMatch =
+              uploadMap.get(normalize(`${artist} ${title}`)) ||
+              uploadMap.get(normalize(title)) ||
+              null;
 
-              const artistAssist =
-                !!artistNorm &&
-                scanCombo.includes(artistNorm) &&
-                (directTitleMatch || altTitleMatch || scanTitle.includes(artistNorm));
-
-              return directTitleMatch || altTitleMatch || artistAssist;
+            grouped.set(scanKey, {
+              id: String(uploadMatch?.id || `${resultType}-${index}-${title}`),
+              title,
+              artist,
+              scan_count: 0,
+              snippet_path: uploadMatch?.snippet_path || null,
+              allow_preview: uploadMatch?.allow_preview ?? null,
+              release_date: uploadMatch?.release_date || null,
+              spotify_url: uploadMatch?.spotify_url || null,
+              beatport_url: uploadMatch?.beatport_url || null,
+              result_type: resultType,
             });
+          }
 
-            const totalScans = matchedScans.length;
-            const hasReleasedScan = matchedScans.some(
-              (scan: any) => scan.result_type === "recognized_world"
-            );
-            const released = isReleased(track.release_date) || hasReleasedScan;
+          const row = grouped.get(scanKey)!;
+          row.scan_count = (row.scan_count || 0) + 1;
+        });
 
-            return {
-              id: String(track.id),
-              title: track.title || null,
-              artist: track.artist || null,
-              scan_count: totalScans,
-              snippet_path: track.snippet_path || null,
-              allow_preview: track.allow_preview ?? null,
-              release_date: track.release_date || null,
-              spotify_url: track.spotify_url || null,
-              beatport_url: track.beatport_url || null,
-              result_type: released ? "recognized_world" : "recognized_unreleased",
-            } as TrackRow;
-          })
-          .filter((track) => Number(track.scan_count || 0) > 0)
-          .sort((a, b) => Number(b.scan_count || 0) - Number(a.scan_count || 0));
+        const merged = Array.from(grouped.values()).sort(
+          (a, b) => Number(b.scan_count || 0) - Number(a.scan_count || 0)
+        );
 
         setTracks(merged);
       } catch (e: any) {
@@ -285,21 +270,8 @@ export default function ChartsPage() {
         <div style={{ display: "grid", gap: 10 }}>
           {visible.map((track, index) => {
             const scans = track.scan_count || 0;
-            const canPreview =
-              kind === "released"
-                ? !!track.snippet_path
-                : !!track.previewAllowed && !!track.snippet_path;
+            const canPreview = !!track.previewAllowed && !!track.snippet_path;
             const isPlaying = playing === track.id;
-            const artistText = String(track.artist || "").trim();
-            const titleText = String(track.title || "").trim();
-            const lowerArtist = artistText.toLowerCase();
-            const lowerTitle = titleText.toLowerCase();
-            const displayLine =
-              artistText && titleText
-                ? (lowerTitle.startsWith(lowerArtist + " - ")
-                    ? titleText
-                    : `${artistText} - ${titleText}`)
-                : (titleText || artistText || "Untitled");
 
             return (
               <div key={track.id} style={rowStyle}>
@@ -307,100 +279,95 @@ export default function ChartsPage() {
                   <div style={rankStyle}>{index + 1}</div>
 
                   <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
-                    <MarqueeText text={displayLine} fontSize={17} fontWeight={800} />
+                    <MarqueeText text={track.title || "Untitled"} fontSize={17} fontWeight={800} />
+                    <MarqueeText text={track.artist || "unknown"} fontSize={14} fontWeight={600} opacity={0.64} />
 
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, opacity: 0.66, fontSize: 12 }}>
                       <span>{scans} scans</span>
-
-                      {kind === "unreleased" ? (
-                        <>
-                          <span>•</span>
-                          <span>Release — {track.releaseDate}</span>
-                        </>
-                      ) : track.release_date ? (
-                        <>
-                          <span>•</span>
-                          <span>Released — {track.release_date}</span>
-                        </>
-                      ) : null}
+                      <span>•</span>
+                      <span>Release — {track.releaseDate}</span>
                     </div>
 
-                    <div style={{ display: "grid", gap: 6, marginTop: 2 }}>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-                        {canPreview ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              let audio = (window as any)._bangerAudio as HTMLAudioElement | undefined;
-
-                              if (!audio) {
-                                audio = new Audio();
-                                (window as any)._bangerAudio = audio;
-                              }
-
-                              if (!audio) return;
-
-                              const nextSrc = previewUrl(track.snippet_path!);
-                              const currentTrackId = (window as any)._bangerAudioTrackId || null;
-
-                              if (currentTrackId !== track.id) {
-                                audio.pause();
-                                audio.currentTime = 0;
-                                audio.src = nextSrc;
-                                (window as any)._bangerAudioTrackId = track.id;
-
-                                audio.onplay = () => setPlaying(track.id);
-                                audio.onpause = () => setPlaying((current) => (current === track.id ? null : current));
-                                audio.onended = () => setPlaying((current) => (current === track.id ? null : current));
-                              }
-
-                              if (audio.paused) {
-                                audio.play().then(() => {
-                                  setPlaying(track.id);
-                                }).catch(() => {});
-                              } else {
-                                audio.pause();
-                                setPlaying(null);
-                              }
-                            }}
-                            style={secondaryBtn}
-                          >
-                            {isPlaying ? "Pause" : "Preview"}
-                          </button>
-                        ) : null}
-
-                        {kind === "unreleased" ? (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 2 }}>
+                      {kind === "unreleased" ? (
+                        <>
                           <FollowTrackButton
                             trackTitle={track.title || "Untitled"}
                             trackSubtitle={track.artist || "unknown"}
                           />
-                        ) : null}
-                      </div>
 
-                      {kind === "released" ? (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, fontSize: 12, opacity: 0.82 }}>
-                          {track.spotify_url ? (
-                            <a
-                              href={track.spotify_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              style={{ color: "rgba(255,255,255,0.82)", textDecoration: "none", fontWeight: 600 }}
-                            >
-                              Spotify
-                            </a>
-                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() => alert("You will be notified when this track releases on Beatport")}
+                            style={secondaryBtn}
+                          >
+                            Notify me
+                          </button>
+                        </>
+                      ) : null}
 
-                          {track.beatport_url ? (
-                            <a
-                              href={track.beatport_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              style={{ color: "rgba(255,255,255,0.82)", textDecoration: "none", fontWeight: 600 }}
-                            >
-                              Beatport
-                            </a>
-                          ) : null}
-                        </div>
+                      {kind === "released" && track.spotify_url ? (
+                        <a
+                          href={track.spotify_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={secondaryBtn}
+                        >
+                          Spotify
+                        </a>
+                      ) : null}
+
+                      {kind === "released" && track.beatport_url ? (
+                        <a
+                          href={track.beatport_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={secondaryBtn}
+                        >
+                          Beatport
+                        </a>
+                      ) : null}
+
+                      {canPreview ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            let audio = (window as any)._bangerAudio as HTMLAudioElement | undefined;
+
+                            if (!audio) {
+                              audio = new Audio();
+                              (window as any)._bangerAudio = audio;
+                            }
+
+                            if (!audio) return;
+
+                            const nextSrc = previewUrl(track.snippet_path!);
+                            const currentTrackId = (window as any)._bangerAudioTrackId || null;
+
+                            if (currentTrackId !== track.id) {
+                              audio.pause();
+                              audio.currentTime = 0;
+                              audio.src = nextSrc;
+                              (window as any)._bangerAudioTrackId = track.id;
+
+                              audio.onplay = () => setPlaying(track.id);
+                              audio.onpause = () => setPlaying((current) => (current === track.id ? null : current));
+                              audio.onended = () => setPlaying((current) => (current === track.id ? null : current));
+                            }
+
+                            if (audio.paused) {
+                              audio.play().then(() => {
+                                setPlaying(track.id);
+                              }).catch(() => {});
+                            } else {
+                              audio.pause();
+                              setPlaying(null);
+                            }
+                          }}
+                          style={secondaryBtn}
+                        >
+                          {isPlaying ? "Pause" : "Preview"}
+                        </button>
                       ) : null}
                     </div>
                   </div>

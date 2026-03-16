@@ -1,6 +1,5 @@
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
-import { findMusicLinks } from "@/lib/music/findLinks";
 
 export const runtime = "nodejs";
 
@@ -38,25 +37,6 @@ function signRequest(params: {
 
 function clean(v: unknown) {
   return typeof v === "string" ? v.trim() : "";
-}
-
-function cleanTitle(v: string) {
-  return v
-    .toLowerCase()
-    .replace(/\.(mp3|wav|mp4|flac|aiff|aac|m4a)$/i, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function isReleasedDate(value: unknown) {
-  const raw = clean(value);
-  if (!raw) return false;
-
-  const d = new Date(raw);
-  if (Number.isNaN(d.getTime())) return false;
-
-  const now = new Date();
-  return d.getTime() <= now.getTime();
 }
 
 function mapPrivateRecognition(payload: any, fallbackCountry = "") {
@@ -213,66 +193,31 @@ export async function POST(req: Request) {
     const mappedWorld = mapWorldRecognition(worldResult.payload, country);
     const mappedPrivate = mapPrivateRecognition(privateResult.payload, country);
 
-    const supabase = createClient(supabaseUrl, serviceRoleKey);
-
-    let privateTrackRow: any = null;
-
-    if (mappedPrivate?.track_title) {
-      const t = cleanTitle(mappedPrivate.track_title);
-
-      if (t) {
-        const { data } = await supabase
-          .from("unreleased_tracks")
-          .select("id,title,artist,release_date,spotify_url,beatport_url")
-          .or(
-            "title.ilike.%" + t + "%," +
-            "title.ilike.%" + t + ".mp3%," +
-            "title.ilike.%" + t + ".wav%," +
-            "title.ilike.%" + t + ".mp4%"
-          )
-          .limit(1)
-          .maybeSingle();
-
-        privateTrackRow = data || null;
-      }
-    }
-
-    const privateReleased = Boolean(
-      mappedPrivate &&
-      privateTrackRow?.release_date &&
-      isReleasedDate(privateTrackRow.release_date)
-    );
-
     const mapped =
-      privateReleased && mappedPrivate
+      mappedWorld && mappedPrivate
         ? {
             ...mappedPrivate,
             result_type: "recognized_world",
           }
-        : mappedWorld && mappedPrivate
-          ? {
-              ...mappedPrivate,
-              result_type: "recognized_world",
-            }
-          : mappedWorld
-            ? mappedWorld
-            : mappedPrivate
-              ? mappedPrivate
-              : mapNotFound(country);
+        : mappedWorld
+          ? mappedWorld
+          : mappedPrivate
+            ? mappedPrivate
+            : mapNotFound(country);
 
-    const responsePayload =
-      (privateReleased || mappedWorld) && worldResult.payload
-        ? worldResult.payload
-        : mappedPrivate
-          ? privateResult.payload
-          : worldResult.payload || privateResult.payload;
+    const responsePayload = mappedWorld
+      ? worldResult.payload
+      : mappedPrivate
+        ? privateResult.payload
+        : worldResult.payload || privateResult.payload;
 
-    const responseStatus =
-      (privateReleased || mappedWorld) && worldResult.status
-        ? worldResult.status
-        : mappedPrivate
-          ? privateResult.status
-          : worldResult.status || privateResult.status || 200;
+    const responseStatus = mappedWorld
+      ? worldResult.status
+      : mappedPrivate
+        ? privateResult.status
+        : worldResult.status || privateResult.status || 200;
+
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     const row = {
       track_title: mapped.track_title,
@@ -284,35 +229,9 @@ export async function POST(req: Request) {
       region: region || null,
     };
 
-    // prepare artist + title for link search
-    const artist = String(mapped.track_subtitle || "").trim();
-    const title = String(mapped.track_title || "").trim();
-
     console.log("private ACR status", privateResult.status);
     console.log("world ACR status", worldResult.status);
     console.log("scan_events payload", row);
-
-    if (
-      privateTrackRow?.id &&
-      mapped.result_type === "recognized_world" &&
-      title &&
-      artist &&
-      (!privateTrackRow.spotify_url || !privateTrackRow.beatport_url)
-    ) {
-      try {
-        const links = await findMusicLinks(artist, title);
-
-        await supabase
-          .from("unreleased_tracks")
-          .update({
-            spotify_url: privateTrackRow.spotify_url || links.spotify_url,
-            beatport_url: privateTrackRow.beatport_url || links.beatport_url,
-          })
-          .eq("id", privateTrackRow.id);
-      } catch (e) {
-        console.error("auto link update failed", e);
-      }
-    }
 
     const { error } = await supabase.from("scan_events").insert(row);
 

@@ -15,7 +15,6 @@ type TrackRow = {
   release_date?: string | null;
   spotify_url?: string | null;
   beatport_url?: string | null;
-  result_type?: "recognized_unreleased" | "recognized_world" | "not_found" | null;
 };
 
 function MarqueeText({
@@ -113,88 +112,15 @@ export default function ChartsPage() {
 
     (async () => {
       try {
-        const [{ data: uploads, error: uploadsError }, { data: scans, error: scansError }] = await Promise.all([
-          supabase!
-            .from("unreleased_tracks")
-            .select("id,title,artist,scan_count,snippet_path,allow_preview,release_date,spotify_url,beatport_url")
-            .limit(200),
-          supabase!
-            .from("scan_events")
-            .select("track_title,track_subtitle,result_type")
-            .in("result_type", ["recognized_unreleased", "recognized_world"])
-            .limit(5000),
-        ]);
+        const { data, error } = await supabase!
+          .from("unreleased_tracks")
+          .select("id,title,artist,scan_count,snippet_path,allow_preview,release_date,spotify_url,beatport_url")
+          .order("scan_count", { ascending: false })
+          .limit(50);
 
         if (!mounted) return;
-        if (uploadsError) throw uploadsError;
-        if (scansError) throw scansError;
-
-        const uploadList = (uploads || []) as any[];
-        const scanList = (scans || []) as any[];
-
-        const merged = uploadList
-          .map((track) => {
-            const title = String(track.title || "").trim();
-            const artist = String(track.artist || "").trim();
-
-            const titleNorm = normalize(title);
-            const artistNorm = normalize(artist);
-            const altTitleNorm = titleNorm.includes(" - ")
-              ? normalize(title.split(" - ").slice(1).join(" - "))
-              : "";
-
-            const matchedScans = scanList.filter((scan: any) => {
-              const scanTitle = normalize(scan.track_title || "");
-              const scanArtist = normalize(scan.track_subtitle || "");
-              const scanCombo = normalize(`${scan.track_title || ""} ${scan.track_subtitle || ""}`);
-
-              if (!scanTitle) return false;
-
-              const directTitleMatch =
-                !!titleNorm &&
-                (scanTitle === titleNorm ||
-                  scanCombo.includes(titleNorm) ||
-                  titleNorm.includes(scanTitle));
-
-              const altTitleMatch =
-                !!altTitleNorm &&
-                altTitleNorm.length >= 6 &&
-                (scanTitle === altTitleNorm ||
-                  scanTitle.includes(altTitleNorm) ||
-                  altTitleNorm.includes(scanTitle) ||
-                  scanCombo.includes(altTitleNorm));
-
-              const artistAssist =
-                !!artistNorm &&
-                scanCombo.includes(artistNorm) &&
-                (directTitleMatch || altTitleMatch || scanTitle.includes(artistNorm));
-
-              return directTitleMatch || altTitleMatch || artistAssist;
-            });
-
-            const totalScans = matchedScans.length;
-            const hasReleasedScan = matchedScans.some(
-              (scan: any) => scan.result_type === "recognized_world"
-            );
-            const released = isReleased(track.release_date) || hasReleasedScan;
-
-            return {
-              id: String(track.id),
-              title: track.title || null,
-              artist: track.artist || null,
-              scan_count: totalScans,
-              snippet_path: track.snippet_path || null,
-              allow_preview: track.allow_preview ?? null,
-              release_date: track.release_date || null,
-              spotify_url: track.spotify_url || null,
-              beatport_url: track.beatport_url || null,
-              result_type: released ? "recognized_world" : "recognized_unreleased",
-            } as TrackRow;
-          })
-          .filter((track) => Number(track.scan_count || 0) > 0)
-          .sort((a, b) => Number(b.scan_count || 0) - Number(a.scan_count || 0));
-
-        setTracks(merged);
+        if (error) throw error;
+        setTracks((data || []) as TrackRow[]);
       } catch (e: any) {
         if (!mounted) return;
         setError(e?.message || "Unable to load charts.");
@@ -210,18 +136,14 @@ export default function ChartsPage() {
   }, [supabase]);
 
   const rows = useMemo(() => {
-    return tracks.map((track) => {
-      const released = track.result_type === "recognized_world" || isReleased(track.release_date);
-
-      return {
-        ...track,
-        previewAllowed:
-          !!track.snippet_path &&
-          (track.allow_preview === null || track.allow_preview === undefined || track.allow_preview === true),
-        releaseDate: track.release_date || "Unknown",
-        released,
-      };
-    });
+    return tracks.map((track) => ({
+      ...track,
+      previewAllowed:
+        !!track.snippet_path &&
+        (track.allow_preview === null || track.allow_preview === undefined || track.allow_preview === true),
+      releaseDate: track.release_date || "Unknown",
+      released: isReleased(track.release_date),
+    }));
   }, [tracks]);
 
   const unreleasedBase = useMemo(
@@ -285,21 +207,8 @@ export default function ChartsPage() {
         <div style={{ display: "grid", gap: 10 }}>
           {visible.map((track, index) => {
             const scans = track.scan_count || 0;
-            const canPreview =
-              kind === "released"
-                ? !!track.snippet_path
-                : !!track.previewAllowed && !!track.snippet_path;
+            const canPreview = !!track.previewAllowed && !!track.snippet_path;
             const isPlaying = playing === track.id;
-            const artistText = String(track.artist || "").trim();
-            const titleText = String(track.title || "").trim();
-            const lowerArtist = artistText.toLowerCase();
-            const lowerTitle = titleText.toLowerCase();
-            const displayLine =
-              artistText && titleText
-                ? (lowerTitle.startsWith(lowerArtist + " - ")
-                    ? titleText
-                    : `${artistText} - ${titleText}`)
-                : (titleText || artistText || "Untitled");
 
             return (
               <div key={track.id} style={rowStyle}>
@@ -307,100 +216,95 @@ export default function ChartsPage() {
                   <div style={rankStyle}>{index + 1}</div>
 
                   <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
-                    <MarqueeText text={displayLine} fontSize={17} fontWeight={800} />
+                    <MarqueeText text={track.title || "Untitled"} fontSize={17} fontWeight={800} />
+                    <MarqueeText text={track.artist || "unknown"} fontSize={14} fontWeight={600} opacity={0.64} />
 
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, opacity: 0.66, fontSize: 12 }}>
                       <span>{scans} scans</span>
-
-                      {kind === "unreleased" ? (
-                        <>
-                          <span>•</span>
-                          <span>Release — {track.releaseDate}</span>
-                        </>
-                      ) : track.release_date ? (
-                        <>
-                          <span>•</span>
-                          <span>Released — {track.release_date}</span>
-                        </>
-                      ) : null}
+                      <span>•</span>
+                      <span>Release — {track.releaseDate}</span>
                     </div>
 
-                    <div style={{ display: "grid", gap: 6, marginTop: 2 }}>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-                        {canPreview ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              let audio = (window as any)._bangerAudio as HTMLAudioElement | undefined;
-
-                              if (!audio) {
-                                audio = new Audio();
-                                (window as any)._bangerAudio = audio;
-                              }
-
-                              if (!audio) return;
-
-                              const nextSrc = previewUrl(track.snippet_path!);
-                              const currentTrackId = (window as any)._bangerAudioTrackId || null;
-
-                              if (currentTrackId !== track.id) {
-                                audio.pause();
-                                audio.currentTime = 0;
-                                audio.src = nextSrc;
-                                (window as any)._bangerAudioTrackId = track.id;
-
-                                audio.onplay = () => setPlaying(track.id);
-                                audio.onpause = () => setPlaying((current) => (current === track.id ? null : current));
-                                audio.onended = () => setPlaying((current) => (current === track.id ? null : current));
-                              }
-
-                              if (audio.paused) {
-                                audio.play().then(() => {
-                                  setPlaying(track.id);
-                                }).catch(() => {});
-                              } else {
-                                audio.pause();
-                                setPlaying(null);
-                              }
-                            }}
-                            style={secondaryBtn}
-                          >
-                            {isPlaying ? "Pause" : "Preview"}
-                          </button>
-                        ) : null}
-
-                        {kind === "unreleased" ? (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 2 }}>
+                      {kind === "unreleased" ? (
+                        <>
                           <FollowTrackButton
                             trackTitle={track.title || "Untitled"}
                             trackSubtitle={track.artist || "unknown"}
                           />
-                        ) : null}
-                      </div>
 
-                      {kind === "released" ? (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, fontSize: 12, opacity: 0.82 }}>
-                          {track.spotify_url ? (
-                            <a
-                              href={track.spotify_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              style={{ color: "rgba(255,255,255,0.82)", textDecoration: "none", fontWeight: 600 }}
-                            >
-                              Spotify
-                            </a>
-                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() => alert("You will be notified when this track releases on Beatport")}
+                            style={secondaryBtn}
+                          >
+                            Notify me
+                          </button>
+                        </>
+                      ) : null}
 
-                          {track.beatport_url ? (
-                            <a
-                              href={track.beatport_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              style={{ color: "rgba(255,255,255,0.82)", textDecoration: "none", fontWeight: 600 }}
-                            >
-                              Beatport
-                            </a>
-                          ) : null}
-                        </div>
+                      {kind === "released" && track.spotify_url ? (
+                        <a
+                          href={track.spotify_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={secondaryBtn}
+                        >
+                          Spotify
+                        </a>
+                      ) : null}
+
+                      {kind === "released" && track.beatport_url ? (
+                        <a
+                          href={track.beatport_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={secondaryBtn}
+                        >
+                          Beatport
+                        </a>
+                      ) : null}
+
+                      {canPreview ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            let audio = (window as any)._bangerAudio as HTMLAudioElement | undefined;
+
+                            if (!audio) {
+                              audio = new Audio();
+                              (window as any)._bangerAudio = audio;
+                            }
+
+                            if (!audio) return;
+
+                            const nextSrc = previewUrl(track.snippet_path!);
+                            const currentTrackId = (window as any)._bangerAudioTrackId || null;
+
+                            if (currentTrackId !== track.id) {
+                              audio.pause();
+                              audio.currentTime = 0;
+                              audio.src = nextSrc;
+                              (window as any)._bangerAudioTrackId = track.id;
+
+                              audio.onplay = () => setPlaying(track.id);
+                              audio.onpause = () => setPlaying((current) => (current === track.id ? null : current));
+                              audio.onended = () => setPlaying((current) => (current === track.id ? null : current));
+                            }
+
+                            if (audio.paused) {
+                              audio.play().then(() => {
+                                setPlaying(track.id);
+                              }).catch(() => {});
+                            } else {
+                              audio.pause();
+                              setPlaying(null);
+                            }
+                          }}
+                          style={secondaryBtn}
+                        >
+                          {isPlaying ? "Pause" : "Preview"}
+                        </button>
                       ) : null}
                     </div>
                   </div>
