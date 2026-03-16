@@ -419,7 +419,7 @@ export default function ChartsPage() {
                   onClick={() => switchChart("unreleased")}
                   style={activeChart === "unreleased" ? activeTabBtn : tabBtn}
                 >
-                  TOP 100 UNRELEASED
+                  TOP 100<br/>UNRELEASED
                 </button>
 
                 <button
@@ -427,7 +427,7 @@ export default function ChartsPage() {
                   onClick={() => switchChart("released")}
                   style={activeChart === "released" ? activeTabBtn : tabBtn}
                 >
-                  TOP 100 RELEASED
+                  TOP 100<br/>RELEASED
                 </button>
               </div>
 
@@ -586,7 +586,8 @@ const activeTabBtn: React.CSSProperties = {
 };
 
 const smallLink: React.CSSProperties = {
-  color: "rgba(255,255,255,0.82)",
+  color: "rgba(255,255,255,0.92)",
   textDecoration: "none",
-  fontWeight: 600,
-};
+  fontWeight: 700,
+  fontSize: 15,
+};;
