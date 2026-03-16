@@ -286,20 +286,7 @@ export default function ChartsPage() {
                 <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
                   <MarqueeText text={displayLine} fontSize={17} fontWeight={800} />
 
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, opacity: 0.66, fontSize: 12 }}>
-
-                    {kind === "unreleased" ? (
-                      <>
-                        <span>•</span>
-                        <span>Release — {track.releaseDate}</span>
-                      </>
-                    ) : track.release_date ? (
-                      <>
-                        <span>•</span>
-                        <span>Released — {track.release_date}</span>
-                      </>
-                    ) : null}
-                  </div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:8,alignItems:"center",fontSize:12,opacity:0.85}}><span>• {scans} scans</span>{canPreview ? <span>{isPlaying ? "❚❚" : "Preview ▶"}</span> : null}</div>
 
                   <div style={{ display: "grid", gap: 6, marginTop: 2 }}>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
@@ -355,7 +342,7 @@ export default function ChartsPage() {
                     </div>
 
                     {kind === "released" ? (
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, fontSize: 12, opacity: 0.82 }}>
+                      <div style={{display:"flex",flexWrap:"wrap",gap:10,fontSize:13,opacity:0.9,fontWeight:600}}><span>Listen:</span>
                         {track.spotify_url ? (
                           <a
                             href={track.spotify_url}
