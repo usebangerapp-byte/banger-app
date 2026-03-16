@@ -290,6 +290,16 @@ export default function ChartsPage() {
                 ? !!track.snippet_path
                 : !!track.previewAllowed && !!track.snippet_path;
             const isPlaying = playing === track.id;
+            const artistText = String(track.artist || "").trim();
+            const titleText = String(track.title || "").trim();
+            const lowerArtist = artistText.toLowerCase();
+            const lowerTitle = titleText.toLowerCase();
+            const displayLine =
+              artistText && titleText
+                ? (lowerTitle.startsWith(lowerArtist + " - ")
+                    ? titleText
+                    : `${artistText} - ${titleText}`)
+                : (titleText || artistText || "Untitled");
 
             return (
               <div key={track.id} style={rowStyle}>
@@ -297,8 +307,7 @@ export default function ChartsPage() {
                   <div style={rankStyle}>{index + 1}</div>
 
                   <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
-                    <MarqueeText text={track.title || "Untitled"} fontSize={17} fontWeight={800} />
-                    <MarqueeText text={track.artist || "unknown"} fontSize={14} fontWeight={600} opacity={0.64} />
+                    <MarqueeText text={displayLine} fontSize={17} fontWeight={800} />
 
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, opacity: 0.66, fontSize: 12 }}>
                       <span>{scans} scans</span>
