@@ -15,6 +15,7 @@ type TrackRow = {
   release_date?: string | null;
   spotify_url?: string | null;
   beatport_url?: string | null;
+  result_type?: "recognized_unreleased" | "recognized_world" | "not_found" | null;
 };
 
 function MarqueeText({
@@ -112,15 +113,88 @@ export default function ChartsPage() {
 
     (async () => {
       try {
-        const { data, error } = await supabase!
-          .from("unreleased_tracks")
-          .select("id,title,artist,scan_count,snippet_path,allow_preview,release_date,spotify_url,beatport_url")
-          .order("scan_count", { ascending: false })
-          .limit(50);
+        const [{ data: uploads, error: uploadsError }, { data: scans, error: scansError }] = await Promise.all([
+          supabase!
+            .from("unreleased_tracks")
+            .select("id,title,artist,scan_count,snippet_path,allow_preview,release_date,spotify_url,beatport_url")
+            .limit(200),
+          supabase!
+            .from("scan_events")
+            .select("track_title,track_subtitle,result_type")
+            .in("result_type", ["recognized_unreleased", "recognized_world"])
+            .limit(5000),
+        ]);
 
         if (!mounted) return;
-        if (error) throw error;
-        setTracks((data || []) as TrackRow[]);
+        if (uploadsError) throw uploadsError;
+        if (scansError) throw scansError;
+
+        const uploadList = (uploads || []) as any[];
+        const scanList = (scans || []) as any[];
+
+        const merged = uploadList
+          .map((track) => {
+            const title = String(track.title || "").trim();
+            const artist = String(track.artist || "").trim();
+
+            const titleNorm = normalize(title);
+            const artistNorm = normalize(artist);
+            const altTitleNorm = titleNorm.includes(" - ")
+              ? normalize(title.split(" - ").slice(1).join(" - "))
+              : "";
+
+            const matchedScans = scanList.filter((scan: any) => {
+              const scanTitle = normalize(scan.track_title || "");
+              const scanArtist = normalize(scan.track_subtitle || "");
+              const scanCombo = normalize(`${scan.track_title || ""} ${scan.track_subtitle || ""}`);
+
+              if (!scanTitle) return false;
+
+              const directTitleMatch =
+                !!titleNorm &&
+                (scanTitle === titleNorm ||
+                  scanCombo.includes(titleNorm) ||
+                  titleNorm.includes(scanTitle));
+
+              const altTitleMatch =
+                !!altTitleNorm &&
+                altTitleNorm.length >= 6 &&
+                (scanTitle === altTitleNorm ||
+                  scanTitle.includes(altTitleNorm) ||
+                  altTitleNorm.includes(scanTitle) ||
+                  scanCombo.includes(altTitleNorm));
+
+              const artistAssist =
+                !!artistNorm &&
+                scanCombo.includes(artistNorm) &&
+                (directTitleMatch || altTitleMatch || scanTitle.includes(artistNorm));
+
+              return directTitleMatch || altTitleMatch || artistAssist;
+            });
+
+            const totalScans = matchedScans.length;
+            const hasReleasedScan = matchedScans.some(
+              (scan: any) => scan.result_type === "recognized_world"
+            );
+            const released = isReleased(track.release_date) || hasReleasedScan;
+
+            return {
+              id: String(track.id),
+              title: track.title || null,
+              artist: track.artist || null,
+              scan_count: totalScans,
+              snippet_path: track.snippet_path || null,
+              allow_preview: track.allow_preview ?? null,
+              release_date: track.release_date || null,
+              spotify_url: track.spotify_url || null,
+              beatport_url: track.beatport_url || null,
+              result_type: released ? "recognized_world" : "recognized_unreleased",
+            } as TrackRow;
+          })
+          .filter((track) => Number(track.scan_count || 0) > 0)
+          .sort((a, b) => Number(b.scan_count || 0) - Number(a.scan_count || 0));
+
+        setTracks(merged);
       } catch (e: any) {
         if (!mounted) return;
         setError(e?.message || "Unable to load charts.");
@@ -136,14 +210,18 @@ export default function ChartsPage() {
   }, [supabase]);
 
   const rows = useMemo(() => {
-    return tracks.map((track) => ({
-      ...track,
-      previewAllowed:
-        !!track.snippet_path &&
-        (track.allow_preview === null || track.allow_preview === undefined || track.allow_preview === true),
-      releaseDate: track.release_date || "Unknown",
-      released: isReleased(track.release_date),
-    }));
+    return tracks.map((track) => {
+      const released = track.result_type === "recognized_world" || isReleased(track.release_date);
+
+      return {
+        ...track,
+        previewAllowed:
+          !!track.snippet_path &&
+          (track.allow_preview === null || track.allow_preview === undefined || track.allow_preview === true),
+        releaseDate: track.release_date || "Unknown",
+        released,
+      };
+    });
   }, [tracks]);
 
   const unreleasedBase = useMemo(
@@ -207,7 +285,10 @@ export default function ChartsPage() {
         <div style={{ display: "grid", gap: 10 }}>
           {visible.map((track, index) => {
             const scans = track.scan_count || 0;
-            const canPreview = !!track.previewAllowed && !!track.snippet_path;
+            const canPreview =
+              kind === "released"
+                ? !!track.snippet_path
+                : !!track.previewAllowed && !!track.snippet_path;
             const isPlaying = playing === track.id;
 
             return (
@@ -221,8 +302,18 @@ export default function ChartsPage() {
 
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, opacity: 0.66, fontSize: 12 }}>
                       <span>{scans} scans</span>
-                      <span>•</span>
-                      <span>Release — {track.releaseDate}</span>
+
+                      {kind === "unreleased" ? (
+                        <>
+                          <span>•</span>
+                          <span>Release — {track.releaseDate}</span>
+                        </>
+                      ) : track.release_date ? (
+                        <>
+                          <span>•</span>
+                          <span>Released — {track.release_date}</span>
+                        </>
+                      ) : null}
                     </div>
 
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 2 }}>
@@ -232,14 +323,6 @@ export default function ChartsPage() {
                             trackTitle={track.title || "Untitled"}
                             trackSubtitle={track.artist || "unknown"}
                           />
-
-                          <button
-                            type="button"
-                            onClick={() => alert("You will be notified when this track releases on Beatport")}
-                            style={secondaryBtn}
-                          >
-                            Notify me
-                          </button>
                         </>
                       ) : null}
 

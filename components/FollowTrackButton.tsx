@@ -61,7 +61,7 @@ export default function FollowTrackButton({ trackTitle, trackSubtitle }: Props) 
         fontSize: 12,
       }}
     >
-      {done ? "Following ID" : busy ? "Saving..." : "Follow this ID"}
+      {done ? "Following" : busy ? "Saving..." : "Follow this track"}
     </button>
   );
 }
