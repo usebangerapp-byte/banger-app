@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import FollowTrackButton from "@/components/FollowTrackButton";
@@ -83,7 +82,7 @@ function buildSuggestions(rows: any[]) {
     if (title && artist) set.add(`${artist} - ${title}`);
   });
 
-  return Array.from(set).slice(0, 40);
+  return Array.from(set).slice(0, 100);
 }
 
 function matchesSearch(track: any, query: string) {
@@ -103,10 +102,9 @@ export default function ChartsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [playing, setPlaying] = useState<string | null>(null);
-  const [showAllUnreleased, setShowAllUnreleased] = useState(false);
-  const [showAllReleased, setShowAllReleased] = useState(false);
-  const [searchUnreleased, setSearchUnreleased] = useState("");
-  const [searchReleased, setSearchReleased] = useState("");
+  const [activeChart, setActiveChart] = useState<"unreleased" | "released">("unreleased");
+  const [visibleCount, setVisibleCount] = useState(10);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     let mounted = true;
@@ -117,12 +115,12 @@ export default function ChartsPage() {
           supabase!
             .from("unreleased_tracks")
             .select("id,title,artist,scan_count,snippet_path,allow_preview,release_date,spotify_url,beatport_url")
-            .limit(200),
+            .limit(500),
           supabase!
             .from("scan_events")
             .select("track_title,track_subtitle,result_type")
             .in("result_type", ["recognized_unreleased", "recognized_world"])
-            .limit(5000),
+            .limit(10000),
         ]);
 
         if (!mounted) return;
@@ -225,27 +223,33 @@ export default function ChartsPage() {
   }, [tracks]);
 
   const unreleasedBase = useMemo(
-    () => rows.filter((track: any) => !track.released).slice(0, 10),
+    () => rows.filter((track: any) => !track.released).slice(0, 100),
     [rows]
   );
 
   const releasedBase = useMemo(
-    () => rows.filter((track: any) => track.released).slice(0, 10),
+    () => rows.filter((track: any) => track.released).slice(0, 100),
     [rows]
   );
 
-  const unreleasedRows = useMemo(
-    () => unreleasedBase.filter((track: any) => matchesSearch(track, searchUnreleased)),
-    [unreleasedBase, searchUnreleased]
+  const activeBase = activeChart === "unreleased" ? unreleasedBase : releasedBase;
+  const suggestions = useMemo(() => buildSuggestions(activeBase), [activeBase]);
+
+  const filteredRows = useMemo(
+    () => activeBase.filter((track: any) => matchesSearch(track, search)),
+    [activeBase, search]
   );
 
-  const releasedRows = useMemo(
-    () => releasedBase.filter((track: any) => matchesSearch(track, searchReleased)),
-    [releasedBase, searchReleased]
+  const visibleRows = useMemo(
+    () => filteredRows.slice(0, visibleCount),
+    [filteredRows, visibleCount]
   );
 
-  const unreleasedSuggestions = useMemo(() => buildSuggestions(unreleasedBase), [unreleasedBase]);
-  const releasedSuggestions = useMemo(() => buildSuggestions(releasedBase), [releasedBase]);
+  function switchChart(next: "unreleased" | "released") {
+    setActiveChart(next);
+    setVisibleCount(10);
+    setSearch("");
+  }
 
   function previewUrl(path: string) {
     const clean = path.startsWith("snippets/") ? path : `snippets/${path}`;
@@ -253,176 +257,136 @@ export default function ChartsPage() {
     return data.publicUrl;
   }
 
-  function renderSearch(
-    value: string,
-    setValue: (v: string) => void,
-    listId: string,
-    suggestions: string[]
-  ) {
+  function renderTrackList(list: any[], kind: "unreleased" | "released") {
     return (
-      <div style={{ display: "grid", gap: 8, marginBottom: 12 }}>
-        <input
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          list={listId}
-          placeholder="Find your favourite DJ bangers"
-          style={searchInputStyle}
-        />
-        <datalist id={listId}>
-          {suggestions.map((item) => (
-            <option key={`${listId}-${item}`} value={item} />
-          ))}
-        </datalist>
-      </div>
-    );
-  }
+      <div style={{ display: "grid", gap: 10 }}>
+        {list.map((track, index) => {
+          const scans = track.scan_count || 0;
+          const canPreview =
+            kind === "released"
+              ? !!track.snippet_path
+              : !!track.previewAllowed && !!track.snippet_path;
+          const isPlaying = playing === track.id;
+          const artistText = String(track.artist || "").trim();
+          const titleText = String(track.title || "").trim();
+          const lowerArtist = artistText.toLowerCase();
+          const lowerTitle = titleText.toLowerCase();
+          const displayLine =
+            artistText && titleText
+              ? (lowerTitle.startsWith(lowerArtist + " - ")
+                  ? titleText
+                  : `${artistText} - ${titleText}`)
+              : (titleText || artistText || "Untitled");
 
-  function renderTrackList(list: any[], kind: "unreleased" | "released", showAll: boolean) {
-    const visible = showAll ? list : list.slice(0, 3);
+          return (
+            <div key={track.id} style={rowStyle}>
+              <div style={{ display: "grid", gridTemplateColumns: "34px 1fr", gap: 12, alignItems: "start" }}>
+                <div style={rankStyle}>{index + 1}</div>
 
-    return (
-      <>
-        <div style={{ display: "grid", gap: 10 }}>
-          {visible.map((track, index) => {
-            const scans = track.scan_count || 0;
-            const canPreview =
-              kind === "released"
-                ? !!track.snippet_path
-                : !!track.previewAllowed && !!track.snippet_path;
-            const isPlaying = playing === track.id;
-            const artistText = String(track.artist || "").trim();
-            const titleText = String(track.title || "").trim();
-            const lowerArtist = artistText.toLowerCase();
-            const lowerTitle = titleText.toLowerCase();
-            const displayLine =
-              artistText && titleText
-                ? (lowerTitle.startsWith(lowerArtist + " - ")
-                    ? titleText
-                    : `${artistText} - ${titleText}`)
-                : (titleText || artistText || "Untitled");
+                <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
+                  <MarqueeText text={displayLine} fontSize={17} fontWeight={800} />
 
-            return (
-              <div key={track.id} style={rowStyle}>
-                <div style={{ display: "grid", gridTemplateColumns: "34px 1fr", gap: 12, alignItems: "start" }}>
-                  <div style={rankStyle}>{index + 1}</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, opacity: 0.66, fontSize: 12 }}>
+                    <span>{scans} scans</span>
 
-                  <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
-                    <MarqueeText text={displayLine} fontSize={17} fontWeight={800} />
+                    {kind === "unreleased" ? (
+                      <>
+                        <span>•</span>
+                        <span>Release — {track.releaseDate}</span>
+                      </>
+                    ) : track.release_date ? (
+                      <>
+                        <span>•</span>
+                        <span>Released — {track.release_date}</span>
+                      </>
+                    ) : null}
+                  </div>
 
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, opacity: 0.66, fontSize: 12 }}>
-                      <span>{scans} scans</span>
+                  <div style={{ display: "grid", gap: 6, marginTop: 2 }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                      {canPreview ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            let audio = (window as any)._bangerAudio as HTMLAudioElement | undefined;
+
+                            if (!audio) {
+                              audio = new Audio();
+                              audio.preload = "none";
+                              (window as any)._bangerAudio = audio;
+                            }
+
+                            if (!audio) return;
+
+                            const nextSrc = previewUrl(track.snippet_path!);
+                            const currentTrackId = (window as any)._bangerAudioTrackId || null;
+
+                            if (currentTrackId !== track.id) {
+                              audio.pause();
+                              audio.currentTime = 0;
+                              audio.src = nextSrc;
+                              (window as any)._bangerAudioTrackId = track.id;
+
+                              audio.onplay = () => setPlaying(track.id);
+                              audio.onpause = () => setPlaying((current) => (current === track.id ? null : current));
+                              audio.onended = () => setPlaying((current) => (current === track.id ? null : current));
+                            }
+
+                            if (audio.paused) {
+                              audio.play().then(() => {
+                                setPlaying(track.id);
+                              }).catch(() => {});
+                            } else {
+                              audio.pause();
+                              setPlaying(null);
+                            }
+                          }}
+                          style={secondaryBtn}
+                        >
+                          {isPlaying ? "Pause" : "Preview"}
+                        </button>
+                      ) : null}
 
                       {kind === "unreleased" ? (
-                        <>
-                          <span>•</span>
-                          <span>Release — {track.releaseDate}</span>
-                        </>
-                      ) : track.release_date ? (
-                        <>
-                          <span>•</span>
-                          <span>Released — {track.release_date}</span>
-                        </>
+                        <FollowTrackButton
+                          trackTitle={track.title || "Untitled"}
+                          trackSubtitle={track.artist || "unknown"}
+                        />
                       ) : null}
                     </div>
 
-                    <div style={{ display: "grid", gap: 6, marginTop: 2 }}>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-                        {canPreview ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              let audio = (window as any)._bangerAudio as HTMLAudioElement | undefined;
-
-                              if (!audio) {
-                                audio = new Audio();
-                                (window as any)._bangerAudio = audio;
-                              }
-
-                              if (!audio) return;
-
-                              const nextSrc = previewUrl(track.snippet_path!);
-                              const currentTrackId = (window as any)._bangerAudioTrackId || null;
-
-                              if (currentTrackId !== track.id) {
-                                audio.pause();
-                                audio.currentTime = 0;
-                                audio.src = nextSrc;
-                                (window as any)._bangerAudioTrackId = track.id;
-
-                                audio.onplay = () => setPlaying(track.id);
-                                audio.onpause = () => setPlaying((current) => (current === track.id ? null : current));
-                                audio.onended = () => setPlaying((current) => (current === track.id ? null : current));
-                              }
-
-                              if (audio.paused) {
-                                audio.play().then(() => {
-                                  setPlaying(track.id);
-                                }).catch(() => {});
-                              } else {
-                                audio.pause();
-                                setPlaying(null);
-                              }
-                            }}
-                            style={secondaryBtn}
+                    {kind === "released" ? (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, fontSize: 12, opacity: 0.82 }}>
+                        {track.spotify_url ? (
+                          <a
+                            href={track.spotify_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={smallLink}
                           >
-                            {isPlaying ? "Pause" : "Preview"}
-                          </button>
+                            Spotify
+                          </a>
                         ) : null}
 
-                        {kind === "unreleased" ? (
-                          <FollowTrackButton
-                            trackTitle={track.title || "Untitled"}
-                            trackSubtitle={track.artist || "unknown"}
-                          />
+                        {track.beatport_url ? (
+                          <a
+                            href={track.beatport_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={smallLink}
+                          >
+                            Beatport
+                          </a>
                         ) : null}
                       </div>
-
-                      {kind === "released" ? (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, fontSize: 12, opacity: 0.82 }}>
-                          {track.spotify_url ? (
-                            <a
-                              href={track.spotify_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              style={{ color: "rgba(255,255,255,0.82)", textDecoration: "none", fontWeight: 600 }}
-                            >
-                              Spotify
-                            </a>
-                          ) : null}
-
-                          {track.beatport_url ? (
-                            <a
-                              href={track.beatport_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              style={{ color: "rgba(255,255,255,0.82)", textDecoration: "none", fontWeight: 600 }}
-                            >
-                              Beatport
-                            </a>
-                          ) : null}
-                        </div>
-                      ) : null}
-                    </div>
+                    ) : null}
                   </div>
                 </div>
               </div>
-            );
-          })}
-        </div>
-
-        {!showAll && list.length > 3 ? (
-          <button
-            type="button"
-            onClick={() => {
-              if (kind === "unreleased") setShowAllUnreleased(true);
-              if (kind === "released") setShowAllReleased(true);
-            }}
-            style={showMoreBtn}
-          >
-            Show more
-          </button>
-        ) : null}
-      </>
+            </div>
+          );
+        })}
+      </div>
     );
   }
 
@@ -438,12 +402,8 @@ export default function ChartsPage() {
       `}</style>
 
       <div style={{ maxWidth: 760, margin: "0 auto", display: "grid", gap: 14 }}>
-        <div style={{ display: "grid", placeItems: "center", gap: 8, marginBottom: 4 }}>
-          <Image src="/B-logo.png" alt="Banger" width={62} height={62} style={{ width: 62, height: 62 }} priority />
+        <div style={{ display: "grid", placeItems: "center", marginBottom: 4 }}>
           <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: "-0.03em" }}>Charts</div>
-          <div style={{ opacity: 0.62, textAlign: "center", maxWidth: 520, fontSize: 13 }}>
-            Underground signals. Premium curation. BANGER scans only.
-          </div>
         </div>
 
         {loading ? (
@@ -451,43 +411,79 @@ export default function ChartsPage() {
         ) : error ? (
           <div style={cardStyle}>{error}</div>
         ) : (
-          <>
-            <section style={cardStyle}>
-              <div style={sectionTitle}>TOP 10 BANGER UNRELEASED</div>
-              <div style={{ marginTop: 12 }}>
-                {renderSearch(
-                  searchUnreleased,
-                  setSearchUnreleased,
-                  "unreleased-search-list",
-                  unreleasedSuggestions
-                )}
+          <section style={cardStyle}>
+            <div style={{ position: "sticky", top: 0, zIndex: 5, background: "rgba(0,0,0,0.96)", paddingBottom: 12 }}>
+              <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                <button
+                  type="button"
+                  onClick={() => switchChart("unreleased")}
+                  style={activeChart === "unreleased" ? activeTabBtn : tabBtn}
+                >
+                  TOP 100 UNRELEASED
+                </button>
 
-                {unreleasedRows.length === 0 ? (
-                  <div style={{ opacity: 0.62, fontSize: 13 }}>No unreleased chart data yet.</div>
-                ) : (
-                  renderTrackList(unreleasedRows, "unreleased", showAllUnreleased)
-                )}
+                <button
+                  type="button"
+                  onClick={() => switchChart("released")}
+                  style={activeChart === "released" ? activeTabBtn : tabBtn}
+                >
+                  TOP 100 RELEASED
+                </button>
               </div>
-            </section>
 
-            <section style={cardStyle}>
-              <div style={sectionTitle}>TOP 10 BANGER RELEASED</div>
-              <div style={{ marginTop: 12 }}>
-                {renderSearch(
-                  searchReleased,
-                  setSearchReleased,
-                  "released-search-list",
-                  releasedSuggestions
-                )}
-
-                {releasedRows.length === 0 ? (
-                  <div style={{ opacity: 0.62, fontSize: 13 }}>No released chart data yet.</div>
-                ) : (
-                  renderTrackList(releasedRows, "released", showAllReleased)
-                )}
+              <div style={{ display: "grid", gap: 8 }}>
+                <input
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setVisibleCount(10);
+                  }}
+                  list="charts-search-list"
+                  placeholder="Search"
+                  style={searchInputStyle}
+                />
+                <datalist id="charts-search-list">
+                  {suggestions.map((item) => (
+                    <option key={`charts-search-${item}`} value={item} />
+                  ))}
+                </datalist>
               </div>
-            </section>
-          </>
+            </div>
+
+            <div style={{ marginTop: 12 }}>
+              {filteredRows.length === 0 ? (
+                <div style={{ opacity: 0.62, fontSize: 13 }}>
+                  {activeChart === "unreleased" ? "No unreleased chart data yet." : "No released chart data yet."}
+                </div>
+              ) : (
+                <>
+                  {renderTrackList(visibleRows, activeChart)}
+
+                  <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                    {visibleCount < filteredRows.length && visibleCount < 100 ? (
+                      <button
+                        type="button"
+                        onClick={() => setVisibleCount((v) => Math.min(v + 10, 100, filteredRows.length))}
+                        style={showMoreBtn}
+                      >
+                        + Show more
+                      </button>
+                    ) : null}
+
+                    {visibleCount > 10 ? (
+                      <button
+                        type="button"
+                        onClick={() => setVisibleCount(10)}
+                        style={showLessBtn}
+                      >
+                        − Show less
+                      </button>
+                    ) : null}
+                  </div>
+                </>
+              )}
+            </div>
+          </section>
         )}
       </div>
     </main>
@@ -522,13 +518,6 @@ const rankStyle: React.CSSProperties = {
   fontSize: 13,
 };
 
-const sectionTitle: React.CSSProperties = {
-  fontSize: 12,
-  fontWeight: 900,
-  letterSpacing: "0.18em",
-  opacity: 0.7,
-};
-
 const secondaryBtn: React.CSSProperties = {
   padding: "8px 10px",
   borderRadius: 12,
@@ -545,9 +534,19 @@ const secondaryBtn: React.CSSProperties = {
 };
 
 const showMoreBtn: React.CSSProperties = {
-  marginTop: 12,
   padding: "9px 12px",
   background: "#0d0d0d",
+  border: "1px solid rgba(255,255,255,0.10)",
+  borderRadius: 10,
+  color: "#fff",
+  fontWeight: 700,
+  cursor: "pointer",
+  fontSize: 12,
+};
+
+const showLessBtn: React.CSSProperties = {
+  padding: "9px 12px",
+  background: "rgba(255,255,255,0.03)",
   border: "1px solid rgba(255,255,255,0.10)",
   borderRadius: 10,
   color: "#fff",
@@ -565,4 +564,29 @@ const searchInputStyle: React.CSSProperties = {
   padding: "11px 12px",
   outline: "none",
   fontSize: 13,
+};
+
+const tabBtn: React.CSSProperties = {
+  flex: 1,
+  padding: "11px 12px",
+  borderRadius: 12,
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(255,255,255,0.03)",
+  color: "#fff",
+  fontWeight: 800,
+  cursor: "pointer",
+  fontSize: 12,
+  letterSpacing: "0.04em",
+};
+
+const activeTabBtn: React.CSSProperties = {
+  ...tabBtn,
+  background: "#fff",
+  color: "#000",
+};
+
+const smallLink: React.CSSProperties = {
+  color: "rgba(255,255,255,0.82)",
+  textDecoration: "none",
+  fontWeight: 600,
 };
