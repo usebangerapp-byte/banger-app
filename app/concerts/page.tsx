@@ -283,66 +283,69 @@ export default function ChartsPage() {
               <div style={{ display: "grid", gridTemplateColumns: "34px 1fr", gap: 12, alignItems: "start" }}>
                 <div style={rankStyle}>{index + 1}</div>
 
-                <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
-                  <MarqueeText text={displayLine} fontSize={17} fontWeight={800} />
+                <div style={{ display: "grid", gap: 8, minWidth: 0 }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", minWidth: 0 }}>
+                    <MarqueeText text={displayLine} fontSize={17} fontWeight={800} />
+                    <span style={{ fontSize: 12, opacity: 0.75 }}>• {scans} scans</span>
+                    {canPreview ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          let audio = (window as any)._bangerAudio as HTMLAudioElement | undefined;
 
-                  <div style={{display:"flex",flexWrap:"wrap",gap:8,alignItems:"center",fontSize:12,opacity:0.85}}><span>• {scans} scans</span>{canPreview ? <span>{isPlaying ? "❚❚" : "Preview ▶"}</span> : null}</div>
+                          if (!audio) {
+                            audio = new Audio();
+                            audio.preload = "none";
+                            (window as any)._bangerAudio = audio;
+                          }
 
-                  <div style={{ display: "grid", gap: 6, marginTop: 2 }}>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-                      {canPreview ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            let audio = (window as any)._bangerAudio as HTMLAudioElement | undefined;
+                          if (!audio) return;
 
-                            if (!audio) {
-                              audio = new Audio();
-                              audio.preload = "none";
-                              (window as any)._bangerAudio = audio;
-                            }
+                          const nextSrc = previewUrl(track.snippet_path!);
+                          const currentTrackId = (window as any)._bangerAudioTrackId || null;
 
-                            if (!audio) return;
+                          if (currentTrackId !== track.id) {
+                            audio.pause();
+                            audio.currentTime = 0;
+                            audio.src = nextSrc;
+                            (window as any)._bangerAudioTrackId = track.id;
 
-                            const nextSrc = previewUrl(track.snippet_path!);
-                            const currentTrackId = (window as any)._bangerAudioTrackId || null;
+                            audio.onplay = () => setPlaying(track.id);
+                            audio.onpause = () => setPlaying((current) => (current === track.id ? null : current));
+                            audio.onended = () => setPlaying((current) => (current === track.id ? null : current));
+                          }
 
-                            if (currentTrackId !== track.id) {
-                              audio.pause();
-                              audio.currentTime = 0;
-                              audio.src = nextSrc;
-                              (window as any)._bangerAudioTrackId = track.id;
+                          if (audio.paused) {
+                            audio.play().then(() => {
+                              setPlaying(track.id);
+                            }).catch(() => {});
+                          } else {
+                            audio.pause();
+                            setPlaying(null);
+                          }
+                        }}
+                        style={smallLinkBtn}
+                      >
+                        {isPlaying ? "❚❚" : "Preview ▶"}
+                      </button>
+                    ) : null}
+                  </div>
 
-                              audio.onplay = () => setPlaying(track.id);
-                              audio.onpause = () => setPlaying((current) => (current === track.id ? null : current));
-                              audio.onended = () => setPlaying((current) => (current === track.id ? null : current));
-                            }
-
-                            if (audio.paused) {
-                              audio.play().then(() => {
-                                setPlaying(track.id);
-                              }).catch(() => {});
-                            } else {
-                              audio.pause();
-                              setPlaying(null);
-                            }
-                          }}
-                          style={secondaryBtn}
-                        >
-                          {isPlaying ? "❚❚" : "Preview ▶"}
-                        </button>
-                      ) : null}
-
-                      {kind === "unreleased" ? (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", fontSize: 15, fontWeight: 700, opacity: 0.92 }}>
+                    {kind === "unreleased" ? (
+                      <>
+                        <span style={{ fontSize: 14, fontWeight: 600, opacity: 0.72 }}>Release — {track.releaseDate}</span>
                         <FollowTrackButton
                           trackTitle={track.title || "Untitled"}
                           trackSubtitle={track.artist || "unknown"}
                         />
-                      ) : null}
-                    </div>
+                      </>
+                    ) : null}
+                  </div>
 
-                    {kind === "released" ? (
-                      <div style={{display:"flex",flexWrap:"wrap",gap:10,fontSize:13,opacity:0.9,fontWeight:600}}><span>Listen:</span>
+                  {kind === "released" ? (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", fontSize: 15, fontWeight: 700, opacity: 0.92 }}>
+                      <span style={smallLinkBtn}>Listen:</span>
                         {track.spotify_url ? (
                           <a
                             href={track.spotify_url}
@@ -369,7 +372,6 @@ export default function ChartsPage() {
                   </div>
                 </div>
               </div>
-            </div>
           );
         })}
       </div>
@@ -576,4 +578,15 @@ const smallLink: React.CSSProperties = {
   textDecoration: "none",
   fontWeight: 700,
   fontSize: 15,
+};
+
+const smallLinkBtn: React.CSSProperties = {
+  color: "rgba(255,255,255,0.92)",
+  background: "transparent",
+  border: "none",
+  padding: 0,
+  textDecoration: "none",
+  fontWeight: 700,
+  fontSize: 15,
+  cursor: "pointer",
 };;

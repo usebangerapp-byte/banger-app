@@ -51,14 +51,15 @@ export default function FollowTrackButton({ trackTitle, trackSubtitle }: Props) 
       onClick={handleFollow}
       disabled={busy || done}
       style={{
-        padding: "8px 10px",
-        borderRadius: 12,
-        border: "1px solid rgba(255,255,255,0.10)",
-        background: done ? "#fff" : "rgba(255,255,255,0.04)",
-        color: done ? "#000" : "#fff",
+        padding: 0,
+        borderRadius: 0,
+        border: "none",
+        background: "transparent",
+        color: "rgba(255,255,255,0.92)",
         fontWeight: 700,
         cursor: busy || done ? "default" : "pointer",
-        fontSize: 12,
+        fontSize: 15,
+        opacity: done ? 0.7 : 1,
       }}
     >
       {done ? "Following" : busy ? "Saving..." : "Follow this track"}
