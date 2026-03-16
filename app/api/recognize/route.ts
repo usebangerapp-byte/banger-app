@@ -39,30 +39,55 @@ function clean(v: unknown) {
   return typeof v === "string" ? v.trim() : "";
 }
 
-function mapRecognition(payload: any, fallbackCountry = "") {
+function cleanTitle(v: string) {
+  return v
+    .toLowerCase()
+    .replace(/\.(mp3|wav|mp4|flac|aiff|aac|m4a)$/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isReleasedDate(value: unknown) {
+  const raw = clean(value);
+  if (!raw) return false;
+
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return false;
+
+  const now = new Date();
+  return d.getTime() <= now.getTime();
+}
+
+function mapPrivateRecognition(payload: any, fallbackCountry = "") {
   const custom = payload?.metadata?.custom_files?.[0] || null;
+
+  if (!custom?.title) return null;
+
+  return {
+    result_type: "recognized_unreleased",
+    track_title: clean(custom.title) || "Unknown",
+    track_subtitle: clean(custom.artist) || clean(custom.label) || "(Private DB)",
+    acr_code: clean(custom.acrid) || clean(custom.custom_id) || null,
+    country: clean(fallbackCountry) || null,
+  };
+}
+
+function mapWorldRecognition(payload: any, fallbackCountry = "") {
   const music = payload?.metadata?.music?.[0] || null;
+  const score = Number(music?.score || 0);
 
-  if (custom?.title) {
-    return {
-      result_type: "recognized",
-      track_title: clean(custom.title) || "Unknown",
-      track_subtitle: clean(custom.artist) || clean(custom.label) || "(Private DB)",
-      acr_code: clean(custom.acrid) || clean(custom.custom_id) || null,
-      country: clean(fallbackCountry) || null,
-    };
-  }
+  if (!music?.title || score < 90) return null;
 
-  if (music?.title) {
-    return {
-      result_type: "recognized",
-      track_title: clean(music.title) || "Unknown",
-      track_subtitle: clean(music?.artists?.[0]?.name) || "Unknown",
-      acr_code: clean(music.acrid) || null,
-      country: clean(fallbackCountry) || null,
-    };
-  }
+  return {
+    result_type: "recognized_world",
+    track_title: clean(music.title) || "Unknown",
+    track_subtitle: clean(music?.artists?.[0]?.name) || "Unknown",
+    acr_code: clean(music.acrid) || null,
+    country: clean(fallbackCountry) || null,
+  };
+}
 
+function mapNotFound(fallbackCountry = "") {
   return {
     result_type: "not_found",
     track_title: "Unknown",
@@ -72,15 +97,82 @@ function mapRecognition(payload: any, fallbackCountry = "") {
   };
 }
 
+async function callAcr(params: {
+  host: string;
+  accessKey: string;
+  accessSecret: string;
+  arrayBuffer: ArrayBuffer;
+  mimeType: string;
+}) {
+  const { host, accessKey, accessSecret, arrayBuffer, mimeType } = params;
+
+  const httpMethod = "POST";
+  const httpUri = "/v1/identify";
+  const dataType = "audio";
+  const signatureVersion = "1";
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+
+  const signature = signRequest({
+    httpMethod,
+    httpUri,
+    accessKey,
+    accessSecret,
+    dataType,
+    signatureVersion,
+    timestamp,
+  });
+
+  const outForm = new FormData();
+  outForm.append("access_key", accessKey);
+  outForm.append("data_type", dataType);
+  outForm.append("signature_version", signatureVersion);
+  outForm.append("signature", signature);
+  outForm.append("timestamp", timestamp);
+  outForm.append("sample_bytes", String(arrayBuffer.byteLength));
+
+  const blob = new Blob([arrayBuffer], {
+    type: mimeType || "application/octet-stream",
+  });
+  outForm.append("sample", blob, "sample.webm");
+
+  const acrRes = await fetch(`https://${host}${httpUri}`, {
+    method: "POST",
+    body: outForm,
+  });
+
+  const text = await acrRes.text();
+  const payload = text ? JSON.parse(text) : {};
+
+  return {
+    status: acrRes.status,
+    payload,
+  };
+}
+
 export async function POST(req: Request) {
   try {
     const host = process.env.ACR_HOST;
-    const accessKey = process.env.ACR_ACCESS_KEY;
-    const accessSecret = process.env.ACR_ACCESS_SECRET;
+
+    const privateAccessKey =
+      process.env.ACR_ACCESS_KEY_PRIVATE || process.env.ACR_ACCESS_KEY;
+    const privateAccessSecret =
+      process.env.ACR_ACCESS_SECRET_PRIVATE || process.env.ACR_ACCESS_SECRET;
+
+    const worldAccessKey =
+      process.env.ACR_ACCESS_KEY_WORLD || process.env.ACR_ACCESS_KEY;
+    const worldAccessSecret =
+      process.env.ACR_ACCESS_SECRET_WORLD || process.env.ACR_ACCESS_SECRET;
+
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    if (!host || !accessKey || !accessSecret) {
+    if (
+      !host ||
+      !privateAccessKey ||
+      !privateAccessSecret ||
+      !worldAccessKey ||
+      !worldAccessSecret
+    ) {
       return Response.json({ ok: false, error: "Missing ACR env vars" }, { status: 500 });
     }
 
@@ -99,47 +191,87 @@ export async function POST(req: Request) {
     }
 
     const arrayBuffer = await file.arrayBuffer();
-    const sampleBytes = arrayBuffer.byteLength;
+    const mimeType = file.type || "application/octet-stream";
 
-    const httpMethod = "POST";
-    const httpUri = "/v1/identify";
-    const dataType = "audio";
-    const signatureVersion = "1";
-    const timestamp = Math.floor(Date.now() / 1000).toString();
-
-    const signature = signRequest({
-      httpMethod,
-      httpUri,
-      accessKey,
-      accessSecret,
-      dataType,
-      signatureVersion,
-      timestamp,
+    const privateResult = await callAcr({
+      host,
+      accessKey: privateAccessKey,
+      accessSecret: privateAccessSecret,
+      arrayBuffer,
+      mimeType,
     });
 
-    const outForm = new FormData();
-    outForm.append("access_key", accessKey);
-    outForm.append("data_type", dataType);
-    outForm.append("signature_version", signatureVersion);
-    outForm.append("signature", signature);
-    outForm.append("timestamp", timestamp);
-    outForm.append("sample_bytes", String(sampleBytes));
-
-    const blob = new Blob([arrayBuffer], {
-      type: file.type || "application/octet-stream",
-    });
-    outForm.append("sample", blob, "sample.webm");
-
-    const acrRes = await fetch(`https://${host}${httpUri}`, {
-      method: "POST",
-      body: outForm,
+    const worldResult = await callAcr({
+      host,
+      accessKey: worldAccessKey,
+      accessSecret: worldAccessSecret,
+      arrayBuffer,
+      mimeType,
     });
 
-    const text = await acrRes.text();
-    const payload = text ? JSON.parse(text) : {};
-    const mapped = mapRecognition(payload, country);
+    const mappedWorld = mapWorldRecognition(worldResult.payload, country);
+    const mappedPrivate = mapPrivateRecognition(privateResult.payload, country);
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+    let privateTrackRow: any = null;
+
+    if (mappedPrivate?.track_title) {
+      const t = cleanTitle(mappedPrivate.track_title);
+
+      if (t) {
+        const { data } = await supabase
+          .from("unreleased_tracks")
+          .select("id,title,artist,release_date")
+          .or(
+            "title.ilike.%" + t + "%," +
+            "title.ilike.%" + t + ".mp3%," +
+            "title.ilike.%" + t + ".wav%," +
+            "title.ilike.%" + t + ".mp4%"
+          )
+          .limit(1)
+          .maybeSingle();
+
+        privateTrackRow = data || null;
+      }
+    }
+
+    const privateReleased = Boolean(
+      mappedPrivate &&
+      privateTrackRow?.release_date &&
+      isReleasedDate(privateTrackRow.release_date)
+    );
+
+    const mapped =
+      privateReleased && mappedPrivate
+        ? {
+            ...mappedPrivate,
+            result_type: "recognized_world",
+          }
+        : mappedWorld && mappedPrivate
+          ? {
+              ...mappedPrivate,
+              result_type: "recognized_world",
+            }
+          : mappedWorld
+            ? mappedWorld
+            : mappedPrivate
+              ? mappedPrivate
+              : mapNotFound(country);
+
+    const responsePayload =
+      (privateReleased || mappedWorld) && worldResult.payload
+        ? worldResult.payload
+        : mappedPrivate
+          ? privateResult.payload
+          : worldResult.payload || privateResult.payload;
+
+    const responseStatus =
+      (privateReleased || mappedWorld) && worldResult.status
+        ? worldResult.status
+        : mappedPrivate
+          ? privateResult.status
+          : worldResult.status || privateResult.status || 200;
 
     const row = {
       track_title: mapped.track_title,
@@ -151,6 +283,8 @@ export async function POST(req: Request) {
       region: region || null,
     };
 
+    console.log("private ACR status", privateResult.status);
+    console.log("world ACR status", worldResult.status);
     console.log("scan_events payload", row);
 
     const { error } = await supabase.from("scan_events").insert(row);
@@ -158,14 +292,31 @@ export async function POST(req: Request) {
     if (error) {
       console.error("scan_events insert failed", error);
       return Response.json(
-        { ok: false, error: "scan_events insert failed", details: error, row, acr: payload },
+        {
+          ok: false,
+          error: "scan_events insert failed",
+          details: error,
+          row,
+          private_acr: privateResult.payload,
+          world_acr: worldResult.payload,
+        },
         { status: 500 }
       );
     }
 
     console.log("scan_events insert ok");
 
-    return Response.json(payload, { status: acrRes.status });
+    return Response.json(
+      {
+        ...responsePayload,
+        result_type: mapped.result_type,
+        track_title: mapped.track_title,
+        track_subtitle: mapped.track_subtitle,
+        acr_code: mapped.acr_code,
+        country: mapped.country,
+      },
+      { status: responseStatus }
+    );
   } catch (e: any) {
     return Response.json(
       { ok: false, error: e?.message || "Server error" },
