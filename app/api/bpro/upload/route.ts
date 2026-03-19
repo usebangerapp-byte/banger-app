@@ -18,9 +18,20 @@ export async function POST(req: Request) {
     const uploaderEmail = String(formData.get('uploader_email') || '').trim()
     const releaseDateRaw = String(formData.get('release_date') || '').trim()
     const allowPreviewRaw = String(formData.get('allow_preview') || 'true').trim()
+    const isReleasedRaw = String(formData.get('is_released') || 'false').trim()
+    const hasRightsRaw = String(formData.get('has_rights') || 'false').trim()
 
     const allowPreview = allowPreviewRaw === 'true'
+    const isReleased = isReleasedRaw === 'true'
+    const hasRights = hasRightsRaw === 'true' || hasRightsRaw === '1'
     const releaseDate = releaseDateRaw || null
+
+    if (!hasRights) {
+      return NextResponse.json(
+        { error: 'You must confirm rights before uploading.' },
+        { status: 400 }
+      )
+    }
 
     if (!file) {
       return NextResponse.json({ error: 'Missing file' }, { status: 400 })
@@ -40,7 +51,7 @@ export async function POST(req: Request) {
     const { error: uploadError } = await supabase.storage
       .from('bpro_uploads')
       .upload(objectPath, buffer, {
-        contentType: file.type || 'audio/mpeg',
+        contentType: file.type || 'application/octet-stream',
         upsert: false,
       })
 
@@ -56,10 +67,11 @@ export async function POST(req: Request) {
         snippet_path: objectPath,
         release_date: releaseDate,
         allow_preview: allowPreview,
+        is_released: isReleased,
         uploader_email: uploaderEmail,
         status: 'ready',
       })
-      .select('id, title, artist, snippet_path, allow_preview, release_date')
+      .select('id, title, artist, snippet_path, allow_preview, is_released, release_date')
       .single()
 
     if (insertError) {
@@ -69,7 +81,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       track: inserted,
-      message: 'Upload BPro créé et synchronisé automatiquement',
+      message: 'Upload BPro créé'
     })
   } catch (error) {
     const message =
