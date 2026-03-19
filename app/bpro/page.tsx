@@ -483,7 +483,12 @@ async function buildUploadSnippets() {
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "") || "snippet";
 
-  const snippets = [];
+  const snippets: Array<{
+    file: File;
+    start: number;
+    index: number;
+    isPreview: boolean;
+  }> = [];
 
   for (let i = 0; i < starts.length; i++) {
     const start = starts[i];
@@ -535,6 +540,7 @@ async function buildUploadSnippets() {
 
   return snippets;
 }
+
 
   function testPreview() {
     if (!audioPreviewRef.current || !audioUrl) return;
