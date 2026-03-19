@@ -441,6 +441,101 @@ async function buildUploadFile() {
     return new File([blob], `${baseName}.mp3`, { type: "audio/mpeg" });
   }
 
+async function buildUploadSnippets() {
+  if (!audioFile) {
+    throw new Error("Audio file missing.");
+  }
+
+  if (!ffmpegRef.current) {
+    ffmpegRef.current = new FFmpeg();
+  }
+
+  const ffmpeg = ffmpegRef.current;
+
+  if (!ffmpegLoadedRef.current) {
+    await ffmpeg.load();
+    ffmpegLoadedRef.current = true;
+  }
+
+  const inputExt = audioFile.name.includes(".")
+    ? audioFile.name.split(".").pop()
+    : "mp3";
+
+  const inputName = `multi-input.${inputExt}`;
+  const inputBytes = new Uint8Array(await audioFile.arrayBuffer());
+  await ffmpeg.writeFile(inputName, inputBytes);
+
+  const totalDuration = Math.max(durationSec || 0, previewDuration || 0, 180);
+  const snippetLength = Math.max(15, Math.min(25, previewDuration || 25));
+
+  const rawStarts = [
+    Math.floor(totalDuration * 0.2),
+    Math.floor(totalDuration * 0.45),
+    Math.floor(totalDuration * 0.7),
+  ];
+
+  const starts = rawStarts.map((value) =>
+    Math.max(0, Math.min(value, Math.max(0, Math.floor(totalDuration - snippetLength))))
+  );
+
+  const baseName = (trackTitle.trim() || audioFile.name.replace(/\.[^/.]+$/, ""))
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "") || "snippet";
+
+  const snippets = [];
+
+  for (let i = 0; i < starts.length; i++) {
+    const start = starts[i];
+    const outputName = `multi-snippet-${i + 1}.mp3`;
+
+    await ffmpeg.exec([
+      "-ss",
+      String(start),
+      "-t",
+      String(snippetLength),
+      "-i",
+      inputName,
+      "-vn",
+      "-acodec",
+      "libmp3lame",
+      "-b:a",
+      "192k",
+      outputName,
+    ]);
+
+    const data = await ffmpeg.readFile(outputName);
+
+    if (typeof data === "string") {
+      throw new Error("Invalid ffmpeg output");
+    }
+
+    const safeBytes = new Uint8Array(data.length);
+    safeBytes.set(data);
+
+    snippets.push({
+      file: new File(
+        [safeBytes.buffer],
+        `${baseName}-snippet-${i + 1}.mp3`,
+        { type: "audio/mpeg" }
+      ),
+      start,
+      index: i + 1,
+      isPreview: i === 1,
+    });
+
+    try {
+      await ffmpeg.deleteFile(outputName);
+    } catch {}
+  }
+
+  try {
+    await ffmpeg.deleteFile(inputName);
+  } catch {}
+
+  return snippets;
+}
+
   function testPreview() {
     if (!audioPreviewRef.current || !audioUrl) return;
     const audio = audioPreviewRef.current;
@@ -473,10 +568,20 @@ async function buildUploadFile() {
 
     try {
       const fd = new FormData();
-      
-const uploadFile = await buildUploadFile();
-if (!uploadFile) throw new Error("No upload file");
-fd.append("file", uploadFile);
+
+      const uploadFile = await buildUploadFile();
+      if (!uploadFile) throw new Error("No upload file");
+
+      const uploadSnippets = await buildUploadSnippets();
+      const acrSnippets =
+        uploadSnippets && uploadSnippets.length > 0
+          ? uploadSnippets
+          : [{ file: uploadFile, start: previewStart || 0, index: 1, isPreview: true }];
+
+      const previewSnippet =
+        acrSnippets.find((item: any) => item.isPreview)?.file || uploadFile;
+
+      fd.append("file", previewSnippet);
 
       fd.append("mode", mode);
       fd.append("name", name.trim());
@@ -508,26 +613,34 @@ fd.append("file", uploadFile);
         throw new Error(j?.error || "Unable to complete analysis.");
       }
 
-      setStatus("Sending to ACR…");
+      setStatus("Sending snippets to ACR…");
 
-      const acrFd = new FormData();
-      acrFd.append("file", uploadFile);
-      acrFd.append("title", trackTitle.trim());
+      let firstAcrJson: UploadResult | null = null;
 
-      const acrRes = await fetch("/api/bpro/acr-upload", {
-        method: "POST",
-        body: acrFd,
-      });
+      for (const snippet of acrSnippets) {
+        const acrFd = new FormData();
+        acrFd.append("file", snippet.file);
+        acrFd.append("title", trackTitle.trim());
 
-      const acrJson = (await acrRes.json().catch(() => null)) as UploadResult | null;
+        const acrRes = await fetch("/api/bpro/acr-upload", {
+          method: "POST",
+          body: acrFd,
+        });
 
-      if (!acrRes.ok || !acrJson?.ok) {
-        throw new Error(acrJson?.error || "ACR upload failed.");
+        const acrJson = (await acrRes.json().catch(() => null)) as UploadResult | null;
+
+        if (!acrRes.ok || !acrJson?.ok) {
+          throw new Error(acrJson?.error || "ACR upload failed.");
+        }
+
+        if (!firstAcrJson) {
+          firstAcrJson = acrJson;
+        }
       }
 
       const merged: UploadResult = {
         ...j,
-        ...acrJson,
+        ...(firstAcrJson || {}),
         ok: true,
       };
 

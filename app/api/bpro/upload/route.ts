@@ -8,11 +8,17 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+type UploadedSnippet = {
+  file: File
+  objectPath: string
+  snippetIndex: number
+  isPreview: boolean
+}
+
 export async function POST(req: Request) {
   try {
     const formData = await req.formData()
 
-    const file = formData.get('file') as File | null
     const title = String(formData.get('title') || '').trim()
     const artist = String(formData.get('artist') || formData.get('name') || '').trim()
     const uploaderEmail = String(formData.get('uploader_email') || '').trim()
@@ -26,6 +32,22 @@ export async function POST(req: Request) {
     const hasRights = hasRightsRaw === 'true' || hasRightsRaw === '1'
     const releaseDate = releaseDateRaw || null
 
+    const file0 = formData.get('file_0')
+    const file1 = formData.get('file_1')
+    const file2 = formData.get('file_2')
+    const fallbackFile = formData.get('file')
+
+    const providedFiles = [file0, file1, file2].filter(
+      (value): value is File => value instanceof File
+    )
+
+    const inputFiles =
+      providedFiles.length > 0
+        ? providedFiles
+        : fallbackFile instanceof File
+          ? [fallbackFile]
+          : []
+
     if (!hasRights) {
       return NextResponse.json(
         { error: 'You must confirm rights before uploading.' },
@@ -33,7 +55,7 @@ export async function POST(req: Request) {
       )
     }
 
-    if (!file) {
+    if (inputFiles.length === 0) {
       return NextResponse.json({ error: 'Missing file' }, { status: 400 })
     }
 
@@ -44,20 +66,37 @@ export async function POST(req: Request) {
       )
     }
 
-    const extension = file.name.split('.').pop() || 'mp3'
-    const objectPath = `snippets/${crypto.randomUUID()}.${extension}`
-    const buffer = Buffer.from(await file.arrayBuffer())
+    const previewArrayIndex = inputFiles.length >= 2 ? 1 : 0
 
-    const { error: uploadError } = await supabase.storage
-      .from('bpro_uploads')
-      .upload(objectPath, buffer, {
-        contentType: file.type || 'application/octet-stream',
-        upsert: false,
+    const uploadedSnippets: UploadedSnippet[] = []
+
+    for (let i = 0; i < inputFiles.length; i++) {
+      const file = inputFiles[i]
+      const extension = file.name.split('.').pop() || 'mp3'
+      const objectPath = `snippets/${crypto.randomUUID()}.${extension}`
+      const buffer = Buffer.from(await file.arrayBuffer())
+
+      const { error: uploadError } = await supabase.storage
+        .from('bpro_uploads')
+        .upload(objectPath, buffer, {
+          contentType: file.type || 'application/octet-stream',
+          upsert: false,
+        })
+
+      if (uploadError) {
+        return NextResponse.json({ error: uploadError.message }, { status: 500 })
+      }
+
+      uploadedSnippets.push({
+        file,
+        objectPath,
+        snippetIndex: i + 1,
+        isPreview: i === previewArrayIndex,
       })
-
-    if (uploadError) {
-      return NextResponse.json({ error: uploadError.message }, { status: 500 })
     }
+
+    const previewSnippet =
+      uploadedSnippets.find((item) => item.isPreview) || uploadedSnippets[0]
 
     const { data: existingTrack, error: existingError } = await supabase
       .from('bpro_tracks')
@@ -73,7 +112,7 @@ export async function POST(req: Request) {
     const payload = {
       title,
       artist,
-      snippet_path: objectPath,
+      snippet_path: previewSnippet.objectPath,
       release_date: releaseDate,
       allow_preview: allowPreview,
       is_released: isReleased,
@@ -93,9 +132,36 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: saveError.message }, { status: 500 })
     }
 
+    const { error: deleteSnippetsError } = await supabase
+      .from('bpro_track_snippets')
+      .delete()
+      .eq('track_id', savedTrack.id)
+
+    if (deleteSnippetsError) {
+      return NextResponse.json({ error: deleteSnippetsError.message }, { status: 500 })
+    }
+
+    const snippetRows = uploadedSnippets.map((item) => ({
+      track_id: savedTrack.id,
+      snippet_path: item.objectPath,
+      snippet_index: item.snippetIndex,
+      start_seconds: 0,
+      duration_seconds: null,
+      is_preview: item.isPreview,
+    }))
+
+    const { error: snippetError } = await supabase
+      .from('bpro_track_snippets')
+      .insert(snippetRows)
+
+    if (snippetError) {
+      return NextResponse.json({ error: snippetError.message }, { status: 500 })
+    }
+
     return NextResponse.json({
       ok: true,
       track: savedTrack,
+      snippets_created: snippetRows.length,
       message: existingTrack ? 'Upload BPro mis à jour' : 'Upload BPro créé'
     })
   } catch (error) {
