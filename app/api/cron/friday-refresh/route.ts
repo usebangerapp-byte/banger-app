@@ -1,5 +1,4 @@
 import { createClient } from "@supabase/supabase-js";
-import { findMusicLinks } from "@/lib/music/findLinks";
 
 export const runtime = "nodejs";
 
@@ -8,33 +7,47 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+function isPastDate(value?: string | null) {
+  if (!value) return false;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return false;
+  return d.getTime() <= Date.now();
+}
+
 export async function GET() {
   try {
-    const { data } = await supabase
-      .from("unreleased_tracks")
-      .select("id,title,artist,spotify_url,beatport_url")
-      .or("spotify_url.is.null,beatport_url.is.null")
+    const { data, error } = await supabase
+      .from("bpro_tracks")
+      .select("id,title,artist,is_released,release_date,allow_preview")
+      .eq("is_released", false)
       .limit(200);
 
-    for (const track of data || []) {
-      const title = String(track.title || "").trim();
-      const artist = String(track.artist || "").trim();
-      if (!title || !artist) continue;
-
-      const links = await findMusicLinks(artist, title);
-
-      await supabase
-        .from("unreleased_tracks")
-        .update({
-          spotify_url: track.spotify_url || links.spotify_url,
-          beatport_url: track.beatport_url || links.beatport_url,
-        })
-        .eq("id", track.id);
+    if (error) {
+      return Response.json({ ok: false, error: error.message }, { status: 500 });
     }
 
-    return Response.json({ ok: true });
-  } catch (e) {
+    let updated = 0;
+
+    for (const track of data || []) {
+      if (!isPastDate(track.release_date)) continue;
+
+      const { error: updateError } = await supabase
+        .from("bpro_tracks")
+        .update({
+          is_released: true,
+          allow_preview: true,
+        })
+        .eq("id", track.id);
+
+      if (!updateError) updated += 1;
+    }
+
+    return Response.json({ ok: true, updated });
+  } catch (e: any) {
     console.error(e);
-    return Response.json({ ok: false });
+    return Response.json(
+      { ok: false, error: e?.message || "Refresh failed" },
+      { status: 500 }
+    );
   }
 }

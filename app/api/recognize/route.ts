@@ -77,7 +77,7 @@ function mapWorldRecognition(payload: any, fallbackCountry = "") {
   const music = payload?.metadata?.music?.[0] || null;
   const score = Number(music?.score || 0);
 
-  if (!music?.title || score < 90) return null;
+  if (!music?.title || score < 70) return null;
 
   return {
     result_type: "recognized_world",
@@ -223,7 +223,7 @@ export async function POST(req: Request) {
       if (t) {
         const { data } = await supabase
           .from("unreleased_tracks")
-          .select("id,title,artist,release_date,spotify_url,beatport_url")
+          .select("id,title,artist,release_date,is_released,spotify_url,beatport_url")
           .or(
             "title.ilike.%" + t + "%," +
             "title.ilike.%" + t + ".mp3%," +
@@ -239,8 +239,8 @@ export async function POST(req: Request) {
 
     const privateReleased = Boolean(
       mappedPrivate &&
-      privateTrackRow?.release_date &&
-      isReleasedDate(privateTrackRow.release_date)
+      (privateTrackRow?.is_released ||
+        (privateTrackRow?.release_date && isReleasedDate(privateTrackRow.release_date)))
     );
 
     const mapped =

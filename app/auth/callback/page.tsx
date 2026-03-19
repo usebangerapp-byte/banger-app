@@ -39,7 +39,7 @@ export default function AuthCallbackPage() {
 
         if (data.session) {
           setMsg("Login successful. Redirecting…");
-          router.replace("/");
+          router.replace("/onboarding");
         } else {
           setMsg("No active session. Redirecting…");
           router.replace("/login");

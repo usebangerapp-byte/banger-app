@@ -292,13 +292,14 @@ fd.append("region", region);
     }
   }
 
-  const headerTitleStyle = useMemo(() => {  const badgeBg =
+  const badgeBg =
     tag === "UNRELEASED"
       ? "rgba(225,225,225,0.14)"
       : tag === "RELEASED"
       ? "rgba(225,225,225,0.10)"
       : "rgba(225,225,225,0.08)";
 
+  const headerTitleStyle = useMemo(() => {
     return {
       ...styles.title,
       background:
@@ -418,6 +419,8 @@ Discover what the scene is playing
 
       <div style={styles.phone}>
         <div style={styles.top}>
+          <div style={headerTitleStyle}>BANGER</div>
+          <div style={subStyle}>Find your Un/Released</div>
         </div>
 
         <div style={styles.center}>
@@ -545,7 +548,7 @@ Discover what the scene is playing
           <div style={styles.card}>
             <div style={styles.cardRow}>
               <div style={styles.cardMain}>{title}</div>
-              <div style={{ ...styles.badge, background: (tag === "UNRELEASED" ? "rgba(225,225,225,0.14)" : tag === "RELEASED" ? "rgba(225,225,225,0.10)" : "rgba(225,225,225,0.08)") }}>{tag}</div>
+              <div style={{ ...styles.badge, background: badgeBg }}>{tag}</div>
             </div>
             <div style={styles.cardSub}>{subtitle}</div>
           </div>
@@ -560,7 +563,7 @@ Discover what the scene is playing
 const styles: any = {
   page: {
     minHeight: "100vh",
-    background: "#000",
+    background: PAGE_BG,
     color: "#fff",
     display: "flex",
     justifyContent: "center",

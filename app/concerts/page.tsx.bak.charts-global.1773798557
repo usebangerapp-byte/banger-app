@@ -113,8 +113,8 @@ export default function ChartsPage() {
       try {
         const [{ data: uploads, error: uploadsError }, { data: scans, error: scansError }] = await Promise.all([
           supabase!
-            .from("bpro_tracks")
-            .select("id,title,artist,snippet_path,allow_preview,release_date,is_released")
+            .from("unreleased_tracks")
+            .select("id,title,artist,scan_count,snippet_path,allow_preview,release_date,spotify_url,beatport_url")
             .limit(500),
           { data: await fetch("/api/charts").then(r=>r.json()), error: null },
         ]);
@@ -167,18 +167,10 @@ export default function ChartsPage() {
             });
 
             const totalScans = matchedScans.length;
-            const hasReleasedScan = matchedScans.some((scan: any) => {
-              if (scan.result_type !== "recognized_world") return false;
-
-              const scanTitle = normalize(scan.track_title || "");
-              const scanArtist = normalize(scan.track_subtitle || "");
-
-              const strictTitleMatch = !!titleNorm && scanTitle === titleNorm;
-              const strictArtistMatch = !!artistNorm && scanArtist === artistNorm;
-
-              return strictTitleMatch && strictArtistMatch;
-            });
-            const released = !!track.is_released || hasReleasedScan;
+            const hasReleasedScan = matchedScans.some(
+              (scan: any) => scan.result_type === "recognized_world"
+            );
+            const released = isReleased(track.release_date) || hasReleasedScan;
 
             return {
               id: String(track.id),

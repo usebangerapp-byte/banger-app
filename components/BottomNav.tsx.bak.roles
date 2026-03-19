@@ -2,78 +2,19 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-import { createSupabaseBrowser } from "@/lib/supabase/client";
 
-const HIDDEN = ["/", "/login", "/unlock", "/onboarding", "/auth/callback", "/onboarding"];
+const HIDDEN = ["/login", "/unlock", "/onboarding", "/onboarding", "/auth/callback"];
+
+const ITEMS = [
+  { label: "Profile", href: "/profile" },
+  { label: "Radar", href: "/library" },
+  { label: "Scan", href: "/home" },
+  { label: "Charts", href: "/concerts" },
+  { label: "BPRO", href: "/bpro" },
+];
 
 export default function BottomNav() {
   const pathname = usePathname() || "/";
-  const [role, setRole] = useState<"public" | "dj" | "label">("public");
-
-  useEffect(() => {
-    let mounted = true;
-
-    (async () => {
-      try {
-        const supabase = createSupabaseBrowser();
-        if (!supabase) return;
-
-        const { data: auth } = await supabase.auth.getUser();
-        const user = auth.user;
-        if (!mounted || !user) return;
-
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", user.id)
-          .single();
-
-        if (!mounted) return;
-
-        if (profile?.role === "dj" || profile?.role === "label" || profile?.role === "public") {
-          setRole(profile.role);
-          try {
-            localStorage.setItem("banger_role", profile.role);
-          } catch {}
-        }
-      } catch {}
-    })();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  const items = useMemo(() => {
-    if (role === "dj") {
-      return [
-        { label: "Profile", href: "/profile" },
-        { label: "Radar", href: "/library" },
-        { label: "Scan", href: "/home" },
-        { label: "Charts", href: "/concerts" },
-        { label: "BPRO", href: "/bpro" },
-      ];
-    }
-
-    if (role === "label") {
-      return [
-        { label: "Profile", href: "/profile" },
-        { label: "Radar", href: "/library" },
-        { label: "Scan", href: "/home" },
-        { label: "Charts", href: "/concerts" },
-        { label: "PRO", href: "/pro" },
-      ];
-    }
-
-    return [
-      { label: "Profile", href: "/profile" },
-      { label: "Radar", href: "/library" },
-      { label: "Scan", href: "/home" },
-      { label: "Charts", href: "/concerts" },
-      { label: "Events", href: "/events" },
-    ];
-  }, [role]);
 
   if (HIDDEN.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
     return null;
@@ -110,7 +51,7 @@ export default function BottomNav() {
             background: "#050505",
           }}
         >
-          {items.map((item) => {
+          {ITEMS.map((item) => {
             const active =
               item.href === "/"
                 ? pathname === "/"

@@ -1,51 +1,25 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
-import { createSupabaseBrowser } from "@/lib/supabase/client";
+import Link from "next/link";
+import { useMemo, useState } from "react";
 
 type ScanRange = "day" | "week" | "month";
 
+const USERS = "23,421";
+const SCANS = {
+  day: "4,128",
+  week: "18,902",
+  month: "71,334",
+};
 
 export default function LandingPage() {
-  const supabase = createSupabaseBrowser();
-  const [stats, setStats] = useState<any>(null);
   const [range, setRange] = useState<ScanRange>("month");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  useEffect(() => {
-    fetch("/api/stats")
-      .then((r) => r.json())
-      .then((j) => { if (j?.ok) setStats(j); })
-      .catch(() => {});
-  }, []);
 
   const scansLabel = useMemo(() => {
     if (range === "day") return "SCANS TODAY";
     if (range === "week") return "SCANS THIS WEEK";
     return "SCANS THIS MONTH";
   }, [range]);
-
-  async function continueWithGoogle() {
-    setBusy(true);
-    setError("");
-
-    try {
-      const origin =
-        typeof window !== "undefined"
-          ? window.location.origin
-          : "https://banger-app-zeta.vercel.app";
-
-      const { error } = await supabase!.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: `${origin}/auth/callback` },
-      });
-
-      if (error) throw error;
-    } catch (e: any) {
-      setError(e?.message || "Unable to start Google login.");
-      setBusy(false);
-    }
-  }
 
   return (
     <main style={styles.page}>
@@ -61,13 +35,12 @@ export default function LandingPage() {
             <br />
             Follow what DJs are playing.
           </p>
-          <div style={styles.heroMeta}>USED BY DJs WORLDWIDE</div>
         </section>
 
         <section style={styles.statsCard}>
           <div style={styles.statBlock}>
             <div style={styles.statLabel}>USERS</div>
-            <div style={styles.statValue}>{stats?.users ?? "..."} </div>
+            <div style={styles.statValue}>{USERS}</div>
           </div>
 
           <div style={styles.divider} />
@@ -99,7 +72,7 @@ export default function LandingPage() {
                 </button>
               </div>
             </div>
-            <div style={styles.statValue}>{stats?.scans?.[range] ?? "..."} </div>
+            <div style={styles.statValue}>{SCANS[range]}</div>
           </div>
         </section>
 
@@ -119,28 +92,11 @@ export default function LandingPage() {
           <div style={styles.sectionTitle}>ENTER BANGER WEB</div>
           <div style={styles.webCard}>
             <p style={styles.webText}>
-              Access BANGER on web and continue with your account.
+              Access BANGER on web and continue with your Google account.
             </p>
-
-            <button
-              type="button"
-              onClick={continueWithGoogle}
-              disabled={busy}
-              style={styles.primaryButton}
-            >
-              {busy ? "Connecting..." : "Continue with Google"}
-            </button>
-
-            <button type="button" disabled style={styles.secondaryButtonFull}>
-              Apple — Coming soon
-            </button>
-
-            <button type="button" disabled style={styles.secondaryButtonFull}>
-              Instagram — Coming soon
-            </button>
-
-            <div style={styles.freePlan}>Free plan available</div>
-            {error ? <div style={styles.errorText}>{error}</div> : null}
+            <Link href="/login" style={styles.primaryLink}>
+              Login with Google
+            </Link>
           </div>
         </section>
       </div>
@@ -196,12 +152,6 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: 1.5,
     opacity: 0.74,
     maxWidth: 420,
-  },
-  heroMeta: {
-    fontSize: 12,
-    opacity: 0.5,
-    letterSpacing: "0.15em",
-    fontWeight: 800,
   },
   statsCard: {
     border: "1px solid rgba(255,255,255,0.10)",
@@ -270,7 +220,7 @@ const styles: Record<string, React.CSSProperties> = {
     background: "rgba(255,255,255,0.03)",
     padding: 18,
     display: "grid",
-    gap: 12,
+    gap: 14,
   },
   webText: {
     margin: 0,
@@ -278,10 +228,11 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: 1.5,
     opacity: 0.72,
   },
-  primaryButton: {
+  primaryLink: {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
+    textDecoration: "none",
     padding: "16px 18px",
     borderRadius: 18,
     border: "1px solid rgba(255,255,255,0.14)",
@@ -289,28 +240,6 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#000",
     fontWeight: 800,
     fontSize: 16,
-    cursor: "pointer",
-  },
-  secondaryButtonFull: {
-    padding: "15px 18px",
-    borderRadius: 18,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(255,255,255,0.05)",
-    color: "rgba(255,255,255,0.55)",
-    fontWeight: 700,
-    fontSize: 16,
-  },
-  freePlan: {
-    textAlign: "center",
-    fontSize: 12,
-    opacity: 0.62,
-    letterSpacing: "0.08em",
-    fontWeight: 700,
-  },
-  errorText: {
-    color: "#ffb7b7",
-    textAlign: "center",
-    fontSize: 13,
   },
 };
 

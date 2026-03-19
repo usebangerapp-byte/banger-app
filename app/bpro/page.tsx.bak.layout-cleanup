@@ -9,19 +9,16 @@ import { FFmpeg } from "@ffmpeg/ffmpeg";
 
 
 
-type Mode = "DJ";
+type Mode = "DJ" | "LABEL";
 type ReleaseStatus = "released" | "unreleased";
 type Flow = "idle" | "preview" | "done";
 
 type UploadResult = {
   ok?: boolean;
   acr_id?: string | null;
-  acr_state?: number | null;
-  acr?: any;
   fingerprint_status?: string | null;
   snippet_path?: string | null;
   artwork_path?: string | null;
-  track?: any;
   error?: string;
 };
 
@@ -70,7 +67,7 @@ export default function BproPage() {
   const ffmpegLoadedRef = useRef(false);
   const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
 
-  const mode: Mode = "DJ";
+  const [mode, setMode] = useState<Mode | null>(null);
   const [name, setName] = useState("");
   const [trackTitle, setTrackTitle] = useState("");
   const [info, setInfo] = useState("");
@@ -99,7 +96,7 @@ export default function BproPage() {
   const [success, setSuccess] = useState("");
   const [result, setResult] = useState<UploadResult | null>(null);
 
-  const identityOk = useMemo(() => name.trim().length > 0, [name]);
+  const identityOk = useMemo(() => !!mode && name.trim().length > 0, [mode, name]);
   const trackOk = useMemo(() => trackTitle.trim().length > 0, [trackTitle]);
   const canPickAudio = identityOk && trackOk && agreeRights && !busy;
 
@@ -221,14 +218,7 @@ export default function BproPage() {
     if (artworkInputRef.current) artworkInputRef.current.value = "";
   }
 
-function onDropFile(e: React.DragEvent<HTMLDivElement>) {
-e.preventDefault()
-const file=e.dataTransfer.files?.[0]
-if(file){setAudioFile(file)}
-}
-
-
-async function onPickAudio(e: React.ChangeEvent<HTMLInputElement>) {
+  async function onPickAudio(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -248,20 +238,13 @@ async function onPickAudio(e: React.ChangeEvent<HTMLInputElement>) {
         .replace(/\s+/g, " ")
         .trim();
 
-      if (baseName.includes(" - ")) {
-        const parts = baseName.split(" - ");
-        const maybeArtist = parts.shift()?.trim() || "";
-        const maybeTitle = parts.join(" - ").trim() || "";
-
-        if (!name.trim() && maybeArtist) {
-          setName(maybeArtist);
-        }
-
-        if (!trackTitle.trim() && maybeTitle) {
-          setTrackTitle(maybeTitle);
-        }
-      } else if (!trackTitle.trim() && baseName) {
+      if (!trackTitle.trim() && baseName) {
         setTrackTitle(baseName);
+      }
+
+      if (!name.trim() && baseName.includes(" - ")) {
+        const maybeArtist = baseName.split(" - ")[0]?.trim() || "";
+        if (maybeArtist) setName(maybeArtist);
       }
 
       setStatus("Reading file…");
@@ -353,7 +336,7 @@ async function buildUploadFile() {
 
     if (!ffmpegLoadedRef.current) {
       await ffmpeg.load();
-      ffmpegLoadedRef.current = true
+      ffmpegLoadedRef.current = True
     }
 
     const inputName = "input_video";
@@ -366,7 +349,7 @@ async function buildUploadFile() {
 
     const data = await ffmpeg.readFile(outputName);
 
-    return new File([data instanceof Uint8Array ? new Uint8Array(data).buffer : new TextEncoder().encode(String(data)).buffer], "converted.mp3", { type: "audio/mpeg" });
+    return new File([data.buffer], "converted.mp3", { type: "audio/mpeg" });
   }
 
     if (!audioFile) {
@@ -475,7 +458,6 @@ async function buildUploadFile() {
       const fd = new FormData();
       
 const uploadFile = await buildUploadFile();
-if (!uploadFile) throw new Error("No upload file");
 fd.append("file", uploadFile);
 
       fd.append("mode", mode);
@@ -483,9 +465,8 @@ fd.append("file", uploadFile);
       fd.append("title", trackTitle.trim());
       fd.append("info", info.trim());
       fd.append("release_status", releaseStatus);
-      fd.append("is_released", releaseStatus === "released" ? "true" : "false");
       fd.append("release_date", releaseDate || "");
-      fd.append("allow_preview", allowPublicPreview ? "true" : "false");
+      fd.append("allow_preview", allowPublicPreview ? "1" : "0");
       fd.append("delete_after", "1");
       fd.append("has_rights", agreeRights ? "1" : "0");
       fd.append("uploader_email", uploaderEmail || "");
@@ -508,34 +489,11 @@ fd.append("file", uploadFile);
         throw new Error(j?.error || "Unable to complete analysis.");
       }
 
-      setStatus("Sending to ACR…");
-
-      const acrFd = new FormData();
-      acrFd.append("file", uploadFile);
-      acrFd.append("title", trackTitle.trim());
-
-      const acrRes = await fetch("/api/bpro/acr-upload", {
-        method: "POST",
-        body: acrFd,
-      });
-
-      const acrJson = (await acrRes.json().catch(() => null)) as UploadResult | null;
-
-      if (!acrRes.ok || !acrJson?.ok) {
-        throw new Error(acrJson?.error || "ACR upload failed.");
-      }
-
-      const merged: UploadResult = {
-        ...j,
-        ...acrJson,
-        ok: true,
-      };
-
-      setResult(merged);
+      setResult(j);
       setFlow("done");
       setStatus("");
       setSuccess(
-        merged.acr_id
+        j.fingerprint_status === "ready"
           ? "Your track is now ready for scan."
           : "Track prepared successfully."
       );
@@ -564,106 +522,53 @@ fd.append("file", uploadFile);
 
   return (
     <main style={{ minHeight: "100vh", background: "#000", color: "#fff", padding: 20 }}>
-        <div style={{ maxWidth: 760, margin: "0 auto", paddingBottom: 220 }}>
-        <div style={{ marginBottom: 18 }}>
-          <h1 style={{ margin: 0, fontSize: 28, fontWeight: 900, letterSpacing: "-0.03em" }}>
-            BPro
-          </h1>
+        <div style={{ display: "grid", placeItems: "center", marginBottom: 14 }}>
+          <Image
+            src="/B-logo.png"
+            alt="Banger"
+            width={72}
+            height={72}
+            style={{ width: 72, height: 72, objectFit: "contain" }}
+            priority
+          />
+        </div>
+
+      <div style={{ maxWidth: 760, margin: "0 auto", paddingBottom: 220 }}>
+        <div style={{ textAlign: "center", marginBottom: 18 }}>
+          <div style={{ fontSize: 12, opacity: 0.6, letterSpacing: "0.10em" }}>BPRO</div>
+          <h1 style={{ margin: "8px 0 6px", fontSize: 30 }}>DJ / Label Upload</h1>
+          <div style={{ opacity: 0.72, fontSize: 14 }}>
+            A private space to prepare your tracks before scan.
+          </div>
         </div>
 
         <div style={{ display: "grid", gap: 14 }}>
-          <Card title="1. Upload Track">
-            <div style={{ display: "grid", gap: 12 }}>
-              <input
-                ref={audioInputRef}
-                type="file"
-                accept=".mp3,.wav,.wave,.aiff,.aif,.flac,.m4a,.aac,.ogg,.opus,.mp4,.mov,.m4v,video/*,audio/*"
-                onChange={onPickAudio}
-                style={{ display: "none" }}
-              />
-
-              <div
-                onClick={() => audioInputRef.current?.click()}
-                onDrop={onDropFile}
-                onDragOver={(e) => e.preventDefault()}
-                style={{
-                  border: "1px dashed rgba(255,255,255,0.18)",
-                  borderRadius: 18,
-                  padding: "20px 16px",
-                  background: "rgba(255,255,255,0.03)",
-                  textAlign: "center",
-                  cursor: canPickAudio ? "pointer" : "not-allowed",
-                  opacity: canPickAudio ? 1 : 0.6,
-                }}
-              >
-                <div style={{ fontSize: 16, fontWeight: 800 }}>Upload track</div>
-                <div style={{ marginTop: 6, fontSize: 14, opacity: 0.72 }}>
-                  Drag audio/video here or tap to choose file
-                </div>
-              </div>
-
-              <input
-                type="text"
-                placeholder="Paste Hypeddit, SoundCloud, YouTube, TikTok or Instagram link"
-                value={importUrl}
-                onChange={(e) => setImportUrl(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "12px",
-                  borderRadius: 12,
-                  background: "#111",
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  color: "#fff"
-                }}
-              />
-
-              <button
-                type="button"
-                onClick={importFromLink}
-                disabled={!importUrl.trim()}
-                style={primaryButton(!canPickAudio || !importUrl.trim())}
-              >
-                Import from link
-              </button>
-
-              
-              
-              {identityOk && trackOk && !agreeRights && <div style={hintStyle}>Confirm rights before importing audio.</div>}
-
-              {audioFile && (
-                <div style={summaryBox}>
-                  <div><strong>File:</strong> {audioFile.name}</div>
-                  <div><strong>Size:</strong> {(audioFile.size / 1024 / 1024).toFixed(1)} MB</div>
-                  <div><strong>Duration:</strong> {durationSec !== null ? `${durationSec}s` : "…"}</div>
-                  {audioUrl && <audio ref={audioPreviewRef} controls src={audioUrl} style={{ width: "100%", marginTop: 10 }} />}
-                </div>
-              )}
-
-              {isShort && <div style={infoBox}>This file is ready for the next step.</div>}
-              {isLong && <div style={infoBox}>Select a preview segment before continuing.</div>}
+          <Card title="1. Profile">
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <SelectButton active={mode === "DJ"} onClick={() => setMode("DJ")}>DJ</SelectButton>
+              <SelectButton active={mode === "LABEL"} onClick={() => setMode("LABEL")}>Label</SelectButton>
             </div>
           </Card>
-
 
           <Card title="2. Track Info">
             <div style={{ display: "grid", gap: 10 }}>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Artist name"
+                placeholder="Artist / Label name"
                 style={inputStyle}
               />
               <input
                 value={trackTitle}
                 onChange={(e) => setTrackTitle(e.target.value)}
-                placeholder="Track name / Remix name"
+                placeholder="Artist name(s) – Track name / Remix name"
                 style={inputStyle}
               />
               <textarea
                 value={info}
                 onChange={(e) => setInfo(e.target.value)}
                 placeholder="Additional info (optional)"
-                rows={2}
+                rows={3}
                 style={{ ...inputStyle, resize: "vertical" }}
               />
             </div>
@@ -708,28 +613,26 @@ fd.append("file", uploadFile);
 
           <Card title="4. Artwork">
             <div style={{ display: "grid", gap: 12 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                <button
-                  type="button"
-                  onClick={() => artworkInputRef.current?.click()}
-                  style={{ ...secondaryButton, width: "auto", minWidth: 180 }}
-                >
-                  + Add artwork
-                </button>
+              <div style={hintStyle}>
+                Artwork is optional — BANGER logo will be used by default.
+              </div>
 
-                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, opacity: 0.88 }}>
-                  <input
-                    type="checkbox"
-                    checked={!artwork}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setArtwork(null);
-                        setArtworkPreviewUrl("");
-                      }
-                    }}
-                  />
-                  <span>Default artwork</span>
-                </label>
+              <div style={{
+                width: 120,
+                height: 120,
+                borderRadius: 18,
+                overflow: "hidden",
+                border: "1px solid rgba(255,255,255,0.12)",
+                background: "rgba(255,255,255,0.04)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}>
+                <img
+                  src={artworkPreviewUrl}
+                  alt="Artwork preview"
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
               </div>
 
               <input
@@ -740,12 +643,36 @@ fd.append("file", uploadFile);
                 style={{ display: "none" }}
               />
 
+              <button
+                type="button"
+                onClick={() => artworkInputRef.current?.click()}
+                style={secondaryButton}
+              >
+                Add square artwork (1:1)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setArtwork(null);
+                  setArtworkPreviewUrl("/B-logo.png");
+                }}
+                style={ghostButton}
+              >
+                Use BANGER logo
+              </button>
+
               {artwork ? (
                 <div style={summaryBox}>
                   <div><strong>Artwork:</strong> {artwork.name}</div>
                   <div><strong>Size:</strong> {(artwork.size / 1024 / 1024).toFixed(1)} MB</div>
                 </div>
-              ) : null}
+              ) : (
+                <div style={summaryBox}>
+                  <div><strong>Artwork:</strong> B-logo.png</div>
+                  <div>Default BANGER artwork selected</div>
+                </div>
+              )}
             </div>
           </Card>
 
@@ -760,8 +687,75 @@ fd.append("file", uploadFile);
             </label>
           </Card>
 
+          <Card title="6. Audio">
+            <div style={{ display: "grid", gap: 12 }}>
+              <input
+                ref={audioInputRef}
+                type="file"
+                accept=".mp3,.wav,.wave,.aiff,.aif,.flac,.m4a,.aac,.ogg,.opus,audio/*"
+                onChange={onPickAudio}
+                style={{ display: "none" }}
+              />
+
+              <button
+                type="button"
+                onClick={() => audioInputRef.current?.click()}
+                disabled={!canPickAudio}
+                style={primaryButton(!canPickAudio)}
+              >
+                Choose audio file
+<div style={{marginTop:16}}>
+  <input
+    type="text"
+    placeholder="Paste Hypeddit, SoundCloud, YouTube, TikTok or Instagram link"
+    value={importUrl}
+    onChange={(e)=>setImportUrl(e.target.value)}
+    style={{
+      width:"100%",
+      padding:"12px",
+      borderRadius:12,
+      background:"#111",
+      border:"1px solid rgba(255,255,255,0.12)",
+      color:"#fff"
+    }}
+  />
+  <button
+    onClick={importFromLink}
+    style={{
+      marginTop:10,
+      padding:"12px 16px",
+      borderRadius:14,
+      background:"#fff",
+      color:"#000",
+      fontWeight:800
+    }}
+  >
+    Import from link
+  </button>
+</div>
+
+              </button>
+
+              {!identityOk && <div style={hintStyle}>Select profile and enter your name first.</div>}
+              {identityOk && !trackOk && <div style={hintStyle}>Add the track title to continue.</div>}
+              {identityOk && trackOk && !agreeRights && <div style={hintStyle}>Confirm rights before importing audio.</div>}
+
+              {audioFile && (
+                <div style={summaryBox}>
+                  <div><strong>File:</strong> {audioFile.name}</div>
+                  <div><strong>Size:</strong> {(audioFile.size / 1024 / 1024).toFixed(1)} MB</div>
+                  <div><strong>Duration:</strong> {durationSec !== null ? `${durationSec}s` : "…"}</div>
+                  {audioUrl && <audio ref={audioPreviewRef} controls src={audioUrl} style={{ width: "100%", marginTop: 10 }} />}
+                </div>
+              )}
+
+              {isShort && <div style={infoBox}>This file is ready for the next step.</div>}
+              {isLong && <div style={infoBox}>Select a preview segment before continuing.</div>}
+            </div>
+          </Card>
+
           {isLong && (
-            <Card title="6. Preview Segment">
+            <Card title="7. Preview Segment">
               <div style={{ display: "grid", gap: 12 }}>
                 <div style={{ fontSize: 13, opacity: 0.78 }}>
                   Move the selected area to choose the best segment for scan.
@@ -851,7 +845,7 @@ fd.append("file", uploadFile);
             </Card>
           )}
 
-          <Card title={isLong ? "7. Scan Ready" : "6. Scan Ready"}>
+          <Card title={isLong ? "8. Scan Ready" : "7. Scan Ready"}>
             <div style={{ display: "grid", gap: 12 }}>
               {isShort && (
                 <button
@@ -870,13 +864,15 @@ fd.append("file", uploadFile);
 
               {result?.snippet_path && (
                 <div style={summaryBox}>
-                  <div><strong>Status:</strong> Ready</div>
+                  <div><strong>Stored file:</strong> {result.snippet_path}</div>
+                  <div><strong>Track ID:</strong> {result.acr_id || "—"}</div>
+                  <div><strong>Status:</strong> {result.fingerprint_status || "processing"}</div>
                 </div>
               )}
 
               {flow === "done" && (
-                <button type="button" onClick={()=>window.location.href="/home"} style={secondaryButton}>
-                  Enter Banger
+                <button type="button" onClick={resetAll} style={secondaryButton}>
+                  {true ? "Access now" : "Upload another track"}
                 </button>
               )}
             </div>

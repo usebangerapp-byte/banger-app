@@ -1,87 +1,277 @@
 "use client";
 
-import Image from "next/image";
-import { useState } from "react";
+import { createSupabaseBrowser } from "@/lib/supabase/client";
+
 import { useRouter } from "next/navigation";
 
-const slides = [
+type Plan = "public" | "dj" | "label";
+
+const plans = [
   {
-    title: "Identify any track",
-    text: "Scan music around you and instantly discover the track.",
+    key: "public" as Plan,
+    name: "PUBLIC",
+    price: "Free",
+    description: "Discover what’s playing around you and follow the underground.",
+    features: [
+      "Unlimited scan",
+      "Radar (live trends)",
+      "Charts (top unreleased)",
+      "Events & DJs nearby",
+      "Profile"
+    ],
+    cta: "Start Exploring",
   },
   {
-    title: "Discover unreleased music",
-    text: "Find hidden IDs, unreleased tracks and underground music.",
+    key: "dj" as Plan,
+    name: "DJ",
+    price: "Free",
+    description: "Track your IDs, test unreleased tracks and connect with the scene.",
+    features: [
+      "Everything in Public",
+      "Upload unreleased tracks",
+      "Share and test unreleased tracks",
+      "Be visible at events",
+      "Track scans",
+      "City trends"
+    ],
+    cta: "Activate DJ Mode",
   },
   {
-    title: "Follow the music scene",
-    text: "Track trending IDs, follow tracks and discover what DJs are playing.",
+    key: "label" as Plan,
+    name: "LABEL",
+    price: "Pro",
+    description: "Understand how your music moves and predict what will break next.",
+    features: [
+      "Everything in DJ",
+      "Track performance",
+      "Global scan data",
+      "City & event trends",
+      "Track potential prediction",
+      "Early trend detection",
+      "Release timing optimization"
+    ],
+    cta: "Contact us",
+    disabled: true,
   },
 ];
 
+function keyFor(email: string) {
+  return `banger_onboarding_done:${email.toLowerCase()}`;
+}
+
 export default function OnboardingView() {
   const router = useRouter();
-  const [index, setIndex] = useState(0);
 
-  const slide = slides[index];
+async function choosePlan(plan: Plan) {
+  try {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("banger_role", plan);
+      localStorage.setItem("banger_plan", plan);
+    }
 
-  function finish() {
-    router.replace("/login");
+    const supabase = createSupabaseBrowser();
+    if (!supabase) {
+      router.replace("/home");
+      return;
+    }
+
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError) {
+      console.error(authError);
+      router.replace("/home");
+      return;
+    }
+
+    const user = authData.user;
+    if (!user) {
+      router.replace("/home");
+      return;
+    }
+
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .upsert(
+        {
+          id: user.id,
+          email: user.email || null,
+          role: plan,
+        },
+        { onConflict: "id" }
+      );
+
+    if (profileError) {
+      console.error(profileError);
+    }
+  } catch (e) {
+    console.error(e);
   }
 
+  router.replace("/home");
+}
   return (
-    <main style={{ minHeight: "100vh", background: "#000", color: "#fff", padding: 24, display: "grid", placeItems: "center" }}>
-      <div style={{ width: "100%", maxWidth: 520, display: "grid", gap: 20 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", gap: 8 }}>
-            {slides.map((_, i) => (
-              <div key={i} style={{ width: i === index ? 28 : 8, height: 8, borderRadius: 999, background: i === index ? "#67f2ff" : "rgba(255,255,255,0.18)" }} />
-            ))}
-          </div>
-          <button type="button" onClick={finish} style={{ background: "transparent", border: "none", color: "rgba(255,255,255,0.72)" }}>
-            Skip
-          </button>
+    <main style={styles.page}>
+      <div style={styles.shell}>
+        <div style={styles.header}>
+          <div style={styles.eyebrow}>CHOOSE YOUR PLAN</div>
+          <h1 style={styles.title}>Start with BANGER</h1>
+          <p style={styles.subtitle}>
+            Discover, track and shape the future of unreleased music.
+            You can upgrade anytime.
+          </p>
         </div>
 
-        <div
-          style={{
-            border: "1px solid rgba(255,255,255,0.10)",
-            borderRadius: 28,
-            background: "linear-gradient(180deg, rgba(10,10,10,1) 0%, rgba(4,4,4,1) 100%)",
-            padding: 28,
-            minHeight: 560,
-            display: "grid",
-            alignContent: "space-between",
-            boxShadow: "0 0 80px rgba(0,229,255,0.05) inset",
-          }}
-        >
-          <div style={{ display: "grid", gap: 22, placeItems: "center", textAlign: "center" }}>
-            <Image src="/B-logo.png" alt="Banger" width={128} height={128} style={{ width: 128, height: 128 }} priority />
-            <div style={{ display: "grid", gap: 12 }}>
-              <h1 style={{ fontSize: 34, lineHeight: 1.05, margin: 0 }}>{slide.title}</h1>
-              <p style={{ fontSize: 16, lineHeight: 1.5, opacity: 0.78, margin: 0 }}>{slide.text}</p>
-            </div>
-          </div>
+        <div style={styles.grid}>
+          {plans.map((plan) => (
+            <section key={plan.key} style={styles.card}>
+              <div style={styles.cardTop}>
+                <div style={styles.planName}>{plan.name}</div>
+                <div style={styles.planPrice}>{plan.price}</div>
+                <p style={styles.planDescription}>{plan.description}</p>
+              </div>
 
-          <div style={{ display: "grid", gap: 12 }}>
-            <button
-              type="button"
-              onClick={() => (index === slides.length - 1 ? finish() : setIndex(index + 1))}
-              style={{
-                padding: "16px 18px",
-                borderRadius: 18,
-                border: "1px solid rgba(255,255,255,0.14)",
-                background: index === slides.length - 1 ? "#fff" : "rgba(0,229,255,0.14)",
-                color: index === slides.length - 1 ? "#000" : "#fff",
-                fontWeight: 800,
-                fontSize: 16,
-              }}
-            >
-              {index === slides.length - 1 ? "Enter BANGER" : "Continue"}
-            </button>
-          </div>
+              <div style={styles.features}>
+                {plan.features.map((feature) => (
+                  <div key={feature} style={styles.featureRow}>
+                    <span style={styles.featureDot} />
+                    <span>{feature}</span>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => { if(plan.key==="label"){ window.location.href="mailto:contact@usebanger.com"; return;} choosePlan(plan.key); }}
+                style={plan.key === "label" ? styles.secondaryButton : styles.primaryButton}
+              >
+                {plan.cta}
+              </button>
+            </section>
+          ))}
         </div>
       </div>
-    </main>
+    <div style={{marginTop:40,fontSize:12,opacity:0.5,textAlign:"center"}}>
+  <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="mailto:labels.com">Contact</a>
+</div>
+</main>
   );
 }
+
+const styles: Record<string, React.CSSProperties> = {
+  page: {
+    minHeight: "100vh",
+    background: "#000",
+    color: "#fff",
+    padding: "24px 18px 40px",
+  },
+  shell: {
+    width: "100%",
+    maxWidth: 980,
+    margin: "0 auto",
+    display: "grid",
+    gap: 24,
+  },
+  header: {
+    display: "grid",
+    gap: 10,
+    textAlign: "center",
+    paddingTop: 8,
+  },
+  eyebrow: {
+    fontSize: 12,
+    letterSpacing: "0.22em",
+    opacity: 0.58,
+    fontWeight: 800,
+  },
+  title: {
+    margin: 0,
+    fontSize: "clamp(34px, 8vw, 58px)",
+    lineHeight: 0.96,
+    letterSpacing: "-0.05em",
+    fontWeight: 900,
+  },
+  subtitle: {
+    margin: 0,
+    fontSize: 15,
+    lineHeight: 1.5,
+    opacity: 0.72,
+  },
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+    gap: 14,
+    alignItems: "stretch",
+  },
+  card: {
+    border: "1px solid rgba(255,255,255,0.10)",
+    borderRadius: 24,
+    background: "linear-gradient(180deg, rgba(12,12,12,1) 0%, rgba(5,5,5,1) 100%)",
+    padding: 20,
+    display: "grid",
+    gap: 18,
+    minHeight: 360,
+  },
+  cardTop: {
+    display: "grid",
+    gap: 8,
+  },
+  planName: {
+    fontSize: 22,
+    letterSpacing: "-0.02em",
+    opacity: 1,
+    fontWeight: 900,
+  },
+  planPrice: {
+    fontSize: 18,
+    lineHeight: 1,
+    letterSpacing: "-0.04em",
+    fontWeight: 900,
+  },
+  planDescription: {
+    margin: 0,
+    fontSize: 14,
+    lineHeight: 1.5,
+    opacity: 0.68,
+  },
+  features: {
+    display: "grid",
+    gap: 10,
+    alignContent: "start",
+  },
+  featureRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    fontSize: 14,
+    opacity: 0.9,
+  },
+  featureDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 999,
+    background: "#fff",
+    flexShrink: 0,
+    opacity: 0.9,
+  },
+  primaryButton: {
+    marginTop: "auto",
+    padding: "15px 16px",
+    borderRadius: 18,
+    border: "1px solid rgba(255,255,255,0.14)",
+    background: "#fff",
+    color: "#000",
+    fontWeight: 800,
+    fontSize: 15,
+    cursor: "pointer",
+  },
+  secondaryButton: {
+    marginTop: "auto",
+    padding: "15px 16px",
+    borderRadius: 18,
+    border: "1px solid rgba(255,255,255,0.14)",
+    background: "rgba(255,255,255,0.05)",
+    color: "#fff",
+    fontWeight: 800,
+    fontSize: 15,
+    cursor: "pointer",
+  },
+};

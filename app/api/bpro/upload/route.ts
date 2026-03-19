@@ -59,29 +59,44 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: uploadError.message }, { status: 500 })
     }
 
-    const { data: inserted, error: insertError } = await supabase
+    const { data: existingTrack, error: existingError } = await supabase
       .from('bpro_tracks')
-      .insert({
-        title,
-        artist,
-        snippet_path: objectPath,
-        release_date: releaseDate,
-        allow_preview: allowPreview,
-        is_released: isReleased,
-        uploader_email: uploaderEmail,
-        status: 'ready',
-      })
+      .select('id, title, artist, snippet_path, allow_preview, is_released, release_date')
+      .eq('title', title)
+      .eq('artist', artist)
+      .maybeSingle()
+
+    if (existingError) {
+      return NextResponse.json({ error: existingError.message }, { status: 500 })
+    }
+
+    const payload = {
+      title,
+      artist,
+      snippet_path: objectPath,
+      release_date: releaseDate,
+      allow_preview: allowPreview,
+      is_released: isReleased,
+      uploader_email: uploaderEmail,
+      status: 'ready',
+    }
+
+    const query = existingTrack
+      ? supabase.from('bpro_tracks').update(payload).eq('id', existingTrack.id)
+      : supabase.from('bpro_tracks').insert(payload)
+
+    const { data: savedTrack, error: saveError } = await query
       .select('id, title, artist, snippet_path, allow_preview, is_released, release_date')
       .single()
 
-    if (insertError) {
-      return NextResponse.json({ error: insertError.message }, { status: 500 })
+    if (saveError) {
+      return NextResponse.json({ error: saveError.message }, { status: 500 })
     }
 
     return NextResponse.json({
       ok: true,
-      track: inserted,
-      message: 'Upload BPro créé'
+      track: savedTrack,
+      message: existingTrack ? 'Upload BPro mis à jour' : 'Upload BPro créé'
     })
   } catch (error) {
     const message =

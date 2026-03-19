@@ -36,10 +36,14 @@ export default function ProfilePage() {
 
   const [loading, setLoading] = useState(true);
 
+  const [role, setRole] = useState<"public" | "dj" | "label">("public");
+
   const avatarUrl = useMemo(() => {
-    if (!userId) return "";
-    return `https://ratpqunhyulraybbmnxf.supabase.co/storage/v1/object/public/bpro_uploads/artwork/profile_${userId}.png?v=${avatarVersion}`;
-  }, [userId, avatarVersion]);
+  if (!userId) return "";
+  const { data } = 
+supabase!.storage.from("bpro_uploads").getPublicUrl(`artwork/profile_${userId}.png`);
+  return data.publicUrl + "?v=" + avatarVersion;
+}, [userId, avatarVersion]);
 
   useEffect(() => {
     let mounted = true;
@@ -54,6 +58,11 @@ export default function ProfilePage() {
 
         setEmail(currentEmail);
         setUserId(currentUserId);
+
+        if (typeof window !== "undefined") {
+          const r = localStorage.getItem("banger_role");
+          if (r === "dj" || r === "label" || r === "public") setRole(r);
+        }
 
         const { data: followData } = await supabase!
           .from("track_followers")
@@ -78,13 +87,23 @@ export default function ProfilePage() {
 
         if (!mounted) return;
 
-        setFollows((followData || []) as FollowRow[]);
-        setScans(
-          ((scanData || []) as ScanRow[]).filter((row) => {
-            const title = (row.track_title || "").trim().toLowerCase();
-            return title && title !== "unknown";
-          })
-        );
+        const rawFollows = (followData || []) as FollowRow[];
+
+const uniqueFollows = Array.from(
+  new Map(rawFollows.map(item => [`-`, item])).values()
+);
+
+setFollows(uniqueFollows);
+        const rawScans = ((scanData || []) as ScanRow[]).filter((row) => {
+  const title = (row.track_title || "").trim().toLowerCase();
+  return title && title !== "unknown";
+});
+
+const uniqueScans = Array.from(
+  new Map(rawScans.map(item => [`-`, item])).values()
+);
+
+setScans(uniqueScans);
         setUploads((uploadData || []) as UploadRow[]);
       } finally {
         if (mounted) setLoading(false);
@@ -97,19 +116,28 @@ export default function ProfilePage() {
   }, [supabase]);
 
   async function uploadAvatar(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file || !userId) return;
+  const file = e.target.files?.[0];
+  if (!file || !userId) return;
 
-    await supabase!.storage
-      .from("bpro_uploads")
-      .upload(`artwork/profile_${userId}.png`, file, { upsert: true });
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("userId", userId);
 
-    setAvatarVersion(Date.now());
-  }
+  await fetch("/api/upload-avatar", {
+    method: "POST",
+    body: formData,
+  });
 
-  async function logout() {
+  setAvatarVersion(Date.now());
+}
+
+async function logout() {
     await supabase!.auth.signOut();
-    router.replace("/login");
+    try{
+      localStorage.removeItem("banger_plan");
+      localStorage.removeItem("banger_role");
+    }catch{}
+    router.replace("/");
     router.refresh();
   }
 
@@ -210,20 +238,22 @@ export default function ProfilePage() {
           </div>
         </section>
 
-        <section style={sectionStyle}>
-          <div style={sectionTitleStyle}>MY UPLOADS</div>
-          <div style={listStyle}>
-            {loading ? (
-              <div style={emptyStyle}>Loading...</div>
-            ) : uploads.length === 0 ? (
-              <div style={emptyStyle}>No uploads yet</div>
-            ) : (
-              uploads.slice(0, 3).map((item) => (
-                <TrackRow key={item.id} title={item.title} artist={item.artist} />
-              ))
-            )}
-          </div>
-        </section>
+        {role !== "public" && (
+<section style={sectionStyle}>
+  <div style={sectionTitleStyle}>MY UPLOADS</div>
+  <div style={listStyle}>
+    {loading ? (
+      <div style={emptyStyle}>Loading...</div>
+    ) : uploads.length === 0 ? (
+      <div style={emptyStyle}>No uploads yet</div>
+    ) : (
+      uploads.slice(0, 3).map((item) => (
+        <TrackRow key={item.id} title={item.title} artist={item.artist} />
+      ))
+    )}
+  </div>
+</section>
+)}
 
         <section style={sectionStyle}>
           <div style={sectionTitleStyle}>ANALYTICS</div>
@@ -236,10 +266,12 @@ export default function ProfilePage() {
               <div style={analyticsNumberStyle}>{follows.length}</div>
               <div style={analyticsLabelStyle}>Followed</div>
             </div>
-            <div style={analyticsCardStyle}>
-              <div style={analyticsNumberStyle}>{uploads.length}</div>
-              <div style={analyticsLabelStyle}>Uploads</div>
-            </div>
+            {role !== "public" && (
+<div style={analyticsCardStyle}>
+  <div style={analyticsNumberStyle}>{uploads.length}</div>
+  <div style={analyticsLabelStyle}>Uploads</div>
+</div>
+)}
           </div>
         </section>
       </div>
