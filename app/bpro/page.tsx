@@ -582,6 +582,9 @@ async function buildUploadSnippets() {
         acrSnippets.find((item: any) => item.isPreview)?.file || uploadFile;
 
       fd.append("file", previewSnippet);
+      acrSnippets.forEach((item: any, index: number) => {
+        fd.append(`file_${index}`, item.file);
+      });
 
       fd.append("mode", mode);
       fd.append("name", name.trim());
