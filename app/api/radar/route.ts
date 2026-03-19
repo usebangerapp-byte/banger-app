@@ -58,7 +58,7 @@ export async function GET() {
   let recentlyAdded: Array<{ track_title: string; track_subtitle?: string; created_at?: string | null }> = []
 
   const { data: unreleased } = await supabase
-    .from("unreleased_tracks")
+    .from("bpro_tracks")
     .select("*")
     .limit(50)
 

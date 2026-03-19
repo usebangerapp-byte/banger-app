@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { findMusicLinks } from '@/lib/music/findLinks'
 
 export const runtime = 'nodejs'
 
@@ -100,7 +101,7 @@ export async function POST(req: Request) {
 
     const { data: existingTrack, error: existingError } = await supabase
       .from('bpro_tracks')
-      .select('id, title, artist, snippet_path, allow_preview, is_released, release_date')
+      .select('id, title, artist, snippet_path, allow_preview, is_released, release_date, spotify_url, beatport_url')
       .eq('title', title)
       .eq('artist', artist)
       .maybeSingle()
@@ -125,7 +126,7 @@ export async function POST(req: Request) {
       : supabase.from('bpro_tracks').insert(payload)
 
     const { data: savedTrack, error: saveError } = await query
-      .select('id, title, artist, snippet_path, allow_preview, is_released, release_date')
+      .select('id, title, artist, snippet_path, allow_preview, is_released, release_date, spotify_url, beatport_url')
       .single()
 
     if (saveError) {
@@ -156,6 +157,29 @@ export async function POST(req: Request) {
 
     if (snippetError) {
       return NextResponse.json({ error: snippetError.message }, { status: 500 })
+    }
+
+    if (!isReleased && (!savedTrack.spotify_url || !savedTrack.beatport_url)) {
+      try {
+        const links = await findMusicLinks(artist, title)
+
+        const { error: linksError } = await supabase
+          .from('bpro_tracks')
+          .update({
+            spotify_url: savedTrack.spotify_url || links.spotify_url,
+            beatport_url: savedTrack.beatport_url || links.beatport_url,
+          })
+          .eq('id', savedTrack.id)
+
+        if (linksError) {
+          console.error('bpro link update failed', linksError)
+        } else {
+          savedTrack.spotify_url = savedTrack.spotify_url || links.spotify_url
+          savedTrack.beatport_url = savedTrack.beatport_url || links.beatport_url
+        }
+      } catch (e) {
+        console.error('bpro link search failed', e)
+      }
     }
 
     return NextResponse.json({

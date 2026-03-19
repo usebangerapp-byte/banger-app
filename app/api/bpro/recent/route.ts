@@ -28,7 +28,7 @@ export async function GET() {
     const supabase = getSupabase();
 
     const a = await supabase
-      .from("unreleased_tracks")
+      .from("bpro_tracks")
       .select("*")
       .order("created_at", { ascending: false })
       .limit(25);

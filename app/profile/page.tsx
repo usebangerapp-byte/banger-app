@@ -79,7 +79,7 @@ supabase!.storage.from("bpro_uploads").getPublicUrl(`artwork/profile_${userId}.p
           .limit(20);
 
         const { data: uploadData } = await supabase!
-          .from("unreleased_tracks")
+          .from("bpro_tracks")
           .select("id,title,artist,uploader_email")
           .eq("uploader_email", currentEmail)
           .order("id", { ascending: false })

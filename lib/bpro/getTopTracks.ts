@@ -17,7 +17,7 @@ export async function getTopTracks(): Promise<BangerChartTrack[]> {
   )
 
   const { data, error } = await supabase
-    .from('unreleased_tracks')
+    .from('bpro_tracks')
     .select('id, title, artist, snippet_path, release_date, allow_preview')
     .eq('allow_preview', true)
     .not('snippet_path', 'is', null)

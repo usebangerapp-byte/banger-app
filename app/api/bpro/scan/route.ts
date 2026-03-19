@@ -27,7 +27,7 @@ const { title } = await req.json()
 const clean = cleanTitle(title)
 
 const { data } = await supabase
-.from("unreleased_tracks")
+.from("bpro_tracks")
 .select("*")
 .ilike("title","%"+clean+"%")
 .limit(1)

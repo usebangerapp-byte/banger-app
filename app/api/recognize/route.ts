@@ -222,7 +222,7 @@ export async function POST(req: Request) {
 
       if (t) {
         const { data } = await supabase
-          .from("unreleased_tracks")
+          .from("bpro_tracks")
           .select("id,title,artist,release_date,is_released,spotify_url,beatport_url")
           .or(
             "title.ilike.%" + t + "%," +
@@ -303,7 +303,7 @@ export async function POST(req: Request) {
         const links = await findMusicLinks(artist, title);
 
         await supabase
-          .from("unreleased_tracks")
+          .from("bpro_tracks")
           .update({
             spotify_url: privateTrackRow.spotify_url || links.spotify_url,
             beatport_url: privateTrackRow.beatport_url || links.beatport_url,

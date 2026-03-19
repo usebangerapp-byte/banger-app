@@ -133,7 +133,7 @@ let unreleased = null
 
 if(t){
 const { data } = await supabase
-.from("unreleased_tracks")
+.from("bpro_tracks")
 .select("*")
 .or(
 "title.ilike.%" + t + "%," +
