@@ -230,7 +230,7 @@ export async function POST(req: Request) {
       privateTrackRow = data || null;
     }
 
-    let finalSubtitle: string | null = mapped.track_subtitle
+    let finalSubtitle = mapped.track_subtitle
 
     if (mapped.result_type === "recognized_unreleased" && privateTrackRow?.artist) {
       const artist = privateTrackRow.artist.toLowerCase()

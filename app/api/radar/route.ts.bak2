@@ -71,16 +71,16 @@ export async function GET() {
         track_title:
           row.title ||
           (row as any).track_title ||
-          (row as any).name ||
+          row.name ||
           "Unknown ID",
         track_subtitle:
-          (row as any).subtitle ||
+          row.subtitle ||
           (row as any).track_subtitle ||
           row.artist ||
           "",
         created_at:
           row.created_at ||
-          (row as any).inserted_at ||
+          row.inserted_at ||
           row.updated_at ||
           null,
       }))

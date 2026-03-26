@@ -8,7 +8,7 @@ import { createClient } from "@supabase/supabase-js"
 
 export const runtime = "nodejs"
 
-const ytdlp = ytdlpBase.create(path.join(process.cwd(), "node_modules/yt-dlp-exec/bin/yt-dlp"))
+const ytdlp = (ytdlpBase as any).create ? (ytdlpBase as any).create(path.join(process.cwd(), "node_modules/yt-dlp-exec/bin/yt-dlp")) : ytdlpBase
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
