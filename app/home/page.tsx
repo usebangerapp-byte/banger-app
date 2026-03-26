@@ -29,6 +29,10 @@ export default function Home() {
 
   const [status, setStatus] = useState<Status>("idle");
   const [title, setTitle] = useState("—");
+  const [beatportUrl, setBeatportUrl] = useState<string | null>(null);
+  const [spotifyUrl, setSpotifyUrl] = useState<string | null>(null);
+  const [snippetPath, setSnippetPath] = useState<string | null>(null);
+  const [allowPreview, setAllowPreview] = useState<boolean | null>(null);
   const [subtitle, setSubtitle] = useState("");
   const [tag, setTag] = useState<Tag>("NOT FOUND");
 
@@ -69,6 +73,12 @@ export default function Home() {
     } finally {
       setLoginLoading(false);
     }
+  }
+
+  function previewUrl(path: string) {
+    const clean = path.startsWith("snippets/") ? path : `snippets/${path}`;
+    const { data } = supabase!.storage.from("bpro_uploads").getPublicUrl(clean);
+    return data.publicUrl;
   }
 
   function vib(pattern: number | number[]) {
@@ -258,15 +268,27 @@ fd.append("region", region);
             setSubtitle(data?.track_subtitle || "(Released)");
             setTag("RELEASED");
             setSuccess(true);
+            setBeatportUrl(data?.beatport_url || null);
+            setSpotifyUrl(data?.spotify_url || null);
+            setSnippetPath(data?.snippet_path || null);
+            setAllowPreview(data?.allow_preview ?? null);
             vib([40, 30, 80]);
           } else if (resultType === "recognized_unreleased") {
             setTitle(data?.track_title || custom?.title || "Unknown");
             setSubtitle(data?.track_subtitle || "(Private DB)");
             setTag("UNRELEASED");
             setSuccess(true);
+            setBeatportUrl(data?.beatport_url || null);
+            setSpotifyUrl(data?.spotify_url || null);
+            setSnippetPath(data?.snippet_path || null);
+            setAllowPreview(data?.allow_preview ?? null);
             vib([40, 30, 80]);
           } else {
             setTitle("Not found");
+            setBeatportUrl(null);
+            setSpotifyUrl(null);
+            setSnippetPath(null);
+            setAllowPreview(null);
             setSubtitle("Try again");
             setTag("NOT FOUND");
             vib([15, 40, 15]);
@@ -274,6 +296,10 @@ fd.append("region", region);
           }
         } catch {
           setTitle("Not found");
+            setBeatportUrl(null);
+            setSpotifyUrl(null);
+            setSnippetPath(null);
+            setAllowPreview(null);
           setSubtitle("Server error");
           setTag("NOT FOUND");
           vib([15, 40, 15]);
@@ -548,6 +574,23 @@ Discover what the scene is playing
               <div style={{ ...styles.badge, background: (tag === "UNRELEASED" ? "rgba(225,225,225,0.14)" : tag === "RELEASED" ? "rgba(225,225,225,0.10)" : "rgba(225,225,225,0.08)") }}>{tag}</div>
             </div>
             <div style={styles.cardSub}>{subtitle}</div>
+
+
+            {tag === "UNRELEASED" && allowPreview && snippetPath && (
+              <div style={{ marginTop: 12, display: "flex", justifyContent: "center" }}>
+                <audio controls src={previewUrl(snippetPath)} style={{ width: "100%" }} />
+              </div>
+            )}
+            {tag === "RELEASED" && (
+              <div style={{ marginTop: 10, display: "flex", gap: 12, justifyContent: "center" }}>
+                {beatportUrl && (
+                  <a href={beatportUrl} target="_blank" style={{ color: "#0ff", fontSize: 14 }}>Beatport</a>
+                )}
+                {spotifyUrl && (
+                  <a href={spotifyUrl} target="_blank" style={{ color: "#1db954", fontSize: 14 }}>Spotify</a>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

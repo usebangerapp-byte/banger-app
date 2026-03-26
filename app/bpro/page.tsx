@@ -327,6 +327,7 @@ async function importFromLink(){
 
     if(!j.ok){
       setError("Import failed");
+      setBusy(false);
       return;
     }
 
@@ -630,6 +631,7 @@ async function buildUploadSnippets() {
         const acrFd = new FormData();
         acrFd.append("file", snippet.file);
         acrFd.append("title", trackTitle.trim());
+        acrFd.append("artist", name.trim());
 
         const acrRes = await fetch("/api/bpro/acr-upload", {
           method: "POST",

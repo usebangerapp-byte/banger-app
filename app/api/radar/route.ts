@@ -57,13 +57,16 @@ export async function GET() {
 
   let recentlyAdded: Array<{ track_title: string; track_subtitle?: string; created_at?: string | null }> = []
 
-  const { data: unreleased } = await supabase
+  const { data: recentTracks } = await supabase
     .from("bpro_tracks")
-    .select("*")
-    .limit(50)
+    .select("title,artist,created_at,updated_at,status,snippet_path")
+    .eq("status", "ready")
+    .not("snippet_path", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(6)
 
-  if (Array.isArray(unreleased)) {
-    recentlyAdded = unreleased
+  if (Array.isArray(recentTracks)) {
+    recentlyAdded = recentTracks
       .map((row) => ({
         track_title:
           row.title ||

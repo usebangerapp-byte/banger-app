@@ -25,6 +25,7 @@ export async function POST(req: Request) {
     const formData = await req.formData()
     const file = formData.get('file')
     const title = String(formData.get('title') || '').trim()
+    const artist = String(formData.get('artist') || '').trim()
 
     if (!(file instanceof File)) {
       return NextResponse.json(
@@ -42,6 +43,7 @@ export async function POST(req: Request) {
       file.name || 'upload.bin'
     )
     acrForm.append('title', title || file.name || 'upload')
+    acrForm.append('artist', artist || 'Unknown')
     acrForm.append('data_type', 'audio')
 
     const acrRes = await fetch(
