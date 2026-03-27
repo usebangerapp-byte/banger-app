@@ -222,7 +222,7 @@ export async function POST(req: Request) {
     if (mapped.result_type === "recognized_unreleased" && mapped.track_title) {
       const { data } = await supabase
         .from("bpro_tracks")
-        .select("id,artist,snippet_path,allow_preview")
+        .select("id,artist,snippet_path,allow_preview,release_status")
         .eq("title", mapped.track_title)
         .limit(1)
         .maybeSingle();
@@ -230,9 +230,20 @@ export async function POST(req: Request) {
       privateTrackRow = data || null;
     }
 
+    const dbSaysReleased =
+      mapped.result_type === "recognized_unreleased" &&
+      privateTrackRow?.release_status === "released"
+
+    const effectiveResultType = dbSaysReleased
+      ? "recognized_world"
+      : mapped.result_type
+
     let finalSubtitle: string | null = mapped.track_subtitle
 
-    if (mapped.result_type === "recognized_unreleased" && privateTrackRow?.artist) {
+    if (
+      (mapped.result_type === "recognized_unreleased" || dbSaysReleased) &&
+      privateTrackRow?.artist
+    ) {
       const artist = privateTrackRow.artist.toLowerCase()
       const title = (mapped.track_title || "").toLowerCase()
 
@@ -246,7 +257,7 @@ export async function POST(req: Request) {
     const row = {
       track_title: mapped.track_title,
       track_subtitle: finalSubtitle,
-      result_type: mapped.result_type,
+      result_type: effectiveResultType,
       acr_code: mapped.acr_code,
       country: mapped.country,
       user_id: userId || null,
@@ -279,13 +290,14 @@ export async function POST(req: Request) {
     return Response.json(
       {
         ...responsePayload,
-        result_type: mapped.result_type,
+        result_type: effectiveResultType,
         track_title: mapped.track_title,
-        track_subtitle: mapped.track_subtitle,
+        track_subtitle: finalSubtitle,
         acr_code: mapped.acr_code,
         country: mapped.country,
-        snippet_path: privateTrackRow?.snippet_path || null,
-        allow_preview: privateTrackRow?.allow_preview ?? null,
+        snippet_path: dbSaysReleased ? null : (privateTrackRow?.snippet_path || null),
+        allow_preview: dbSaysReleased ? null : (privateTrackRow?.allow_preview ?? null),
+        release_status: privateTrackRow?.release_status || "unknown",
       },
       { status: responseStatus }
     );

@@ -53,7 +53,7 @@ function getBeatportTrackCandidates(nextData: any) {
   }> = [];
 
   for (const q of queries) {
-    const rows = q?.state?.data?.data;
+    const rows = q?.state?.data?.data?.data;
     if (!Array.isArray(rows)) continue;
 
     for (const row of rows) {

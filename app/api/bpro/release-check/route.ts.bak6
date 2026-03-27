@@ -53,7 +53,7 @@ function getBeatportTrackCandidates(nextData: any) {
   }> = [];
 
   for (const q of queries) {
-    const rows = q?.state?.data?.data;
+    const rows = q?.state?.data?.data?.data;
     if (!Array.isArray(rows)) continue;
 
     for (const row of rows) {
@@ -118,7 +118,6 @@ async function checkBeatportWeb(title: string, artist: string) {
   const candidates = getBeatportTrackCandidates(nextData);
 
   if (title.toLowerCase().includes("ghost dance")) {
-    const queries = nextData?.props?.pageProps?.dehydratedState?.queries || [];
     console.log("BEATPORT DEBUG", {
       query,
       status: res.status,
@@ -128,13 +127,6 @@ async function checkBeatportWeb(title: string, artist: string) {
       hasGhostDance: html.includes('Ghost Dance'),
       hasBrunello: html.includes('Brunello'),
       candidateCount: candidates.length,
-      queriesCount: Array.isArray(queries) ? queries.length : -1,
-      firstQueryKeys: queries[0] ? Object.keys(queries[0]) : [],
-      firstStateKeys: queries[0]?.state ? Object.keys(queries[0].state) : [],
-      firstDataKeys: queries[0]?.state?.data ? Object.keys(queries[0].state.data) : [],
-      firstNestedDataKeys: queries[0]?.state?.data?.data ? Object.keys(queries[0].state.data.data) : [],
-      firstNestedDataType: Array.isArray(queries[0]?.state?.data?.data) ? "array" : typeof queries[0]?.state?.data?.data,
-      textSample: JSON.stringify(nextData?.props?.pageProps?.dehydratedState?.queries?.[0] || {}).slice(0, 2000),
     });
   }
 

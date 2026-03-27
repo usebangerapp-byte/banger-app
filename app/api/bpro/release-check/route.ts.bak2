@@ -1,0 +1,124 @@
+import { createClient } from "@supabase/supabase-js";
+
+export const runtime = "nodejs";
+
+function clean(v: unknown) {
+  return typeof v === "string" ? v.trim() : "";
+}
+
+function norm(s: string) {
+  return s
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function buildBeatportQuery(title: string, artist: string) {
+  const t = clean(title);
+  const a = clean(artist);
+  return [a, t].filter(Boolean).join(" ");
+}
+
+async function checkBeatportWeb(title: string, artist: string) {
+  const query = buildBeatportQuery(title, artist);
+  const url = `https://www.beatport.com/search/tracks?q=${encodeURIComponent(query)}`;
+
+  const res = await fetch(url, {
+    headers: {
+      "user-agent": "Mozilla/5.0",
+      "accept-language": "en-US,en;q=0.9",
+    },
+    cache: "no-store",
+  });
+
+  const html = await res.text();
+
+  const titleN = norm(title);
+  const artistN = norm(artist);
+  const htmlN = norm(html);
+
+  const hasTitle = !!titleN && htmlN.includes(titleN);
+  const hasArtist = !!artistN && htmlN.includes(artistN);
+
+  return {
+    ok: res.ok,
+    url,
+    query,
+    hasTitle,
+    hasArtist,
+    isReleased: res.ok && hasTitle && hasArtist,
+  };
+}
+
+export async function GET() {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  const { data: tracks, error } = await supabase
+    .from("bpro_tracks")
+    .select("id, title, artist, release_date, release_status")
+    .order("updated_at", { ascending: false })
+    .limit(50);
+
+  if (error) {
+    return Response.json({ ok: false, error: error.message }, { status: 500 });
+  }
+
+  const results: any[] = [];
+
+  for (const track of tracks || []) {
+    const title = clean(track.title);
+    const artist = clean(track.artist);
+
+    if (!title) {
+      results.push({ id: track.id, skipped: true, reason: "missing_title" });
+      continue;
+    }
+
+    try {
+      const beatport = await checkBeatportWeb(title, artist);
+
+      const nextStatus = beatport.isReleased ? "released" : "unknown";
+
+      await supabase
+        .from("bpro_tracks")
+        .update({
+          release_status: nextStatus,
+          release_checked_at: new Date().toISOString(),
+          release_source: "beatport_web",
+          release_url: beatport.isReleased ? beatport.url : null,
+        })
+        .eq("id", track.id);
+
+      results.push({
+        id: track.id,
+        title,
+        artist,
+        query: beatport.query,
+        release_status: nextStatus,
+        hasTitle: beatport.hasTitle,
+        hasArtist: beatport.hasArtist,
+        release_url: beatport.url,
+      });
+    } catch (e: any) {
+      results.push({
+        id: track.id,
+        title,
+        artist,
+        error: e?.message || "beatport_check_failed",
+      });
+    }
+  }
+
+  return Response.json({
+    ok: true,
+    count: results.length,
+    results: results.slice(0, 10),
+  });
+}
