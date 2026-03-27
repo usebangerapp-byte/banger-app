@@ -12,29 +12,43 @@ export async function GET() {
 
   const { data: scans } = await supabase
     .from("scan_events")
-    .select("created_at,track_title,track_subtitle,result_type")
+    .select("track_id,created_at,track_title,track_subtitle,result_type")
     .order("created_at", { ascending: false })
-    .limit(500)
+    .limit(1000)
 
   const safeScans = Array.isArray(scans) ? scans.filter(Boolean) : []
 
-  const grouped = new Map()
+  const grouped = new Map<string, {
+    track_id: string | null
+    track_title: string
+    track_subtitle: string
+    scans: number
+    latest_created_at: string | null
+  }>()
 
   for (const e of safeScans) {
     const title = e.track_title || "Unknown ID"
     const subtitle = e.track_subtitle || ""
-    const key = title + "|" + subtitle
-    const current = grouped.get(key) || {
+    const groupKey = e.track_id ? `track:${e.track_id}` : `fallback:${title}|${subtitle}`
+
+    const current = grouped.get(groupKey) || {
+      track_id: e.track_id || null,
       track_title: title,
       track_subtitle: subtitle,
       scans: 0,
       latest_created_at: e.created_at || null,
     }
+
     current.scans += 1
+
     if (e.created_at && (!current.latest_created_at || e.created_at > current.latest_created_at)) {
       current.latest_created_at = e.created_at
     }
-    grouped.set(key, current)
+
+    if (e.track_title) current.track_title = e.track_title
+    if (e.track_subtitle) current.track_subtitle = e.track_subtitle
+
+    grouped.set(groupKey, current)
   }
 
   const allTracks = Array.from(grouped.values())

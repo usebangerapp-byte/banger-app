@@ -255,6 +255,7 @@ export async function POST(req: Request) {
     }
 
     const row = {
+      track_id: privateTrackRow?.id || null,
       track_title: mapped.track_title,
       track_subtitle: finalSubtitle,
       result_type: effectiveResultType,
