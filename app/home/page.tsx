@@ -2,14 +2,23 @@
 import { useRouter } from "next/navigation";
 
 import Image from "next/image";
-import BottomNav from "@/components/BottomNav";
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
+import { getRegion } from "@/lib/scan/getRegion";
+import { recognizeAudio } from "@/lib/scan/recognizeAudio";
 
 
 
 type Status = "idle" | "listening" | "recognizing";
 type Tag = "UNRELEASED" | "RELEASED" | "NOT FOUND";
+
+type ScanWindow = Window & typeof globalThis & {
+  webkitAudioContext?: typeof AudioContext;
+  _bangerAudio?: HTMLAudioElement;
+  _bangerAudioTrackId?: string | null;
+};
+
 
 const CYAN = "#00E5FF";
 
@@ -83,8 +92,13 @@ export default function Home() {
 
   function vib(pattern: number | number[]) {
     try {
-      // @ts-ignore
-      if (navigator && "vibrate" in navigator) navigator.vibrate(pattern);
+      const nav = navigator as Navigator & {
+        vibrate?: (pattern: number | number[]) => boolean;
+      };
+
+      if (typeof nav.vibrate === "function") {
+        nav.vibrate(pattern);
+      }
     } catch {}
   }
 
@@ -105,8 +119,9 @@ export default function Home() {
   async function startMeters(stream: MediaStream) {
     stopMeters();
 
+    const scanWindow = window as ScanWindow;
     const AudioCtx =
-      (window.AudioContext || (window as any).webkitAudioContext) as typeof AudioContext;
+      (window.AudioContext || scanWindow.webkitAudioContext) as typeof AudioContext;
     const ctx = new AudioCtx();
     audioCtxRef.current = ctx;
 
@@ -210,54 +225,8 @@ export default function Home() {
           const fd = new FormData();
           fd.append("audio", blob, "sample.webm");
 
-let region = localStorage.getItem("banger_region") || "Unknown";
-
-if (region === "Unknown" && navigator.geolocation) {
-  await new Promise<void>((resolve) => {
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        try {
-          const lat = pos.coords.latitude;
-          const lon = pos.coords.longitude;
-
-          const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
-          const j = await r.json();
-
-          region =
-            j.address.city ||
-            j.address.town ||
-            j.address.village ||
-            j.address.state ||
-            "Unknown";
-
-          localStorage.setItem("banger_region", region);
-        } catch {}
-
-        resolve();
-      },
-      () => resolve(),
-      { timeout: 3000 }
-    );
-  });
-}
-
-fd.append("region", region);
-
-          try {
-            const mod = await import("@supabase/supabase-js");
-            const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-            const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-            if (url && anon) {
-              const supabase = mod.createClient(url, anon);
-              const { data: auth } = await supabase.auth.getUser();
-              const userId = auth?.user?.id || "";
-              if (userId) fd.append("user_id", userId);
-            }
-          } catch {}
-
-          const res = await fetch("/api/recognize", { method: "POST", body: fd });
-          const data = await res.json();
+const region = await getRegion();
+          const data = await recognizeAudio(blob, mime, region);
 
           const resultType = data?.result_type || "not_found";
           const custom = data?.metadata?.custom_files?.[0] || null;
@@ -594,13 +563,12 @@ Discover what the scene is playing
           </div>
         </div>
 
-        <BottomNav />
       </div>
     </div>
   );
 }
 
-const styles: any = {
+const styles: Record<string, CSSProperties> = {
   page: {
     minHeight: "100vh",
     background: "#000",

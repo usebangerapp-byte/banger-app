@@ -4,6 +4,7 @@ import Image from "next/image";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
+import { getBrowserRole } from "@/lib/auth/getBrowserRole";
 import WaveSurfer from "wavesurfer.js";
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 
@@ -114,13 +115,23 @@ export default function BproPage() {
   const previewEnd = previewStart + previewDuration;
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const role = localStorage.getItem("banger_role") || "public";
-    if (role !== "dj" && role !== "label") {
-      router.replace("/home");
-      return;
-    }
-    setRoleReady(true);
+    let mounted = true;
+
+    (async () => {
+      const role = await getBrowserRole();
+      if (!mounted) return;
+
+      if (role !== "dj" && role !== "label") {
+        router.replace("/home");
+        return;
+      }
+
+      setRoleReady(true);
+    })();
+
+    return () => {
+      mounted = false;
+    };
   }, [router]);
   useEffect(() => {
     if (typeof window === "undefined") return;

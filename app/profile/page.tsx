@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
+import { getBrowserRole } from "@/lib/auth/getBrowserRole";
 
 type FollowRow = {
   id: number | string;
@@ -59,10 +60,9 @@ supabase!.storage.from("bpro_uploads").getPublicUrl(`artwork/profile_${userId}.p
         setEmail(currentEmail);
         setUserId(currentUserId);
 
-        if (typeof window !== "undefined") {
-          const r = localStorage.getItem("banger_role");
-          if (r === "dj" || r === "label" || r === "public") setRole(r);
-        }
+        const resolvedRole = await getBrowserRole();
+        if (!mounted) return;
+        setRole(resolvedRole);
 
         const { data: followData } = await supabase!
           .from("track_followers")
@@ -90,7 +90,12 @@ supabase!.storage.from("bpro_uploads").getPublicUrl(`artwork/profile_${userId}.p
         const rawFollows = (followData || []) as FollowRow[];
 
 const uniqueFollows = Array.from(
-  new Map(rawFollows.map(item => [`-`, item])).values()
+  new Map(
+    rawFollows.map((item) => [
+      `${item.track_title || ""}|${item.track_subtitle || ""}`,
+      item,
+    ])
+  ).values()
 );
 
 setFollows(uniqueFollows);
@@ -100,7 +105,12 @@ setFollows(uniqueFollows);
 });
 
 const uniqueScans = Array.from(
-  new Map(rawScans.map(item => [`-`, item])).values()
+  new Map(
+    rawScans.map((item) => [
+      `${item.track_title || ""}|${item.track_subtitle || ""}`,
+      item,
+    ])
+  ).values()
 );
 
 setScans(uniqueScans);
@@ -123,8 +133,12 @@ setScans(uniqueScans);
   formData.append("file", file);
   formData.append("userId", userId);
 
+  const { data } = await supabase!.auth.getSession();
+  const accessToken = data.session?.access_token || "";
+
   await fetch("/api/upload-avatar", {
     method: "POST",
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
     body: formData,
   });
 

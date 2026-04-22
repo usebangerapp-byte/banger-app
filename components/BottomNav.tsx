@@ -3,41 +3,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { createSupabaseBrowser } from "@/lib/supabase/client";
+import { getBrowserRole, type BangerRole } from "@/lib/auth/getBrowserRole";
 
 const HIDDEN = ["/", "/login", "/unlock", "/onboarding", "/auth/callback", "/onboarding"];
 
 export default function BottomNav() {
   const pathname = usePathname() || "/";
-  const [role, setRole] = useState<"public" | "dj" | "label">("public");
+  const [role, setRole] = useState<BangerRole>("public");
 
   useEffect(() => {
     let mounted = true;
 
     (async () => {
-      try {
-        const supabase = createSupabaseBrowser();
-        if (!supabase) return;
-
-        const { data: auth } = await supabase.auth.getUser();
-        const user = auth.user;
-        if (!mounted || !user) return;
-
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", user.id)
-          .single();
-
-        if (!mounted) return;
-
-        if (profile?.role === "dj" || profile?.role === "label" || profile?.role === "public") {
-          setRole(profile.role);
-          try {
-            localStorage.setItem("banger_role", profile.role);
-          } catch {}
-        }
-      } catch {}
+      const nextRole = await getBrowserRole();
+      if (!mounted) return;
+      setRole(nextRole);
     })();
 
     return () => {

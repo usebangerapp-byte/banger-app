@@ -11,6 +11,27 @@ function clean(v: unknown) {
   return typeof v === "string" ? v.trim() : ""
 }
 
+type ProfileFollowRow = {
+  created_at: string | null
+  track_title: string | null
+  track_subtitle: string | null
+}
+
+type ProfileScanRow = {
+  created_at: string | null
+  track_title: string | null
+  track_subtitle: string | null
+  result_type: string | null
+  user_id: string | null
+}
+
+type ProfileUploadRow = {
+  created_at: string | null
+  title: string | null
+  artist: string | null
+  uploader_email: string | null
+}
+
 export async function GET(req: Request) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -20,63 +41,55 @@ export async function GET(req: Request) {
   const supabase = createClient(url, key)
   const { searchParams } = new URL(req.url)
 
-  const device_id = clean(searchParams.get("device_id"))
   const user_id = clean(searchParams.get("user_id"))
   const email = clean(searchParams.get("email")).toLowerCase()
 
-  let myIds: any[] = []
-  let myScans: any[] = []
-  let myUploads: any[] = []
+  let myIds: ProfileFollowRow[] = []
+  let myScans: ProfileScanRow[] = []
+  let myUploads: Array<{
+    created_at: string | null
+    title: string
+    subtitle: string
+    status: string
+  }> = []
 
-  if (device_id) {
-    const { data } = await supabase
+  if (user_id) {
+    const { data: followData } = await supabase
       .from("track_followers")
       .select("created_at,track_title,track_subtitle")
-      .eq("device_id", device_id)
+      .eq("user_id", user_id)
       .order("created_at", { ascending: false })
       .limit(50)
 
-    myIds = Array.isArray(data) ? data : []
+    myIds = Array.isArray(followData) ? (followData as ProfileFollowRow[]) : []
   }
 
   if (user_id) {
-    const { data } = await supabase
+    const { data: scanData } = await supabase
       .from("scan_events")
       .select("created_at,track_title,track_subtitle,result_type,user_id")
       .eq("user_id", user_id)
       .order("created_at", { ascending: false })
       .limit(100)
 
-    myScans = Array.isArray(data) ? data : []
+    myScans = Array.isArray(scanData) ? (scanData as ProfileScanRow[]) : []
   }
 
-  {
-    const { data } = await supabase
-      .from("bpro_uploads")
-      .select("*")
+  if (email) {
+    const { data: uploadData } = await supabase
+      .from("bpro_tracks")
+      .select("created_at,title,artist,uploader_email,status")
+      .eq("uploader_email", email)
       .order("created_at", { ascending: false })
-      .limit(200)
+      .limit(100)
 
-    const rows = Array.isArray(data) ? data : []
+    const rows = Array.isArray(uploadData) ? (uploadData as ProfileUploadRow[]) : []
 
-    myUploads = rows.filter((row: any) => {
-      const rowUserId = clean(row?.user_id)
-      const rowEmail =
-        clean(row?.uploader_email).toLowerCase() ||
-        clean(row?.email).toLowerCase() ||
-        clean(row?.user_email).toLowerCase()
-
-      if (user_id && rowUserId && rowUserId === user_id) return true
-      if (email && rowEmail && rowEmail === email) return true
-      return false
-    }).map((row: any) => ({
-      created_at: row?.created_at || null,
-      title: row?.title || row?.track_title || row?.name || "Untitled Upload",
-      subtitle: row?.artist || row?.track_subtitle || row?.uploader_email || "",
-      status:
-        row?.status ||
-        row?.state ||
-        (row?.fingerprint_id ? "Fingerprint Ready" : "Uploaded"),
+    myUploads = rows.map((row) => ({
+      created_at: row.created_at || null,
+      title: row.title || "Untitled Upload",
+      subtitle: row.artist || row.uploader_email || "",
+      status: "ready",
     }))
   }
 

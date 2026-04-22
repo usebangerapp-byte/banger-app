@@ -86,7 +86,7 @@ async function getRadar() {
   const { data } = await supabase
     .from("scan_events")
     .select("created_at,track_title,track_subtitle,result_type,region")
-    .eq("result_type", "recognized")
+    .in("result_type", ["recognized_unreleased", "recognized_world"])
     .order("created_at", { ascending: false })
     .limit(2000)
 
@@ -94,7 +94,7 @@ async function getRadar() {
 
   const { data: followerRows } = await supabase
     .from("track_followers")
-    .select("track_title,track_subtitle,device_id")
+    .select("track_title,track_subtitle")
     .limit(2000)
 
   const now = Date.now()
@@ -110,14 +110,14 @@ async function getRadar() {
 
   const rising24h =
     [...grouped24h]
-      .filter((t) => t.scans >= 3)
+      .filter((t) => t.scans >= 2)
       .sort((a, b) => {
         if (b.scans !== a.scans) return b.scans - a.scans
         return String(b.latest_created_at || "").localeCompare(String(a.latest_created_at || ""))
       })[0] || null
 
   const weekSorted = [...grouped7d]
-    .filter((t) => t.scans >= 5)
+    .filter((t) => t.scans >= 2)
     .sort((a, b) => {
       if (b.scans !== a.scans) return b.scans - a.scans
       return String(b.latest_created_at || "").localeCompare(String(a.latest_created_at || ""))
@@ -127,14 +127,14 @@ async function getRadar() {
   const weekMore = weekSorted.slice(3, 10)
 
   const latestSorted = [...groupedAll]
-    .filter((t) => t.scans >= 10)
+    .filter((t) => t.scans >= 2)
     .sort((a, b) => String(b.latest_created_at || "").localeCompare(String(a.latest_created_at || "")))
 
   const latestTop = latestSorted.slice(0, 3)
   const latestMore = latestSorted.slice(3, 10)
 
   const mostSorted = [...groupedAll]
-    .filter((t) => t.scans >= 10)
+    .filter((t) => t.scans >= 2)
     .sort((a, b) => {
       if (b.scans !== a.scans) return b.scans - a.scans
       return String(b.latest_created_at || "").localeCompare(String(a.latest_created_at || ""))
@@ -160,7 +160,7 @@ async function getRadar() {
     .map((region) => {
       const rows = scans7d.filter((e) => String(e.region || "").trim() === region)
       const tracks = groupTracks(rows)
-        .filter((t) => t.scans >= 3)
+        .filter((t) => t.scans >= 2)
         .sort((a, b) => {
           if (b.scans !== a.scans) return b.scans - a.scans
           return String(b.latest_created_at || "").localeCompare(String(a.latest_created_at || ""))
@@ -193,7 +193,7 @@ async function getRadar() {
   }
 
   const mostWanted = Array.from(wantedMap.values())
-    .filter((t) => t.followers >= 2)
+    .filter((t) => t.followers >= 1)
     .sort((a, b) => b.followers - a.followers)
     .slice(0, 5)
 
@@ -252,12 +252,12 @@ function WantedRow({ t }: { t: WantedTrack }) {
   )
 }
 
-function ShowMoreBlock({
+function ShowMoreBlock<T>({
   items,
   renderItem,
 }: {
-  items: any[]
-  renderItem: (item: any, index: number) => React.ReactNode
+  items: T[]
+  renderItem: (item: T, index: number) => React.ReactNode
 }) {
   if (items.length === 0) return null
 
