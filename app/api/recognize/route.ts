@@ -303,8 +303,13 @@ export async function POST(req: Request) {
       { status: responseStatus }
     );
   } catch (e: any) {
+    console.error("RECOGNIZE FATAL", e);
     return Response.json(
-      { ok: false, error: e?.message || "Server error" },
+      {
+        ok: false,
+        error: e?.message || "Server error",
+        stack: e?.stack || null
+      },
       { status: 500 }
     );
   }
