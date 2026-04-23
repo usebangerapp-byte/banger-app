@@ -5,6 +5,8 @@ import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
+import { startAudioMeter } from "@/lib/scan/audioMeter";
+import { mapRecognizeResult } from "@/lib/scan/resultState";
 import { getRegion } from "@/lib/scan/getRegion";
 import { recognizeAudio } from "@/lib/scan/recognizeAudio";
 
@@ -54,9 +56,7 @@ export default function Home() {
   const chunksRef = useRef<BlobPart[]>([]);
   const timerRef = useRef<number | null>(null);
 
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const meterRef = useRef<number | null>(null);
+  const meterStopRef = useRef<(() => void) | null>(null);
 
   const busy = status !== "idle";
   const listening = status === "listening";
@@ -104,49 +104,16 @@ export default function Home() {
 
   function stopMeters() {
     try {
-      if (meterRef.current) window.clearInterval(meterRef.current);
+      meterStopRef.current?.();
     } catch {}
-    meterRef.current = null;
+    meterStopRef.current = null;
     setAudioLevel(0);
-
-    try {
-      if (audioCtxRef.current) audioCtxRef.current.close();
-    } catch {}
-    audioCtxRef.current = null;
-    analyserRef.current = null;
   }
 
   async function startMeters(stream: MediaStream) {
     stopMeters();
-
-    const scanWindow = window as ScanWindow;
-    const AudioCtx =
-      (window.AudioContext || scanWindow.webkitAudioContext) as typeof AudioContext;
-    const ctx = new AudioCtx();
-    audioCtxRef.current = ctx;
-
-    const source = ctx.createMediaStreamSource(stream);
-    const analyser = ctx.createAnalyser();
-    analyser.fftSize = 1024;
-    analyser.smoothingTimeConstant = 0.55;
-    analyserRef.current = analyser;
-    source.connect(analyser);
-
-    const buf = new Uint8Array(analyser.fftSize);
-
-    meterRef.current = window.setInterval(() => {
-      try {
-        analyser.getByteTimeDomainData(buf);
-        let sum = 0;
-        for (let i = 0; i < buf.length; i++) {
-          const v = (buf[i] - 128) / 128;
-          sum += v * v;
-        }
-        const rms = Math.sqrt(sum / buf.length);
-        const lvl = Math.max(0, Math.min(1, (rms - 0.01) / 0.18));
-        setAudioLevel(lvl);
-      } catch {}
-    }, 80);
+    const meter = await startAudioMeter(stream, setAudioLevel);
+    meterStopRef.current = meter.stop;
   }
 
   function stopRecording() {
@@ -228,38 +195,20 @@ export default function Home() {
 const region = await getRegion();
           const data = await recognizeAudio(blob, mime, region);
 
-          const resultType = data?.result_type || "not_found";
-          const custom = data?.metadata?.custom_files?.[0] || null;
-          const music = data?.metadata?.music?.[0] || null;
+          const mapped = mapRecognizeResult(data);
 
-          if (resultType === "recognized_world") {
-            setTitle(data?.track_title || "Unknown");
-            setSubtitle(data?.track_subtitle || "(Released)");
-            setTag("RELEASED");
-            setSuccess(true);
-            setBeatportUrl(data?.beatport_url || null);
-            setSpotifyUrl(data?.spotify_url || null);
-            setSnippetPath(data?.snippet_path || null);
-            setAllowPreview(data?.allow_preview ?? null);
-            vib([40, 30, 80]);
-          } else if (resultType === "recognized_unreleased") {
-            setTitle(data?.track_title || custom?.title || "Unknown");
-            setSubtitle(data?.track_subtitle || "(Private DB)");
-            setTag("UNRELEASED");
-            setSuccess(true);
-            setBeatportUrl(data?.beatport_url || null);
-            setSpotifyUrl(data?.spotify_url || null);
-            setSnippetPath(data?.snippet_path || null);
-            setAllowPreview(data?.allow_preview ?? null);
+          setTitle(mapped.title);
+          setSubtitle(mapped.subtitle);
+          setTag(mapped.tag);
+          setBeatportUrl(mapped.beatportUrl);
+          setSpotifyUrl(mapped.spotifyUrl);
+          setSnippetPath(mapped.snippetPath);
+          setAllowPreview(mapped.allowPreview);
+          setSuccess(mapped.success);
+
+          if (mapped.success) {
             vib([40, 30, 80]);
           } else {
-            setTitle("Not found");
-            setBeatportUrl(null);
-            setSpotifyUrl(null);
-            setSnippetPath(null);
-            setAllowPreview(null);
-            setSubtitle("Try again");
-            setTag("NOT FOUND");
             vib([15, 40, 15]);
             triggerFail();
           }
