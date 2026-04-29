@@ -212,13 +212,20 @@ const region = await getRegion();
             vib([15, 40, 15]);
             triggerFail();
           }
-        } catch {
+        } catch (e) {
+          console.error("home recognize failed", e);
+
+          const message =
+            e instanceof Error && e.message
+              ? e.message
+              : "Server error";
+
           setTitle("Not found");
-            setBeatportUrl(null);
-            setSpotifyUrl(null);
-            setSnippetPath(null);
-            setAllowPreview(null);
-          setSubtitle("Server error");
+          setBeatportUrl(null);
+          setSpotifyUrl(null);
+          setSnippetPath(null);
+          setAllowPreview(null);
+          setSubtitle(message);
           setTag("NOT FOUND");
           vib([15, 40, 15]);
           triggerFail();

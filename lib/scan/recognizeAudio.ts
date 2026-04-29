@@ -1,6 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
 
 type RecognizeResult = {
+  ok?: boolean;
+  error?: string;
+  details?: unknown;
   result_type?: "recognized_world" | "recognized_unreleased" | "not_found";
   track_title?: string | null;
   track_subtitle?: string | null;
@@ -30,13 +33,24 @@ export async function recognizeAudio(blob: Blob, mimeType: string, region: strin
       const { data: auth } = await supabase.auth.getUser();
       const userId = auth?.user?.id || "";
       if (userId) fd.append("user_id", userId);
+    } else {
     }
-  } catch {}
+  } catch (e) {
+    console.error("[recognizeAudio] auth lookup failed", e);
+  }
+
 
   const res = await fetch("/api/recognize", {
     method: "POST",
     body: fd,
   });
 
-  return (await res.json()) as RecognizeResult;
+  const json = (await res.json().catch(() => null)) as RecognizeResult | null;
+
+
+  if (!res.ok) {
+    throw new Error(json?.error || `Recognize failed with status ${res.status}`);
+  }
+
+  return (json || {}) as RecognizeResult;
 }

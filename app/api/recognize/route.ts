@@ -167,6 +167,7 @@ export async function POST(req: Request) {
     const country = clean(incoming.get("country"));
     const region = clean(incoming.get("region"));
 
+
     if (!(file instanceof File)) {
       return Response.json({ ok: false, error: "No audio file received" }, { status: 400 });
     }
@@ -190,14 +191,6 @@ export async function POST(req: Request) {
       mimeType,
     });
 
-    console.log("incoming file meta", {
-      name: file.name,
-      type: file.type,
-      size: file.size,
-      arrayBufferBytes: arrayBuffer.byteLength,
-    });
-    console.log("private ACR raw payload", JSON.stringify(privateResult.payload));
-    console.log("world ACR raw payload", JSON.stringify(worldResult.payload));
 
     const mappedWorld = mapWorldRecognition(worldResult.payload, country);
     const mappedPrivate = mapPrivateRecognition(privateResult.payload, country);
@@ -265,9 +258,6 @@ export async function POST(req: Request) {
       region: region || null,
     };
 
-    console.log("private ACR status", privateResult.status);
-    console.log("world ACR status", worldResult.status);
-    console.log("scan_events payload", row);
 
     const { error } = await supabase.from("scan_events").insert(row);
 
@@ -286,7 +276,6 @@ export async function POST(req: Request) {
       );
     }
 
-    console.log("scan_events insert ok");
 
     return Response.json(
       {
