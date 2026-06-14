@@ -1,13 +1,25 @@
-import type { CapacitorConfig } from '@capacitor/cli';
+import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
-  appId: 'com.usebanger.app',
-  appName: 'Banger',
-  webDir: 'out',
+  appId:   "com.usebanger.app",
+  appName: "BANGER",
+  webDir:  "out",
+
   server: {
-    url: 'http://172.20.10.10:3000',
-    cleartext: true
-  }
+    url:       "https://banger-app-zeta.vercel.app",
+    cleartext: false,
+  },
+
+  ios: {
+    allowsLinkPreview: false,
+    scrollEnabled:     false,
+    contentInset:      "automatic",
+    backgroundColor:   "#000000",
+  },
+
+  plugins: {
+    Haptics: {},
+  },
 };
 
 export default config;
