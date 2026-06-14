@@ -200,7 +200,6 @@ export default function ChartsPage() {
         if (!mounted) return;
         setError(e?.message || "Unable to load charts.");
       } finally {
-        if (!mounted) return;
         setLoading(false);
       }
     })();
