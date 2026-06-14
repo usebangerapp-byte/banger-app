@@ -318,8 +318,8 @@ const region = await getRegion();
             <div style={styles.logoWrap}>
               <Image src="/B-logo.png" alt="BANGER" width={78} height={78} priority />
             </div>
-            <button onClick={signInWithGoogle} disabled={loginLoading} style={styles.googleBtn}>
-              {loginLoading ? "Connexion…" : "Continue with Google"}
+            <button onClick={() => signInWith("google")} disabled={loginLoading} style={styles.googleBtn}>
+              {loginLoading ? "Connecting…" : "Continue with Google"}
             </button>
             <div style={styles.loginHint}>
               Après login → Home (Scan) + onglets.
