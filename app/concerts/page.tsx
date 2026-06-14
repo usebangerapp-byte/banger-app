@@ -384,7 +384,7 @@ export default function ChartsPage() {
 
   return (
     <main style={{ minHeight: "100vh", background: "#000", color: "#fff", padding: "20px 14px 120px" }}>
-      <style jsx global>{`
+      <style>{`
         @keyframes banger-marquee {
           0% { transform: translateX(0); }
           10% { transform: translateX(0); }
@@ -395,11 +395,11 @@ export default function ChartsPage() {
 
       <div style={{ maxWidth: 760, margin: "0 auto", display: "grid", gap: 14 }}>
         <div style={{ display: "grid", placeItems: "center", marginBottom: 4 }}>
-          <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: "-0.03em" }}>Charts</div>
+          <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: "-0.03em" }}>CHARTS</div>
         </div>
 
         {loading ? (
-          <div style={cardStyle}>Loading charts...</div>
+          <div style={cardStyle}>Loading…</div>
         ) : error ? (
           <div style={cardStyle}>{error}</div>
         ) : (
@@ -411,7 +411,7 @@ export default function ChartsPage() {
                   onClick={() => switchChart("unreleased")}
                   style={activeChart === "unreleased" ? activeTabBtn : tabBtn}
                 >
-                  TOP 100<br/>UNRELEASED
+                  UNRELEASED
                 </button>
 
                 <button
@@ -419,7 +419,7 @@ export default function ChartsPage() {
                   onClick={() => switchChart("released")}
                   style={activeChart === "released" ? activeTabBtn : tabBtn}
                 >
-                  TOP 100<br/>RELEASED
+                  RELEASED
                 </button>
               </div>
 
@@ -431,7 +431,7 @@ export default function ChartsPage() {
                     setVisibleCount(10);
                   }}
                   list="charts-search-list"
-                  placeholder="Search"
+                  placeholder="Search a track or artist…"
                   style={searchInputStyle}
                 />
                 <datalist id="charts-search-list">
@@ -445,7 +445,7 @@ export default function ChartsPage() {
             <div style={{ marginTop: 12 }}>
               {filteredRows.length === 0 ? (
                 <div style={{ opacity: 0.62, fontSize: 13 }}>
-                  {activeChart === "unreleased" ? "No unreleased chart data yet." : "No released chart data yet."}
+                  {activeChart === "unreleased" ? "No unreleased IDs charting yet. Be the first to scan." : "No released tracks charting yet."}
                 </div>
               ) : (
                 <>

@@ -1,122 +1,118 @@
 "use client";
 
 import { createSupabaseBrowser } from "@/lib/supabase/client";
-
 import { useRouter } from "next/navigation";
 
-type Plan = "public" | "dj" | "label";
+type Plan = "public" | "pro";
 
-const plans = [
+// --- À ajuster facilement ---
+const CONTACT_EMAIL = "contact@usebangerapp.com";
+const PRO_PRICE = "€9.99 / mo"; // placeholder
+// ----------------------------
+
+const plans: {
+  key: Plan;
+  name: string;
+  price: string;
+  description: string;
+  features: string[];
+  cta: string;
+}[] = [
   {
-    key: "public" as Plan,
+    key: "public",
     name: "PUBLIC",
     price: "Free",
-    description: "Discover what’s playing around you and follow the underground.",
+    description: "Scan tracks, follow the underground, and never lose an ID again.",
     features: [
-      "Unlimited scan",
-      "Radar (live trends)",
-      "Charts (top unreleased)",
-      "Events & DJs nearby",
-      "Profile"
+      "Limited scans",
+      "Live radar & trends",
+      "Top unreleased charts",
+      "Events & DJs near you",
+      "Your profile",
     ],
-    cta: "Start Exploring",
+    cta: "Start for Free",
   },
   {
-    key: "dj" as Plan,
-    name: "DJ",
-    price: "Free",
-    description: "Track your IDs, test unreleased tracks and connect with the scene.",
+    key: "pro",
+    name: "PRO",
+    price: PRO_PRICE,
+    description: "Upload and test your unreleased tracks, get seen at events, and see exactly how your music moves.",
     features: [
-      "Everything in Public",
-      "Upload unreleased tracks",
-      "Share and test unreleased tracks",
-      "Be visible at events",
-      "Track scans",
-      "City trends"
-    ],
-    cta: "Activate DJ Mode",
-  },
-  {
-    key: "label" as Plan,
-    name: "LABEL",
-    price: "Pro",
-    description: "Understand how your music moves and predict what will break next.",
-    features: [
-      "Everything in DJ",
-      "Track performance",
-      "Global scan data",
+      "Everything in Public, plus:",
+      "Unlimited scans",
+      "Upload your unreleased tracks",
+      "Share & test with the scene",
+      "Get seen at events",
+      "Track scans & performance",
       "City & event trends",
-      "Track potential prediction",
+      "Global scan data",
+      "Track-potential predictions",
       "Early trend detection",
-      "Release timing optimization"
+      "Best release-timing insights",
     ],
-    cta: "Contact us",
-    disabled: true,
+    cta: "Go Pro",
   },
 ];
-
-function keyFor(email: string) {
-  return `banger_onboarding_done:${email.toLowerCase()}`;
-}
 
 export default function OnboardingView() {
   const router = useRouter();
 
-async function choosePlan(plan: Plan) {
-  try {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("banger_role", plan);
-      localStorage.setItem("banger_plan", plan);
+  async function choosePlan(plan: Plan) {
+    try {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("banger_role", plan);
+        localStorage.setItem("banger_plan", plan);
+      }
+
+      const supabase = createSupabaseBrowser();
+      if (!supabase) {
+        router.replace("/home");
+        return;
+      }
+
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError) {
+        console.error(authError);
+        router.replace("/home");
+        return;
+      }
+
+      const user = authData.user;
+      if (!user) {
+        router.replace("/home");
+        return;
+      }
+
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .upsert(
+          {
+            id: user.id,
+            email: user.email || null,
+            role: plan,
+          },
+          { onConflict: "id" }
+        );
+
+      if (profileError) {
+        console.error(profileError);
+      }
+    } catch (e) {
+      console.error(e);
     }
 
-    const supabase = createSupabaseBrowser();
-    if (!supabase) {
-      router.replace("/home");
-      return;
-    }
-
-    const { data: authData, error: authError } = await supabase.auth.getUser();
-    if (authError) {
-      console.error(authError);
-      router.replace("/home");
-      return;
-    }
-
-    const user = authData.user;
-    if (!user) {
-      router.replace("/home");
-      return;
-    }
-
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .upsert(
-        {
-          id: user.id,
-          email: user.email || null,
-          role: plan,
-        },
-        { onConflict: "id" }
-      );
-
-    if (profileError) {
-      console.error(profileError);
-    }
-  } catch (e) {
-    console.error(e);
+    router.replace("/home");
   }
 
-  router.replace("/home");
-}
   return (
     <main style={styles.page}>
       <div style={styles.shell}>
         <div style={styles.header}>
-          <div style={styles.eyebrow}>CHOOSE YOUR PLAN</div>
-          <h1 style={styles.title}>Start with BANGER</h1>
+          <div style={styles.eyebrow}>PICK YOUR PLAN</div>
+          <h1 style={styles.title}>How do you want to play?</h1>
           <p style={styles.subtitle}>
-            Discover, track and shape the future of unreleased music.
-            You can upgrade anytime.
+            Find the IDs, follow the DJs, stay ahead of every drop.
+            Upgrade whenever you&apos;re ready.
           </p>
         </div>
 
@@ -140,19 +136,29 @@ async function choosePlan(plan: Plan) {
 
               <button
                 type="button"
-                onClick={() => { if(plan.key==="label"){ window.location.href="mailto:contact@usebanger.com"; return;} choosePlan(plan.key); }}
-                style={plan.key === "label" ? styles.secondaryButton : styles.primaryButton}
+                onClick={() => choosePlan(plan.key)}
+                style={styles.primaryButton}
               >
                 {plan.cta}
               </button>
             </section>
           ))}
         </div>
+
+        <p style={styles.consent}>
+          By continuing, you agree to our{" "}
+          <a href="/terms" style={styles.footerLink}>Terms</a> &amp;{" "}
+          <a href="/privacy" style={styles.footerLink}>Privacy</a>, and to receive
+          event updates by email. Opt out anytime.
+        </p>
       </div>
-    <div style={{marginTop:40,fontSize:12,opacity:0.5,textAlign:"center"}}>
-  <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="mailto:labels.com">Contact</a>
-</div>
-</main>
+
+      <div style={styles.footer}>
+        <a href="/terms" style={styles.footerLink}>Terms</a> ·{" "}
+        <a href="/privacy" style={styles.footerLink}>Privacy</a> ·{" "}
+        <a href={`mailto:${CONTACT_EMAIL}`} style={styles.footerLink}>Contact</a>
+      </div>
+    </main>
   );
 }
 
@@ -263,15 +269,23 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 15,
     cursor: "pointer",
   },
-  secondaryButton: {
-    marginTop: "auto",
-    padding: "15px 16px",
-    borderRadius: 18,
-    border: "1px solid rgba(255,255,255,0.14)",
-    background: "rgba(255,255,255,0.05)",
-    color: "#fff",
-    fontWeight: 800,
-    fontSize: 15,
-    cursor: "pointer",
+  consent: {
+    margin: 0,
+    textAlign: "center",
+    fontSize: 12,
+    lineHeight: 1.5,
+    opacity: 0.55,
+    maxWidth: 560,
+    justifySelf: "center",
+  },
+  footer: {
+    marginTop: 40,
+    fontSize: 12,
+    opacity: 0.5,
+    textAlign: "center",
+  },
+  footerLink: {
+    color: "rgba(255,255,255,0.85)",
+    textDecoration: "underline",
   },
 };

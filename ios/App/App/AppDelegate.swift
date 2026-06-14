@@ -40,9 +40,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
-        // Called when the app was launched with an activity, including Universal Links.
-        // Feel free to add additional processing here, but if you want the App API to support
-        // tracking app url opens, make sure to keep this call
+        if userActivity.activityType == "com.usebanger.app.scan" {
+            if let rootVC = window?.rootViewController as? CAPBridgeViewController,
+               let webView = rootVC.bridge?.webView {
+                webView.evaluateJavaScript(
+                    "window.dispatchEvent(new CustomEvent('banger:scan'))"
+                )
+            }
+            return true
+        }
         return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
     }
 

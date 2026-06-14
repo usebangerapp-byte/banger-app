@@ -67,11 +67,18 @@ export default function Home() {
     setSessionLoading(false);
   }, []);
 
-  async function signInWithGoogle() {
+  useEffect(() => {
+    function onControlCenter() { if (status === "idle") startListening(); }
+    window.addEventListener("banger:scan", onControlCenter);
+    return () => window.removeEventListener("banger:scan", onControlCenter);
+  }, [status]);
+
+  async function signInWith(provider: "google" | "apple") {
+    if (!supabase) return;
     setLoginLoading(true);
     try {
-      await supabase!.auth.signInWithOAuth({
-        provider: "google",
+      await supabase.auth.signInWithOAuth({
+        provider,
         options: {
           redirectTo:
             typeof window !== "undefined"
@@ -151,7 +158,7 @@ export default function Home() {
     setTag("NOT FOUND");
 
     try {
-      vib(25);
+      vib(12);
       setStatus("listening");
 
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -185,6 +192,7 @@ export default function Home() {
         streamRef.current = null;
 
         stopMeters();
+        vib([6, 30, 6]);
         setStatus("recognizing");
 
         try {
@@ -207,9 +215,9 @@ const region = await getRegion();
           setSuccess(mapped.success);
 
           if (mapped.success) {
-            vib([40, 30, 80]);
+            vib([18, 60, 18, 60, 80]);
           } else {
-            vib([15, 40, 15]);
+            vib([8, 40, 8]);
             triggerFail();
           }
         } catch (e) {
@@ -227,7 +235,7 @@ const region = await getRegion();
           setAllowPreview(null);
           setSubtitle(message);
           setTag("NOT FOUND");
-          vib([15, 40, 15]);
+          vib([8, 40, 8]);
           triggerFail();
         }
 
@@ -486,13 +494,13 @@ Discover what the scene is playing
 
           <div style={styles.status}>
             {status === "idle" ? "DROP IT" : null}
-            {status === "listening" ? "Listening... (10s)" : null}
-            {status === "recognizing" ? "Searching..." : null}
+            {status === "listening" ? "Listening…" : null}
+            {status === "recognizing" ? "Identifying…" : null}
           </div>
         </div>
 
         <div style={styles.recent}>
-          <div style={styles.recentTitle}>RECENTLY FOUND</div>
+          <div style={styles.recentTitle}>LAST ID</div>
           <div style={styles.card}>
             <div style={styles.cardRow}>
               <div style={styles.cardMain}>{title}</div>
@@ -507,12 +515,16 @@ Discover what the scene is playing
               </div>
             )}
             {tag === "RELEASED" && (
-              <div style={{ marginTop: 10, display: "flex", gap: 12, justifyContent: "center" }}>
-                {beatportUrl && (
-                  <a href={beatportUrl} target="_blank" style={{ color: "#0ff", fontSize: 14 }}>Beatport</a>
-                )}
+              <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
                 {spotifyUrl && (
-                  <a href={spotifyUrl} target="_blank" style={{ color: "#1db954", fontSize: 14 }}>Spotify</a>
+                  <a href={spotifyUrl} target="_blank" rel="noopener noreferrer" style={styles.spotifyBtn}>
+                    ▶ Listen on Spotify
+                  </a>
+                )}
+                {beatportUrl && (
+                  <a href={beatportUrl} target="_blank" rel="noopener noreferrer" style={styles.beatportBtn}>
+                    ⬇ Buy on Beatport
+                  </a>
                 )}
               </div>
             )}
@@ -900,6 +912,45 @@ const styles: Record<string, CSSProperties> = {
     letterSpacing: "0.14em",
     fontWeight: 900,
     marginTop: 44,
+  },
+  appleBtn: {
+    width: "min(340px, 100%)",
+    padding: "14px 16px",
+    borderRadius: 14,
+    background: "#000",
+    border: "1px solid rgba(255,255,255,0.30)",
+    color: "#fff",
+    cursor: "pointer",
+    fontSize: 16,
+    fontWeight: 700,
+    letterSpacing: 0.4,
+    textAlign: "center" as const,
+  },
+  spotifyBtn: {
+    display: "block",
+    padding: "11px 14px",
+    borderRadius: 12,
+    background: "rgba(29,185,84,0.15)",
+    border: "1px solid rgba(29,185,84,0.35)",
+    color: "#1db954",
+    fontWeight: 700,
+    fontSize: 13,
+    textDecoration: "none",
+    textAlign: "center" as const,
+    letterSpacing: "0.04em",
+  },
+  beatportBtn: {
+    display: "block",
+    padding: "11px 14px",
+    borderRadius: 12,
+    background: "rgba(0,229,255,0.10)",
+    border: "1px solid rgba(0,229,255,0.30)",
+    color: "#00E5FF",
+    fontWeight: 700,
+    fontSize: 13,
+    textDecoration: "none",
+    textAlign: "center" as const,
+    letterSpacing: "0.04em",
   },
 };
 // redeploy

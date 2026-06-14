@@ -5,12 +5,14 @@ import { createSupabaseBrowser } from "@/lib/supabase/client";
 
 type ScanRange = "day" | "week" | "month";
 
+// Renseigner l'URL App Store ici une fois la fiche publiée.
+const APP_STORE_URL = "";
 
 export default function LandingPage() {
   const supabase = createSupabaseBrowser();
   const [stats, setStats] = useState<any>(null);
   const [range, setRange] = useState<ScanRange>("month");
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<"" | "google" | "apple">("");
   const [error, setError] = useState("");
   useEffect(() => {
     fetch("/api/stats")
@@ -25,8 +27,12 @@ export default function LandingPage() {
     return "SCANS THIS MONTH";
   }, [range]);
 
-  async function continueWithGoogle() {
-    setBusy(true);
+  async function continueWith(provider: "google" | "apple") {
+    if (!supabase) {
+      setError("Login is unavailable right now. Please try again later.");
+      return;
+    }
+    setBusy(provider);
     setError("");
 
     try {
@@ -35,15 +41,15 @@ export default function LandingPage() {
           ? window.location.origin
           : "https://banger-app-zeta.vercel.app";
 
-      const { error } = await supabase!.auth.signInWithOAuth({
-        provider: "google",
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
         options: { redirectTo: `${origin}/auth/callback` },
       });
 
       if (error) throw error;
     } catch (e: any) {
-      setError(e?.message || "Unable to start Google login.");
-      setBusy(false);
+      setError(e?.message || "Unable to start login.");
+      setBusy("");
     }
   }
 
@@ -53,13 +59,13 @@ export default function LandingPage() {
         <section style={styles.hero}>
           <div style={styles.eyebrow}>BANGER</div>
           <h1 style={styles.title}>
-            <span style={styles.titleTop}>Track ID?</span>
-            <span style={styles.titleBottom}>Use BANGER</span>
+            <span style={styles.titleTop}>Find your</span>
+            <span style={styles.titleBottom}>Un/Released Tracks</span>
           </h1>
           <p style={styles.subtitle}>
-            Scan music. Discover unreleased tracks.
+            Scan any track — even the ones not out yet.
             <br />
-            Follow what DJs are playing.
+            Follow your favorite DJs and get notified the moment they drop.
           </p>
           <div style={styles.heroMeta}>USED BY DJs WORLDWIDE</div>
         </section>
@@ -67,7 +73,7 @@ export default function LandingPage() {
         <section style={styles.statsCard}>
           <div style={styles.statBlock}>
             <div style={styles.statLabel}>USERS</div>
-            <div style={styles.statValue}>{stats?.users ?? "..."} </div>
+            <div style={styles.statValue}>{stats?.users ?? "..."}</div>
           </div>
 
           <div style={styles.divider} />
@@ -99,20 +105,20 @@ export default function LandingPage() {
                 </button>
               </div>
             </div>
-            <div style={styles.statValue}>{stats?.scans?.[range] ?? "..."} </div>
+            <div style={styles.statValue}>{stats?.scans?.[range] ?? "..."}</div>
           </div>
         </section>
 
         <section style={styles.section}>
           <div style={styles.sectionTitle}>DOWNLOAD BANGER</div>
-          <div style={styles.buttonGrid}>
-            <button type="button" style={styles.secondaryButton}>
-              App Store
-            </button>
-            <button type="button" style={styles.secondaryButton}>
-              Google Play
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => { if (APP_STORE_URL) window.open(APP_STORE_URL, "_blank"); }}
+            disabled={!APP_STORE_URL}
+            style={styles.secondaryButtonFull}
+          >
+            {APP_STORE_URL ? "Download on the App Store" : "App Store — Coming soon"}
+          </button>
         </section>
 
         <section style={styles.section}>
@@ -124,19 +130,20 @@ export default function LandingPage() {
 
             <button
               type="button"
-              onClick={continueWithGoogle}
-              disabled={busy}
+              onClick={() => continueWith("google")}
+              disabled={busy !== ""}
               style={styles.primaryButton}
             >
-              {busy ? "Connecting..." : "Continue with Google"}
+              {busy === "google" ? "Connecting..." : "Continue with Google"}
             </button>
 
-            <button type="button" disabled style={styles.secondaryButtonFull}>
-              Apple — Coming soon
-            </button>
-
-            <button type="button" disabled style={styles.secondaryButtonFull}>
-              Instagram — Coming soon
+            <button
+              type="button"
+              onClick={() => continueWith("apple")}
+              disabled={busy !== ""}
+              style={styles.appleButton}
+            >
+              {busy === "apple" ? "Connecting..." : "\uF8FF  Continue with Apple"}
             </button>
 
             <div style={styles.freePlan}>Free plan available</div>
@@ -185,7 +192,7 @@ const styles: Record<string, React.CSSProperties> = {
     letterSpacing: "-0.06em",
   },
   titleBottom: {
-    fontSize: "clamp(42px, 12vw, 72px)",
+    fontSize: "clamp(34px, 10vw, 60px)",
     fontWeight: 900,
     letterSpacing: "-0.06em",
     color: "rgba(255,255,255,0.92)",
@@ -250,20 +257,6 @@ const styles: Record<string, React.CSSProperties> = {
     opacity: 0.6,
     fontWeight: 800,
   },
-  buttonGrid: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 10,
-  },
-  secondaryButton: {
-    padding: "15px 14px",
-    borderRadius: 18,
-    border: "1px solid rgba(255,255,255,0.14)",
-    background: "rgba(255,255,255,0.05)",
-    color: "#fff",
-    fontWeight: 700,
-    fontSize: 15,
-  },
   webCard: {
     border: "1px solid rgba(255,255,255,0.10)",
     borderRadius: 24,
@@ -291,12 +284,25 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 16,
     cursor: "pointer",
   },
+  appleButton: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "16px 18px",
+    borderRadius: 18,
+    border: "1px solid rgba(255,255,255,0.30)",
+    background: "#000",
+    color: "#fff",
+    fontWeight: 800,
+    fontSize: 16,
+    cursor: "pointer",
+  },
   secondaryButtonFull: {
     padding: "15px 18px",
     borderRadius: 18,
     border: "1px solid rgba(255,255,255,0.12)",
     background: "rgba(255,255,255,0.05)",
-    color: "rgba(255,255,255,0.55)",
+    color: "rgba(255,255,255,0.85)",
     fontWeight: 700,
     fontSize: 16,
   },
