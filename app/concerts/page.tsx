@@ -114,7 +114,7 @@ export default function ChartsPage() {
         const [{ data: uploads, error: uploadsError }, { data: scans, error: scansError }] = await Promise.all([
           supabase!
             .from("bpro_tracks")
-            .select("id,title,artist,snippet_path,allow_preview,release_date,is_released")
+            .select("id,title,artist,snippet_path,allow_preview,release_date,is_released,release_url,spotify_url,beatport_url")
             .limit(500),
           { data: await fetch("/api/charts").then(r=>r.json()), error: null },
         ]);
@@ -188,8 +188,8 @@ export default function ChartsPage() {
               snippet_path: track.snippet_path || null,
               allow_preview: track.allow_preview ?? null,
               release_date: track.release_date || null,
-              spotify_url: track.spotify_url || null,
-              beatport_url: track.beatport_url || null,
+              spotify_url:  track.spotify_url || null,
+              beatport_url: track.beatport_url || track.release_url || null,
               result_type: released ? "recognized_world" : "recognized_unreleased",
             } as TrackRow;
           })
@@ -594,3 +594,17 @@ const smallLinkBtn: React.CSSProperties = {
   fontSize: 15,
   cursor: "pointer",
 };;
+
+const spotifyBtn: React.CSSProperties = {
+  display: "block", padding: "10px 14px", borderRadius: 12,
+  background: "rgba(29,185,84,0.12)", border: "1px solid rgba(29,185,84,0.35)",
+  color: "#1db954", fontWeight: 700, fontSize: 13,
+  textDecoration: "none", textAlign: "center", letterSpacing: "0.04em",
+};
+
+const beatportBtn: React.CSSProperties = {
+  display: "block", padding: "10px 14px", borderRadius: 12,
+  background: "rgba(0,229,255,0.08)", border: "1px solid rgba(0,229,255,0.28)",
+  color: "#00E5FF", fontWeight: 700, fontSize: 13,
+  textDecoration: "none", textAlign: "center", letterSpacing: "0.04em",
+};
