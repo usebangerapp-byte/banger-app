@@ -215,7 +215,7 @@ export async function POST(req: Request) {
     if (mapped.result_type === "recognized_unreleased" && mapped.track_title) {
       const { data } = await supabase
         .from("bpro_tracks")
-        .select("id,artist,snippet_path,allow_preview,release_status")
+        .select("id,artist,snippet_path,allow_preview,release_status,release_url")
         .eq("title", mapped.track_title)
         .limit(1)
         .maybeSingle();
@@ -288,6 +288,7 @@ export async function POST(req: Request) {
         snippet_path: dbSaysReleased ? null : (privateTrackRow?.snippet_path || null),
         allow_preview: dbSaysReleased ? null : (privateTrackRow?.allow_preview ?? null),
         release_status: privateTrackRow?.release_status || "unknown",
+        beatport_url: dbSaysReleased ? (privateTrackRow?.release_url || null) : null,
       },
       { status: responseStatus }
     );

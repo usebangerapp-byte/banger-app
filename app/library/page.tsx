@@ -246,7 +246,7 @@ function WantedRow({ t }: { t: WantedTrack }) {
     <div style={rowStyle}>
       <div style={{ fontSize: 16, fontWeight: 800, lineHeight: 1.15 }}>{t.track_title}</div>
       <MetaLine>
-        {t.track_subtitle || "Unknown"} · {t.followers} follows
+        {t.track_subtitle || "Unknown"} · {t.followers} following
       </MetaLine>
     </div>
   )
@@ -289,14 +289,14 @@ export default async function RadarPage() {
       <div style={{ maxWidth: 760, margin: "0 auto", display: "grid", gap: 14 }}>
         <div style={{ display: "grid", placeItems: "center", gap: 8, marginBottom: 2 }}>
           <div style={{ fontSize: 52, lineHeight: 1, opacity: 0.92 }}>B</div>
-          <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: "-0.03em" }}>Radar</div>
+          <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: "-0.03em" }}>RADAR</div>
           <div style={{ fontSize: 13, color: "rgba(255,255,255,0.58)", textAlign: "center", maxWidth: 520 }}>
-            Curated club signals only. No noise. No weak scans.
+            What the scene is scanning right now. Underground only.
           </div>
         </div>
 
         <section style={heroStyle}>
-          <SectionTitle>RISING 24H</SectionTitle>
+          <SectionTitle>HOT RIGHT NOW</SectionTitle>
           {rising24h ? (
             <>
               <div style={{ fontSize: 24, fontWeight: 900, lineHeight: 1.05 }}>{rising24h.track_title}</div>
@@ -308,14 +308,14 @@ export default async function RadarPage() {
               </div>
             </>
           ) : (
-            <div style={{ fontSize: 14, color: "rgba(255,255,255,0.55)" }}>No signal yet</div>
+            <div style={{ fontSize: 14, color: "rgba(255,255,255,0.55)" }}>Nothing yet. Be the first to scan.</div>
           )}
         </section>
 
         <section style={cardStyle}>
           <SectionTitle>BANGERS OF THE WEEK</SectionTitle>
           {weekTop.length === 0 ? (
-            <MetaLine>No signal yet</MetaLine>
+            <MetaLine>Nothing yet. Be the first to scan.</MetaLine>
           ) : (
             <>
               <div style={{ display: "grid", gap: 8 }}>
@@ -330,9 +330,9 @@ export default async function RadarPage() {
         </section>
 
         <section style={cardStyle}>
-          <SectionTitle>LATEST SIGNALS</SectionTitle>
+          <SectionTitle>FRESHEST IDS</SectionTitle>
           {latestTop.length === 0 ? (
-            <MetaLine>No signal yet</MetaLine>
+            <MetaLine>Nothing yet. Be the first to scan.</MetaLine>
           ) : (
             <>
               <div style={{ display: "grid", gap: 8 }}>
@@ -370,9 +370,9 @@ export default async function RadarPage() {
         </section>
 
         <section style={cardStyle}>
-          <SectionTitle>MOST WANTED IDS</SectionTitle>
+          <SectionTitle>MOST WANTED</SectionTitle>
           {mostWanted.length === 0 ? (
-            <MetaLine>No followed IDs yet</MetaLine>
+            <MetaLine>No one's chasing these yet.</MetaLine>
           ) : (
             <div style={{ display: "grid", gap: 8 }}>
               {mostWanted.map((t, i) => <WantedRow key={`wanted-${i}`} t={t} />)}
@@ -381,9 +381,9 @@ export default async function RadarPage() {
         </section>
 
         <section style={cardStyle}>
-          <SectionTitle>MOST SCANNED</SectionTitle>
+          <SectionTitle>ALL TIME IDS</SectionTitle>
           {mostTop.length === 0 ? (
-            <MetaLine>No signal yet</MetaLine>
+            <MetaLine>Nothing yet. Be the first to scan.</MetaLine>
           ) : (
             <>
               <div style={{ display: "grid", gap: 8 }}>

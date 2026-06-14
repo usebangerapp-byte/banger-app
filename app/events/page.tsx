@@ -20,11 +20,9 @@ export default function EventsPage() {
           <div style={{ fontSize: 12, letterSpacing: "0.22em", opacity: 0.58, fontWeight: 800 }}>
             EVENTS
           </div>
-          <h1 style={{ margin: 0, fontSize: 34, fontWeight: 900, letterSpacing: "-0.04em" }}>
-            Events
-          </h1>
+          <h1 style={{ margin: 0, fontSize: 34, fontWeight: 900, letterSpacing: "-0.04em" }}>EVENTS</h1>
           <p style={{ margin: 0, fontSize: 15, lineHeight: 1.5, opacity: 0.72 }}>
-            Nearby events and music moments will appear here.
+            Events near you, powered by what the scene is scanning.
           </p>
         </div>
 
@@ -40,7 +38,7 @@ export default function EventsPage() {
         >
           <div style={{ fontSize: 16, fontWeight: 800 }}>Coming soon</div>
           <div style={{ fontSize: 14, opacity: 0.7 }}>
-            This tab is ready for the Public plan.
+            Live events integration is on its way. Drop a scan at your next rave and help build the map.
           </div>
         </section>
       </div>
