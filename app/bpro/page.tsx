@@ -128,7 +128,7 @@ export default function UploadPage() {
         "-i", inName, "-vn", "-acodec", "libmp3lame", "-b:a", "192k", outName]);
       const data = await ffmpeg.readFile(outName);
       const buf  = data instanceof Uint8Array ? data : new TextEncoder().encode(String(data));
-      segments.push(new File([buf.buffer], `${base}-seg${i + 1}.mp3`, { type: "audio/mpeg" }));
+      segments.push(new File([buf.buffer as ArrayBuffer], `${base}-seg${i + 1}.mp3`, { type: "audio/mpeg" }));
       try { await ffmpeg.deleteFile(outName); } catch {}
     }
     try { await ffmpeg.deleteFile(inName); } catch {}
