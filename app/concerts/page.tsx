@@ -70,6 +70,13 @@ function normalize(v: string | null | undefined) {
     .trim();
 }
 
+function trackKey(title: string): string {
+  return normalize(title)
+    .replace(/\s*\(.*?(mix|remix|edit|version|extended|original|club|radio|instrumental|vip|bootleg|flip|rework)\b.*?\)\s*/gi, " ")
+    .replace(/\s*-\s*(extended|original|club|radio|vocal|instrumental)\s*(mix|version|edit)?\s*$/gi, "")
+    .replace(/\s+/g, " ").trim().slice(0, 60);
+}
+
 function buildSuggestions(rows: any[]) {
   const set = new Set<string>();
 
@@ -135,7 +142,7 @@ export default function ChartsPage() {
         // Index bpro_tracks par titre normalisé pour enrichissement rapide
         const bproIndex = new Map<string, any>();
         for (const t of bproList) {
-          const key = normalize(String(t.title || "")).slice(0, 60);
+          const key = trackKey(String(t.title || ""));
           if (key) bproIndex.set(key, t);
         }
 
@@ -148,7 +155,7 @@ export default function ChartsPage() {
 
           const title  = String(s.track_title  || "").trim();
           const artist = String(s.track_subtitle || "").trim();
-          const key    = normalize(title).slice(0, 60);
+          const key    = trackKey(title);
 
           const bpro    = bproIndex.get(key);
           const released = s.result_type === "recognized_world" || !!bpro?.is_released;
@@ -193,7 +200,7 @@ export default function ChartsPage() {
             const res = await fetch(`/api/follow-track?user_id=${uid}`, { cache: "no-store" });
             const json = await res.json().catch(() => null);
             const followed = Array.isArray(json?.followed) ? json.followed : [];
-            setFollowedTitles(new Set(followed.map((f: any) => String(f.track_title || "").trim().toLowerCase())));
+            setFollowedTitles(new Set(followed.map((f: any) => trackKey(String(f.track_title || "")))));
           }
         } catch {}
       } catch (e: any) {
@@ -335,7 +342,7 @@ export default function ChartsPage() {
 
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", fontSize: 15, fontWeight: 700, opacity: 0.92 }}>
                     {kind === "unreleased" ? (() => {
-                      const titleKey = (track.title || "").trim().toLowerCase();
+                      const titleKey = trackKey(track.title || "");
                       const isFollowing = followedTitles.has(titleKey);
                       return (
                         <button
@@ -351,7 +358,7 @@ export default function ChartsPage() {
                                 action,
                                 user_id: userId,
                                 track_title: track.title || "",
-                                track_subtitle: track.artist || null,
+                                track_subtitle: (track.artist || "").trim() || null,
                               }),
                             });
                             const json = await res.json().catch(() => null);
