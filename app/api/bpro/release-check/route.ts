@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { findMusicLinks } from "@/lib/music/findLinks";
 
 export const runtime = "nodejs";
 
