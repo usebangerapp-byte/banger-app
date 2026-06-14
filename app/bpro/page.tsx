@@ -145,8 +145,8 @@ export default function UploadPage() {
 
       setStep(`Uploading ${segments.length} segment(s)…`);
       const fd = new FormData();
-      segments.forEach((seg, i) => fd.append(`file_${i}`, seg));
-      fd.append("file",           segments[0]);
+      fd.append("file_0", segments[0]);
+      fd.append("file",   segments[0]);
       fd.append("title",          trackTitle.trim());
       fd.append("artist",         artist.trim());
       fd.append("name",           artist.trim());
