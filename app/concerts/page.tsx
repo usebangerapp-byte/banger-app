@@ -112,93 +112,79 @@ export default function ChartsPage() {
 
     (async () => {
       try {
-        const [{ data: uploads, error: uploadsError }, { data: scans, error: scansError }] = await Promise.all([
-          supabase!
-            .from("bpro_tracks")
-            .select("id,title,artist,snippet_path,allow_preview,release_date,is_released,release_url,spotify_url,beatport_url")
-            .limit(500),
-          { data: await fetch("/api/charts").then(r=>r.json()), error: null },
-        ]);
+        // 1) Charts toujours en premier (source principale)
+        const chartsRes = await fetch("/api/charts").then(r => r.json()).catch(() => []);
+        if (!mounted) return;
+
+        const scanList = Array.isArray(chartsRes) ? chartsRes : [];
+
+        // 2) bpro_tracks en enrichissement optionnel (ne bloque pas si ça plante)
+        let bproList: any[] = [];
+        if (supabase) {
+          try {
+            const bproRes = await supabase
+              .from("bpro_tracks")
+              .select("id,title,artist,snippet_path,allow_preview,release_url,is_released")
+              .limit(500);
+            bproList = (bproRes.data || []) as any[];
+          } catch {}
+        }
 
         if (!mounted) return;
-        if (uploadsError) throw uploadsError;
-        if (scansError) throw scansError;
 
-        const uploadList = (uploads || []) as any[];
-        const scanList = (scans || []) as any[];
+        // Index bpro_tracks par titre normalisé pour enrichissement rapide
+        const bproIndex = new Map<string, any>();
+        for (const t of bproList) {
+          const key = normalize(String(t.title || "")).slice(0, 60);
+          if (key) bproIndex.set(key, t);
+        }
 
-        const merged = uploadList
-          .map((track) => {
-            const title = String(track.title || "").trim();
-            const artist = String(track.artist || "").trim();
+        // Convertir chaque scan en TrackRow directement
+        // Agréger par titre normalisé pour éviter les doublons unreleased+world
+        const mergeMap = new Map<string, TrackRow>();
 
-            const titleNorm = normalize(title);
-            const artistNorm = normalize(artist);
-            const altTitleNorm = titleNorm.includes(" - ")
-              ? normalize(title.split(" - ").slice(1).join(" - "))
-              : "";
+        for (const s of scanList) {
+          if (!s.track_title || String(s.track_title).trim().toLowerCase() === "unknown") continue;
 
-            const matchedScans = scanList.filter((scan: any) => {
-              const scanTitle = normalize(scan.track_title || "");
-              const scanArtist = normalize(scan.track_subtitle || "");
-              const scanCombo = normalize(`${scan.track_title || ""} ${scan.track_subtitle || ""}`);
+          const title  = String(s.track_title  || "").trim();
+          const artist = String(s.track_subtitle || "").trim();
+          const key    = normalize(title).slice(0, 60);
 
-              if (!scanTitle) return false;
+          const bpro    = bproIndex.get(key);
+          const released = s.result_type === "recognized_world" || !!bpro?.is_released;
 
-              const directTitleMatch =
-                !!titleNorm &&
-                (scanTitle === titleNorm ||
-                  scanCombo.includes(titleNorm) ||
-                  titleNorm.includes(scanTitle));
+          const existing = mergeMap.get(key);
+          if (existing) {
+            // Additionner les scans des deux types (unreleased + world = même track)
+            existing.scan_count = (existing.scan_count || 0) + (s.scans || 0);
+            // Promouvoir en released si l'un des types l'est
+            if (released) existing.result_type = "recognized_world";
+            // Enrichir avec bpro si pas encore fait
+            if (!existing.beatport_url && bpro?.beatport_url) existing.beatport_url = bpro.beatport_url || bpro.release_url;
+            if (!existing.spotify_url  && bpro?.spotify_url)  existing.spotify_url  = bpro.spotify_url;
+          } else {
+            mergeMap.set(key, {
+              id:            key,
+              title:         title || null,
+              artist:        artist || null,
+              scan_count:    s.scans || 0,
+              snippet_path:  bpro?.snippet_path || null,
+              allow_preview: bpro?.allow_preview ?? null,
+              release_date:  null,
+              spotify_url:   bpro?.spotify_url || null,
+              beatport_url:  bpro?.beatport_url || bpro?.release_url || null,
+              result_type:   released ? "recognized_world" : "recognized_unreleased",
+            } as TrackRow);
+          }
+        }
 
-              const altTitleMatch =
-                !!altTitleNorm &&
-                altTitleNorm.length >= 6 &&
-                (scanTitle === altTitleNorm ||
-                  scanTitle.includes(altTitleNorm) ||
-                  altTitleNorm.includes(scanTitle) ||
-                  scanCombo.includes(altTitleNorm));
-
-              const artistAssist =
-                !!artistNorm &&
-                scanCombo.includes(artistNorm) &&
-                (directTitleMatch || altTitleMatch || scanTitle.includes(artistNorm));
-
-              return directTitleMatch || altTitleMatch || artistAssist;
-            });
-
-            const totalScans = matchedScans.length;
-            const hasReleasedScan = matchedScans.some((scan: any) => {
-              if (scan.result_type !== "recognized_world") return false;
-
-              const scanTitle = normalize(scan.track_title || "");
-              const scanArtist = normalize(scan.track_subtitle || "");
-
-              const strictTitleMatch = !!titleNorm && scanTitle === titleNorm;
-              const strictArtistMatch = !!artistNorm && scanArtist === artistNorm;
-
-              return strictTitleMatch && strictArtistMatch;
-            });
-            const released = !!track.is_released || hasReleasedScan;
-
-            return {
-              id: String(track.id),
-              title: track.title || null,
-              artist: track.artist || null,
-              scan_count: totalScans,
-              snippet_path: track.snippet_path || null,
-              allow_preview: track.allow_preview ?? null,
-              release_date: track.release_date || null,
-              spotify_url:  track.spotify_url || null,
-              beatport_url: track.beatport_url || track.release_url || null,
-              result_type: released ? "recognized_world" : "recognized_unreleased",
-            } as TrackRow;
-          })
-          .filter((track) => Number(track.scan_count || 0) > 0)
+        const merged: TrackRow[] = Array.from(mergeMap.values())
+          .filter(t => (t.scan_count || 0) > 0)
           .sort((a, b) => Number(b.scan_count || 0) - Number(a.scan_count || 0));
 
         setTracks(merged);
 
+        // Charger tous les follows en une seule requête
         try {
           const { data: authData } = await supabase!.auth.getUser();
           const uid = authData?.user?.id || null;
@@ -353,61 +339,61 @@ export default function ChartsPage() {
                       const titleKey = (track.title || "").trim().toLowerCase();
                       const isFollowing = followedTitles.has(titleKey);
                       return (
-                        <button type="button" disabled={!userId}
+                        <button
+                          type="button"
+                          disabled={!userId}
                           onClick={async () => {
                             if (!userId) return;
                             const action = isFollowing ? "unfollow" : "follow";
                             const res = await fetch("/api/follow-track", {
-                              method: "POST", headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ action, user_id: userId,
-                                track_title: track.title || "", track_subtitle: track.artist || null }),
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                action,
+                                user_id: userId,
+                                track_title: track.title || "",
+                                track_subtitle: track.artist || null,
+                              }),
                             });
                             const json = await res.json().catch(() => null);
                             if (json?.ok) {
                               setFollowedTitles(prev => {
                                 const next = new Set(prev);
-                                if (action === "follow") next.add(titleKey); else next.delete(titleKey);
+                                if (action === "follow") next.add(titleKey);
+                                else next.delete(titleKey);
                                 return next;
                               });
                             }
                           }}
-                          style={{ padding: "8px 14px", borderRadius: 999, fontSize: 13, fontWeight: 700,
+                          style={{
+                            padding: "8px 14px", borderRadius: 999, fontSize: 13, fontWeight: 700,
                             border: isFollowing ? "1px solid rgba(255,255,255,0.22)" : "1px solid rgba(255,255,255,0.12)",
                             background: isFollowing ? "rgba(255,255,255,0.10)" : "transparent",
                             color: isFollowing ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.62)",
-                            cursor: !userId ? "default" : "pointer" }}>
+                            cursor: !userId ? "default" : "pointer",
+                          }}
+                        >
                           {isFollowing ? "Following ✓" : "+ Follow"}
                         </button>
                       );
                     })() : null}
                   </div>
 
-                  {kind === "released" ? (
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", fontSize: 15, fontWeight: 700, opacity: 0.92 }}>
-                      <span style={smallLinkBtn}>Listen:</span>
-                        {track.spotify_url ? (
-                          <a
-                            href={track.spotify_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            style={smallLink}
-                          >
-                            Spotify
-                          </a>
-                        ) : null}
-
-                        {track.beatport_url ? (
-                          <a
-                            href={track.beatport_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            style={smallLink}
-                          >
-                            Beatport
-                          </a>
-                        ) : null}
+                  {kind === "released" ? (() => {
+                    const q = encodeURIComponent(`${track.artist || ""} ${track.title || ""}`.trim());
+                    const spotifyHref  = track.spotify_url  || `https://open.spotify.com/search/${q}`;
+                    const beatportHref = track.beatport_url || `https://www.beatport.com/search?q=${q}`;
+                    return (
+                      <div style={{ display: "grid", gap: 8, marginTop: 4 }}>
+                        <a href={spotifyHref} target="_blank" rel="noreferrer" style={spotifyBtn}>
+                          ▶ Listen on Spotify
+                        </a>
+                        <a href={beatportHref} target="_blank" rel="noreferrer" style={beatportBtn}>
+                          ⬇ Buy on Beatport
+                        </a>
                       </div>
-                    ) : null}
+                    );
+                  })() : null}
                   </div>
                 </div>
               </div>
@@ -631,15 +617,29 @@ const smallLinkBtn: React.CSSProperties = {
 };;
 
 const spotifyBtn: React.CSSProperties = {
-  display: "block", padding: "10px 14px", borderRadius: 12,
-  background: "rgba(29,185,84,0.12)", border: "1px solid rgba(29,185,84,0.35)",
-  color: "#1db954", fontWeight: 700, fontSize: 13,
-  textDecoration: "none", textAlign: "center", letterSpacing: "0.04em",
+  display: "block",
+  padding: "10px 14px",
+  borderRadius: 12,
+  background: "rgba(29,185,84,0.12)",
+  border: "1px solid rgba(29,185,84,0.35)",
+  color: "#1db954",
+  fontWeight: 700,
+  fontSize: 13,
+  textDecoration: "none",
+  textAlign: "center",
+  letterSpacing: "0.04em",
 };
 
 const beatportBtn: React.CSSProperties = {
-  display: "block", padding: "10px 14px", borderRadius: 12,
-  background: "rgba(0,229,255,0.08)", border: "1px solid rgba(0,229,255,0.28)",
-  color: "#00E5FF", fontWeight: 700, fontSize: 13,
-  textDecoration: "none", textAlign: "center", letterSpacing: "0.04em",
+  display: "block",
+  padding: "10px 14px",
+  borderRadius: 12,
+  background: "rgba(0,229,255,0.08)",
+  border: "1px solid rgba(0,229,255,0.28)",
+  color: "#00E5FF",
+  fontWeight: 700,
+  fontSize: 13,
+  textDecoration: "none",
+  textAlign: "center",
+  letterSpacing: "0.04em",
 };
