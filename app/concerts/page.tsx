@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
-import FollowTrackButton from "@/components/FollowTrackButton";
 
 type TrackRow = {
   id: string;
@@ -105,6 +104,8 @@ export default function ChartsPage() {
   const [activeChart, setActiveChart] = useState<"unreleased" | "released">("unreleased");
   const [visibleCount, setVisibleCount] = useState(10);
   const [search, setSearch] = useState("");
+  const [followedTitles, setFollowedTitles] = useState<Set<string>>(new Set());
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -197,6 +198,18 @@ export default function ChartsPage() {
           .sort((a, b) => Number(b.scan_count || 0) - Number(a.scan_count || 0));
 
         setTracks(merged);
+
+        try {
+          const { data: authData } = await supabase!.auth.getUser();
+          const uid = authData?.user?.id || null;
+          if (uid) {
+            setUserId(uid);
+            const res = await fetch(`/api/follow-track?user_id=${uid}`, { cache: "no-store" });
+            const json = await res.json().catch(() => null);
+            const followed = Array.isArray(json?.followed) ? json.followed : [];
+            setFollowedTitles(new Set(followed.map((f: any) => String(f.track_title || "").trim().toLowerCase())));
+          }
+        } catch {}
       } catch (e: any) {
         if (!mounted) return;
         setError(e?.message || "Unable to load charts.");
@@ -336,15 +349,37 @@ export default function ChartsPage() {
                   </div>
 
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", fontSize: 15, fontWeight: 700, opacity: 0.92 }}>
-                    {kind === "unreleased" ? (
-                      <>
-                        <span style={{ fontSize: 14, fontWeight: 600, opacity: 0.72 }}>Release — {track.releaseDate}</span>
-                        <FollowTrackButton
-                          trackTitle={track.title || "Untitled"}
-                          trackSubtitle={track.artist || "unknown"}
-                        />
-                      </>
-                    ) : null}
+                    {kind === "unreleased" ? (() => {
+                      const titleKey = (track.title || "").trim().toLowerCase();
+                      const isFollowing = followedTitles.has(titleKey);
+                      return (
+                        <button type="button" disabled={!userId}
+                          onClick={async () => {
+                            if (!userId) return;
+                            const action = isFollowing ? "unfollow" : "follow";
+                            const res = await fetch("/api/follow-track", {
+                              method: "POST", headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ action, user_id: userId,
+                                track_title: track.title || "", track_subtitle: track.artist || null }),
+                            });
+                            const json = await res.json().catch(() => null);
+                            if (json?.ok) {
+                              setFollowedTitles(prev => {
+                                const next = new Set(prev);
+                                if (action === "follow") next.add(titleKey); else next.delete(titleKey);
+                                return next;
+                              });
+                            }
+                          }}
+                          style={{ padding: "8px 14px", borderRadius: 999, fontSize: 13, fontWeight: 700,
+                            border: isFollowing ? "1px solid rgba(255,255,255,0.22)" : "1px solid rgba(255,255,255,0.12)",
+                            background: isFollowing ? "rgba(255,255,255,0.10)" : "transparent",
+                            color: isFollowing ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.62)",
+                            cursor: !userId ? "default" : "pointer" }}>
+                          {isFollowing ? "Following ✓" : "+ Follow"}
+                        </button>
+                      );
+                    })() : null}
                   </div>
 
                   {kind === "released" ? (
