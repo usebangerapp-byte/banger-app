@@ -186,7 +186,7 @@ export default function ChartsPage() {
 
         // Charger tous les follows en une seule requête
         try {
-          const { data: authData } = await supabase!.auth.getUser();
+          const { data: authData } = await supabase?.auth.getUser() || { data: null };
           const uid = authData?.user?.id || null;
           if (uid) {
             setUserId(uid);
@@ -642,3 +642,4 @@ const beatportBtn: React.CSSProperties = {
   textAlign: "center",
   letterSpacing: "0.04em",
 };
+
