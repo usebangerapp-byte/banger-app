@@ -72,8 +72,7 @@ function normalize(v: string | null | undefined) {
 
 function trackKey(title: string): string {
   return normalize(title)
-    .replace(/\s*\(.*?(mix|remix|edit|version|extended|original|club|radio|instrumental|vip|bootleg|flip|rework)\b.*?\)\s*/gi, " ")
-    .replace(/\s*-\s*(extended|original|club|radio|vocal|instrumental)\s*(mix|version|edit)?\s*$/gi, "")
+    .replace(/\s*\(\s*(original|extended|club|radio|vocal|instrumental|dub|remaster|reprise)(\s+(mix|version|edit|cut))?\s*\)/gi, " ")
     .replace(/\s+/g, " ").trim().slice(0, 60);
 }
 
