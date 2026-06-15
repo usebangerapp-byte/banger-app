@@ -366,7 +366,8 @@ export default function ChartsPage() {
                           type="button"
                           disabled={!userId}
                           onClick={async () => {
-                            if (!userId) return;
+                            if (!userId) { console.warn("[BANGER] follow: userId null"); return; }
+                            console.log("[BANGER] follow:", isFollowing ? "unfollow" : "follow", track.title);
                             const action = isFollowing ? "unfollow" : "follow";
                             const res = await fetch("/api/follow-track", {
                               method: "POST",
