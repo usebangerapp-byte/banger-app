@@ -54,3 +54,5 @@ next-env.d.ts
 .safety-backups/
 *.bak
 *.bak2
+*.bak
+*.bak2
