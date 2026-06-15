@@ -215,12 +215,27 @@ export async function POST(req: Request) {
     if (mapped.result_type === "recognized_unreleased" && mapped.track_title) {
       const { data } = await supabase
         .from("bpro_tracks")
-        .select("id,artist,snippet_path,allow_preview,release_status,release_url")
+        .select("id,artist,snippet_path,allow_preview,release_status,release_url,release_checked_at")
         .eq("title", mapped.track_title)
         .limit(1)
         .maybeSingle();
 
       privateTrackRow = data || null;
+
+      // Si pas vérifié depuis 1h → vérifier Beatport en temps réel
+      if (privateTrackRow && privateTrackRow.release_status !== "released") {
+        const lastChecked = privateTrackRow.release_checked_at
+          ? new Date(privateTrackRow.release_checked_at).getTime() : 0;
+        if (lastChecked < Date.now() - 60 * 60 * 1000) {
+          fetch("https://banger-app-zeta.vercel.app/api/bpro/release-check").catch(() => {});
+          await new Promise(r => setTimeout(r, 1500));
+          const { data: refreshed } = await supabase
+            .from("bpro_tracks")
+            .select("id,artist,snippet_path,allow_preview,release_status,release_url,release_checked_at")
+            .eq("title", mapped.track_title).limit(1).maybeSingle();
+          if (refreshed) privateTrackRow = refreshed;
+        }
+      }
     }
 
     const dbSaysReleased =
