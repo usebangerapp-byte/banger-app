@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { getBrowserRole } from "@/lib/auth/getBrowserRole";
@@ -24,7 +24,7 @@ function ShowMore<T>({ items, renderItem }: { items: T[]; renderItem: (item: T) 
 
 export default function ProfilePage() {
   const router = useRouter();
-  const supabase = createSupabaseBrowser();
+  const supabase = useMemo(() => createSupabaseBrowser(), []);
 
   const [email, setEmail]               = useState("");
   const [userId, setUserId]             = useState("");

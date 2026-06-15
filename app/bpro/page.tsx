@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { getBrowserRole } from "@/lib/auth/getBrowserRole";
@@ -37,7 +37,7 @@ function PrimaryBtn({ disabled, busy, label, busyLabel, onClick }:
 
 export default function UploadPage() {
   const router   = useRouter();
-  const supabase = createSupabaseBrowser();
+  const supabase = useMemo(() => createSupabaseBrowser(), []);
 
   const [uploaderEmail, setUploaderEmail] = useState("");
   const [roleReady,     setRoleReady]     = useState(false);

@@ -103,7 +103,7 @@ function matchesSearch(track: any, query: string) {
 }
 
 export default function ChartsPage() {
-  const supabase = createSupabaseBrowser();
+  const supabase = useMemo(() => createSupabaseBrowser(), []);
   const [tracks, setTracks] = useState<TrackRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");

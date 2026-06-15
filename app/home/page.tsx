@@ -32,7 +32,7 @@ const PAGE_BG =
 
 export default function Home() {
   const router = useRouter();
-  const supabase = createSupabaseBrowser();
+  const supabase = useMemo(() => createSupabaseBrowser(), []);
 
   const [sessionOk, setSessionOk] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(true);
