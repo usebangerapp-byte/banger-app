@@ -114,6 +114,23 @@ export default function ChartsPage() {
   const [followedTitles, setFollowedTitles] = useState<Set<string>>(new Set());
   const [userId, setUserId] = useState<string | null>(null);
 
+  // Charger userId + follows indépendamment des charts
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.auth.getUser().then(({ data }) => {
+      const uid = data?.user?.id || null;
+      setUserId(uid);
+      if (!uid) return;
+      fetch(`/api/follow-track?user_id=${uid}`, { cache: "no-store" })
+        .then(r => r.json())
+        .then(json => {
+          const followed = Array.isArray(json?.followed) ? json.followed : [];
+          setFollowedTitles(new Set(followed.map((f: any) => trackKey(String(f.track_title || "")))));
+        })
+        .catch(() => {});
+    });
+  }, [supabase]);
+
   useEffect(() => {
     let mounted = true;
 

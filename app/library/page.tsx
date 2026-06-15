@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js"
+import ShowMoreToggle from "@/components/ShowMoreToggle"
 
 type ScanRow = {
   created_at?: string | null
