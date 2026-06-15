@@ -188,3 +188,7 @@ padding:4px 10px;
 border-radius:999px;
 }
 
+
+.show-more-toggle .show-less-label { display: none; }
+.show-more-toggle[open] .show-more-label { display: none; }
+.show-more-toggle[open] .show-less-label { display: inline; }

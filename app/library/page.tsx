@@ -263,7 +263,10 @@ function ShowMoreBlock<T>({
 
   return (
     <details style={{ marginTop: 8 }}>
-      <summary style={summaryStyle}>Show more</summary>
+      <summary style={summaryStyle}>
+        <span className="show-more-label">Show more</span>
+        <span className="show-less-label">Show less</span>
+      </summary>
       <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
         {items.map((item, index) => renderItem(item, index))}
       </div>

@@ -3,6 +3,8 @@ import { createClient } from '@supabase/supabase-js'
 import { findMusicLinks } from '@/lib/music/findLinks'
 
 export const runtime = 'nodejs'
+export const maxDuration = 60
+export const dynamic = 'force-dynamic'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -33,15 +35,13 @@ export async function POST(req: Request) {
     const hasRights = hasRightsRaw === 'true' || hasRightsRaw === '1'
     const releaseDate = releaseDateRaw || null
 
-    const file0 = formData.get('file_0')
-    const file1 = formData.get('file_1')
-    const file2 = formData.get('file_2')
+    const providedFiles: File[] = []
+    for (let i = 0; i < 25; i++) {
+      const f = formData.get(`file_${i}`)
+      if (f instanceof File) providedFiles.push(f)
+      else break
+    }
     const fallbackFile = formData.get('file')
-
-    const providedFiles = [file0, file1, file2].filter(
-      (value): value is File => value instanceof File
-    )
-
     const inputFiles =
       providedFiles.length > 0
         ? providedFiles
