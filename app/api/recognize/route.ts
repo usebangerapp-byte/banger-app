@@ -175,21 +175,11 @@ export async function POST(req: Request) {
     const arrayBuffer = await file.arrayBuffer();
     const mimeType = file.type || "application/octet-stream";
 
-    const privateResult = await callAcr({
-      host,
-      accessKey: privateAccessKey,
-      accessSecret: privateAccessSecret,
-      arrayBuffer,
-      mimeType,
-    });
-
-    const worldResult = await callAcr({
-      host,
-      accessKey: worldAccessKey,
-      accessSecret: worldAccessSecret,
-      arrayBuffer,
-      mimeType,
-    });
+    // ACR en parallèle — 2x plus rapide
+    const [privateResult, worldResult] = await Promise.all([
+      callAcr({ host, accessKey: privateAccessKey, accessSecret: privateAccessSecret, arrayBuffer, mimeType }),
+      callAcr({ host, accessKey: worldAccessKey,   accessSecret: worldAccessSecret,   arrayBuffer, mimeType }),
+    ]);
 
 
     const mappedWorld = mapWorldRecognition(worldResult.payload, country);
@@ -274,22 +264,11 @@ export async function POST(req: Request) {
     };
 
 
-    const { error } = await supabase.from("scan_events").insert(row);
+    // Insert non-bloquant
+    supabase.from("scan_events").insert(row).then(({ error }) => {
+      if (error) console.error("scan_events insert failed", error);
+    });
 
-    if (error) {
-      console.error("scan_events insert failed", error);
-      return Response.json(
-        {
-          ok: false,
-          error: "scan_events insert failed",
-          details: error,
-          row,
-          private_acr: privateResult.payload,
-          world_acr: worldResult.payload,
-        },
-        { status: 500 }
-      );
-    }
 
 
     return Response.json(
