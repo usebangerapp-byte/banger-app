@@ -26,7 +26,7 @@ function Sparkline({ data }: { data: number[] }) {
   );
 }
 
-export default function ProfilePage() {
+export default function ProfilePageV2() {
   const router   = useRouter();
   const supabase = useMemo(() => createSupabaseBrowser(), []);
 
