@@ -12,7 +12,7 @@ const AREAS_QUERY = `query($searchTerm: String!) { areas(searchTerm: $searchTerm
 
 const EVENTS_QUERY = `
   query($filters: FilterInputDtoInput, $pageSize: Int, $page: Int) {
-    eventListings(filters: $filters, pageSize: $pageSize, page: $page, sortOrder: "ascending") {
+    eventListings(filters: $filters, pageSize: $pageSize, page: $page) {
       data {
         event {
           id title date startTime endTime attending contentUrl cost
