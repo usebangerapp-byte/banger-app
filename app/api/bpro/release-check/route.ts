@@ -19,7 +19,13 @@ function norm(s: string) {
 }
 
 function buildBeatportQuery(title: string, artist: string) {
-  return [clean(artist), clean(title)].filter(Boolean).join(" ");
+  // Retirer les suffixes neutres du titre (Original Mix, Extended Mix, etc.)
+  const cleanedTitle = clean(title)
+    .replace(/\s*\(\s*(original|extended|club|radio|vocal|instrumental|dub|remaster|reprise)(\s+(mix|version|edit|cut))?\s*\)/gi, "")
+    .trim();
+  // Prendre seulement le premier artiste (Liva K, OVEOUS → Liva K)
+  const cleanedArtist = clean(artist).split(/,|feat\.|ft\.|&/i)[0].trim();
+  return [cleanedArtist, cleanedTitle].filter(Boolean).join(" ");
 }
 
 function splitTitleAndMix(inputTitle: string) {
