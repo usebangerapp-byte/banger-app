@@ -584,7 +584,7 @@ const region = await getRegion();
           </div>
 
           <div style={styles.status}>
-            {status === "idle" ? "DROP IT" : null}
+            {status === "idle" ? "DROP IT" : null}
             {status === "listening" ? "Listening…" : null}
             {status === "recognizing" ? "Identifying…" : null}
           </div>
