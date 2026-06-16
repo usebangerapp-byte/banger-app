@@ -1,238 +1,72 @@
 import { createClient } from "@supabase/supabase-js";
-import { findMusicLinks } from "@/lib/music/findLinks";
-
 export const runtime = "nodejs";
+const MB_UA = "BangerApp/1.0 (contact@usebangerapp.com)";
 
-function clean(v: unknown) {
-  return typeof v === "string" ? v.trim() : "";
+function norm(s: string): string {
+  return (s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim();
+}
+function cleanTitle(t: string): string {
+  return t.replace(/\s*\(\s*(original|extended|club|radio|vocal|instrumental|dub|remaster|reprise)(\s+(mix|version|edit|cut))?\s*\)/gi,"").trim()||t;
+}
+function firstArtist(a: string): string {
+  return a.split(/,|feat\.|ft\.|&/i)[0].trim()||a;
 }
 
-function norm(s: string) {
-  return s
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/&/g, " and ")
-    .replace(/[\(\)\[\]\{\}\-_/\\.,:;'"`´’]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function buildBeatportQuery(title: string, artist: string) {
-  // Retirer les suffixes neutres du titre (Original Mix, Extended Mix, etc.)
-  const cleanedTitle = clean(title)
-    .replace(/\s*\(\s*(original|extended|club|radio|vocal|instrumental|dub|remaster|reprise)(\s+(mix|version|edit|cut))?\s*\)/gi, "")
-    .trim();
-  // Prendre seulement le premier artiste (Liva K, OVEOUS → Liva K)
-  const cleanedArtist = clean(artist).split(/,|feat\.|ft\.|&/i)[0].trim();
-  return [cleanedArtist, cleanedTitle].filter(Boolean).join(" ");
-}
-
-function splitTitleAndMix(inputTitle: string) {
-  const raw = clean(inputTitle);
-  const m = raw.match(/^(.*?)\s*\((.*?)\)\s*$/);
-  if (!m) return { baseTitle: raw, mix: "" };
-  return { baseTitle: clean(m[1]), mix: clean(m[2]) };
-}
-
-function extractNextData(html: string): any | null {
-  const startTag = '<script id="__NEXT_DATA__" type="application/json">';
-  const start = html.indexOf(startTag);
-  if (start === -1) return null;
-  const jsonStart = html.indexOf(">", start) + 1;
-  const jsonEnd = html.indexOf("</script>", jsonStart);
-  if (jsonEnd === -1) return null;
+async function checkMusicBrainz(title: string, artist: string) {
+  const q = `artist:"${firstArtist(artist)}" AND recording:"${cleanTitle(title)}"`;
+  const url = `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(q)}&fmt=json&limit=5`;
   try {
-    return JSON.parse(html.slice(jsonStart, jsonEnd));
-  } catch {
-    return null;
-  }
-}
-
-function getBeatportTrackCandidates(nextData: any) {
-  const queries = nextData?.props?.pageProps?.dehydratedState?.queries || [];
-  const out: Array<{
-    title: string;
-    mix: string;
-    artists: string[];
-    url: string | null;
-    releaseName: string;
-  }> = [];
-
-  for (const q of queries) {
-    const rows = q?.state?.data?.data;
-    if (!Array.isArray(rows)) continue;
-
-    for (const row of rows) {
-      const releaseName = clean(row?.release?.release_name);
-      const mix = clean(row?.mix_name);
-      const artists = Array.isArray(row?.artists)
-        ? row.artists.map((a: any) => clean(a?.artist_name)).filter(Boolean)
-        : [];
-
-      const slug = clean(row?.slug);
-      const id = row?.id;
-      const url = slug ? `https://www.beatport.com/track/${slug}/${id}` : null;
-
-      out.push({
-        title: releaseName,
-        mix,
-        artists,
-        url,
-        releaseName,
-      });
-    }
-  }
-
-  return out;
-}
-
-function artistMatches(inputArtist: string, candidateArtists: string[]) {
-  const wanted = norm(inputArtist);
-  if (!wanted) return true;
-  const joined = norm(candidateArtists.join(" "));
-  return !!joined && (joined.includes(wanted) || wanted.includes(joined));
-}
-
-function titleMatches(inputTitle: string, candidateTitle: string) {
-  const a = norm(inputTitle);
-  const b = norm(candidateTitle);
-  return !!a && !!b && (a === b || a.includes(b) || b.includes(a));
-}
-
-function mixMatches(inputMix: string, candidateMix: string) {
-  const a = norm(inputMix);
-  const b = norm(candidateMix);
-  if (!a) return true;
-  if (!b) return false;
-  return a === b || a.includes(b) || b.includes(a);
-}
-
-async function checkBeatportWeb(title: string, artist: string) {
-  const query = buildBeatportQuery(title, artist);
-  const searchUrl = `https://www.beatport.com/search/tracks?q=${encodeURIComponent(query)}`;
-
-  const res = await fetch(searchUrl, {
-    headers: {
-      "user-agent": "Mozilla/5.0",
-      "accept-language": "en-US,en;q=0.9",
-    },
-    cache: "no-store",
-  });
-
-  const html = await res.text();
-  const nextData = extractNextData(html);
-  const candidates = getBeatportTrackCandidates(nextData);
-
-  if (title.toLowerCase().includes("ghost dance")) {
-    const queries = nextData?.props?.pageProps?.dehydratedState?.queries || [];
-    console.log("BEATPORT DEBUG", {
-      query,
-      status: res.status,
-      url: searchUrl,
-      htmlLength: html.length,
-      hasNextData: html.includes('__NEXT_DATA__'),
-      hasGhostDance: html.includes('Ghost Dance'),
-      hasBrunello: html.includes('Brunello'),
-      candidateCount: candidates.length,
-      queriesCount: Array.isArray(queries) ? queries.length : -1,
-      firstQueryKeys: queries[0] ? Object.keys(queries[0]) : [],
-      firstStateKeys: queries[0]?.state ? Object.keys(queries[0].state) : [],
-      firstDataKeys: queries[0]?.state?.data ? Object.keys(queries[0].state.data) : [],
-      firstNestedDataKeys: queries[0]?.state?.data?.data ? Object.keys(queries[0].state.data.data) : [],
-      firstNestedDataType: Array.isArray(queries[0]?.state?.data?.data) ? "array" : typeof queries[0]?.state?.data?.data,
-      textSample: JSON.stringify(nextData?.props?.pageProps?.dehydratedState?.queries?.[0] || {}).slice(0, 2000),
+    const res = await fetch(url, { headers: { "User-Agent": MB_UA }, signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return { isReleased: false, mbid: null, releaseDate: null };
+    const json = await res.json();
+    const match = (json?.recordings||[]).find((r: any) => {
+      if ((r.score||0) < 85) return false;
+      const rTitle   = norm(r.title||"");
+      const rArtists = (r["artist-credit"]||[]).map((a: any) => norm(a.name||a.artist?.name||"")).join(" ");
+      const tNorm = norm(cleanTitle(title)); const aNorm = norm(firstArtist(artist));
+      return (rTitle.includes(tNorm)||tNorm.includes(rTitle)) && (!aNorm||rArtists.includes(aNorm)||aNorm.includes(rArtists.split(" ")[0]));
     });
-  }
-
-  const { baseTitle, mix } = splitTitleAndMix(title);
-
-  const match = candidates.find((c) =>
-    artistMatches(artist, c.artists) &&
-    titleMatches(baseTitle, c.title) &&
-    mixMatches(mix, c.mix)
-  ) || null;
-
-  return {
-    ok: res.ok,
-    query,
-    searchUrl,
-    candidateCount: candidates.length,
-    isReleased: !!match,
-    matchedTitle: match?.title || null,
-    matchedMix: match?.mix || null,
-    matchedArtists: match?.artists || [],
-    matchedUrl: match?.url || null,
-    sampleCandidates: candidates.slice(0, 5),
-  };
+    if (!match) return { isReleased: false, mbid: null, releaseDate: null };
+    const releases = match.releases||[];
+    const official = releases.find((r: any) => r.status==="Official")||releases[0];
+    const releaseDate = official?.date||match["first-release-date"]||null;
+    return { isReleased: !!releaseDate, mbid: match.id, releaseDate };
+  } catch { return { isReleased: false, mbid: null, releaseDate: null }; }
 }
 
 export async function GET() {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-
-  const { data: tracks, error } = await supabase
-    .from("bpro_tracks")
-    .select("id, title, artist, release_status")
-    .order("updated_at", { ascending: false })
-    .limit(50);
-
-  if (error) {
-    return Response.json({ ok: false, error: error.message }, { status: 500 });
-  }
+  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+  const cutoff = new Date(Date.now() - 6*60*60*1000).toISOString();
+  const { data: tracks, error } = await supabase.from("bpro_tracks")
+    .select("id, title, artist, release_status, release_checked_at")
+    .not("release_status","eq","released")
+    .or(`release_checked_at.is.null,release_checked_at.lt.${cutoff}`)
+    .order("updated_at",{ascending:false}).limit(50);
+  if (error) return Response.json({ ok: false, error: error.message }, { status: 500 });
 
   const results: any[] = [];
+  for (const track of tracks||[]) {
+    const title  = (track.title||"").trim();
+    const artist = (track.artist||"").trim();
+    if (!title) { results.push({ id: track.id, skipped: true }); continue; }
 
-  for (const track of tracks || []) {
-    const title = clean(track.title);
-    const artist = clean(track.artist);
-
-    if (!title) {
-      results.push({ id: track.id, skipped: true, reason: "missing_title" });
-      continue;
-    }
+    await new Promise(r => setTimeout(r, 1100)); // rate limit MusicBrainz 1 req/s
 
     try {
-      const beatport = await checkBeatportWeb(title, artist);
-      const nextStatus = beatport.isReleased ? "released" : "unknown";
+      const { isReleased, mbid, releaseDate } = await checkMusicBrainz(title, artist);
+      await supabase.from("bpro_tracks").update({
+        release_status: isReleased?"released":"unknown", is_released: isReleased,
+        release_checked_at: new Date().toISOString(), release_source: "musicbrainz",
+        ...(releaseDate?{release_date:releaseDate}:{}),
+        ...(isReleased?{beatport_url:`https://www.beatport.com/search?q=${encodeURIComponent(firstArtist(artist)+" "+cleanTitle(title))}`}:{}),
+      }).eq("id",track.id);
 
-      await supabase
-        .from("bpro_tracks")
-        .update({
-          release_status: nextStatus,
-          release_checked_at: new Date().toISOString(),
-          release_source: "beatport_web",
-          release_url: beatport.matchedUrl,
-        })
-        .eq("id", track.id);
-
-      results.push({
-        id: track.id,
-        title,
-        artist,
-        query: beatport.query,
-        release_status: nextStatus,
-        candidateCount: beatport.candidateCount,
-        matchedTitle: beatport.matchedTitle,
-        matchedMix: beatport.matchedMix,
-        matchedArtists: beatport.matchedArtists,
-        release_url: beatport.matchedUrl,
-      });
-    } catch (e: any) {
-      results.push({
-        id: track.id,
-        title,
-        artist,
-        error: e?.message || "beatport_check_failed",
-      });
-    }
+      if (isReleased) {
+        await supabase.from("scan_events").update({result_type:"recognized_world"})
+          .eq("track_title",title).eq("result_type","recognized_unreleased");
+      }
+      results.push({ id:track.id, title, artist, searchTitle:cleanTitle(title), searchArtist:firstArtist(artist), isReleased, mbid, releaseDate, release_status:isReleased?"released":"unknown" });
+    } catch(e: any) { results.push({ id:track.id, title, artist, error:e?.message }); }
   }
-
-  return Response.json({
-    ok: true,
-    count: results.length,
-    results: results.slice(0, 10),
-  });
+  return Response.json({ ok:true, count:results.length, results });
 }
