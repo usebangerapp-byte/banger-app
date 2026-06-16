@@ -1,3 +1,3 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = { generateBuildId: async () => '1781643129' }
+const nextConfig = {}
 module.exports = nextConfig
