@@ -67,8 +67,12 @@ export default function Home() {
     setSessionLoading(false);
   }, []);
 
+  // ── Control Center iOS (comme Shazam) ──
+  // Déclenché quand l'user tape BANGER dans le Control Center
   useEffect(() => {
-    function onControlCenter() { if (status === "idle") startListening(); }
+    function onControlCenter() {
+      if (status === "idle") startListening();
+    }
     window.addEventListener("banger:scan", onControlCenter);
     return () => window.removeEventListener("banger:scan", onControlCenter);
   }, [status]);
@@ -158,7 +162,7 @@ export default function Home() {
     setTag("NOT FOUND");
 
     try {
-      vib(12);
+      vib(12);  // tap léger au démarrage
       setStatus("listening");
 
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -192,7 +196,7 @@ export default function Home() {
         streamRef.current = null;
 
         stopMeters();
-        vib([6, 30, 6]);
+        vib([6, 30, 6]);  // pulse subtil : analyse en cours
         setStatus("recognizing");
 
         try {
@@ -215,9 +219,9 @@ const region = await getRegion();
           setSuccess(mapped.success);
 
           if (mapped.success) {
-            vib([18, 60, 18, 60, 80]);
+            vib([18, 60, 18, 60, 80]);  // double pulse succès
           } else {
-            vib([8, 40, 8]);
+            vib([8, 40, 8]);  // pulse court echec
             triggerFail();
           }
         } catch (e) {
@@ -318,15 +322,15 @@ const region = await getRegion();
             <div style={styles.logoWrap}>
               <Image src="/B-logo.png" alt="BANGER" width={78} height={78} priority />
             </div>
+            <div style={styles.loginHint}>
+              Scan the music around you.{"\n"}Discover what the scene is playing.
+            </div>
             <button onClick={() => signInWith("google")} disabled={loginLoading} style={styles.googleBtn}>
               {loginLoading ? "Connecting…" : "Continue with Google"}
             </button>
-            <div style={styles.loginHint}>
-              Après login → Home (Scan) + onglets.
-
-Scan the music around you
-Discover what the scene is playing
-            </div>
+            <button onClick={() => signInWith("apple")} disabled={loginLoading} style={styles.appleBtn}>
+              {loginLoading ? "Connecting…" : "\uF8FF  Continue with Apple"}
+            </button>
           </div>
         </div>
       </main>
@@ -336,13 +340,18 @@ Discover what the scene is playing
   return (
     <div style={styles.page}>
       <style>{`
+        /* ── Club Strobe animations ── */
         @keyframes ringPulse {
-          0%   { transform: translate(-50%,-50%) scale(1);   opacity: 0.7; }
-          100% { transform: translate(-50%,-50%) scale(2.2); opacity: 0; }
+          0%   { transform: translate(-50%,-50%) scale(1);    opacity: 0.7; }
+          100% { transform: translate(-50%,-50%) scale(2.2);  opacity: 0; }
         }
         @keyframes ringPulseFast {
-          0%   { transform: translate(-50%,-50%) scale(1);   opacity: 0.9; }
-          100% { transform: translate(-50%,-50%) scale(1.8); opacity: 0; }
+          0%   { transform: translate(-50%,-50%) scale(1);    opacity: 0.9; }
+          100% { transform: translate(-50%,-50%) scale(1.8);  opacity: 0; }
+        }
+        @keyframes breathe {
+          0%,100% { transform: translate(-50%,-50%) scale(1.00); opacity: 0.12; }
+          50%      { transform: translate(-50%,-50%) scale(1.18); opacity: 0.32; }
         }
         @keyframes quake {
           0%,100% { transform: translate(0,0) rotate(0deg); }
@@ -352,9 +361,12 @@ Discover what the scene is playing
           80%     { transform: translate( 2px,-1px) rotate( 0.3deg); }
         }
         @keyframes strobeIn {
-          0%   { opacity: 0; }  8%  { opacity: 0.85; }
-          16%  { opacity: 0; }  24% { opacity: 0.6; }
-          32%  { opacity: 0; }  100% { opacity: 0; }
+          0%   { opacity: 0; }
+          8%   { opacity: 0.85; }
+          16%  { opacity: 0; }
+          24%  { opacity: 0.6; }
+          32%  { opacity: 0; }
+          100% { opacity: 0; }
         }
         @keyframes boomRing {
           0%   { transform: translate(-50%,-50%) scale(0.6); opacity: 1; }
@@ -382,66 +394,142 @@ Discover what the scene is playing
         </div>
 
         <div style={styles.center}>
-          <div style={styles.haloWrap}>
-            <div
-              style={{
-                ...styles.haloOuter,
-                opacity: listening ? 1 : 0,
-                transform: listening ? "scale(1.14)" : "scale(0.85)",
-              }}
-            />
-            <div
-              style={{
-                ...styles.haloInner,
-                opacity: listening ? 1 : 0,
-                transform: listening ? "scale(1.08)" : "scale(0.92)",
-              }}
-            />
+          <div style={{
+              ...styles.haloWrap,
+              animation: recognizing ? "quake 0.18s ease-in-out infinite" : "none",
+            }}>
 
-            {/* LISTENING: K2000 + 3 WAVES + PARTICLES + SCAN LINE */}
-            {listening ? (
-              <>
-                <div
-                  style={{
-                    ...styles.k2000Ring,
-                    animation: "k2000 1.05s ease-in-out infinite",
-                    boxShadow:
-                      "0 0 22px rgba(0,229,255,0.18), " +
-                      "0 0 44px rgba(0,229,255,0.08)",
-                  }}
-                />
-                <div style={{ ...styles.wave1, animation: "radarWave 1.55s ease-out infinite" }} />
-                <div style={{ ...styles.wave2, animation: "radarWave 1.55s ease-out infinite", animationDelay: "280ms" }} />
-                <div style={{ ...styles.wave3, animation: "radarWave 1.55s ease-out infinite", animationDelay: "560ms" }} />
+            {/* ── IDLE : anneau statique subtil ── */}
+            {!busy && (
+              <div style={{
+                position: "absolute", left: "50%", top: "50%",
+                width: 200, height: 200, borderRadius: "50%",
+                border: "1px solid rgba(255,255,255,0.08)",
+                transform: "translate(-50%,-50%)",
+                pointerEvents: "none",
+              }} />
+            )}
 
-                <div style={{ ...styles.scanLine, animation: "scanLine 1.25s ease-in-out infinite" }} />
+            {/* ── LISTENING : 3 anneaux qui pulsent au rythme du micro ── */}
+            {listening && (<>
+              <div style={{
+                position: "absolute", left: "50%", top: "50%",
+                width: 180, height: 180, borderRadius: "50%",
+                border: `${1 + audioLevel * 2}px solid rgba(255,255,255,${0.15 + audioLevel * 0.5})`,
+                transform: `translate(-50%,-50%) scale(${1 + audioLevel * 0.08})`,
+                transition: "all 0.05s linear",
+                pointerEvents: "none", zIndex: 1,
+              }} />
+              <div style={{
+                position: "absolute", left: "50%", top: "50%",
+                width: 180, height: 180, borderRadius: "50%",
+                border: "1px solid rgba(255,255,255,0.12)",
+                animation: "ringPulse 1.6s ease-out infinite",
+                pointerEvents: "none", zIndex: 1,
+              }} />
+              <div style={{
+                position: "absolute", left: "50%", top: "50%",
+                width: 180, height: 180, borderRadius: "50%",
+                border: "1px solid rgba(255,255,255,0.08)",
+                animation: "ringPulse 1.6s ease-out infinite",
+                animationDelay: "0.5s",
+                pointerEvents: "none", zIndex: 1,
+              }} />
+              <div style={{
+                position: "absolute", left: "50%", top: "50%",
+                width: 180, height: 180, borderRadius: "50%",
+                border: "1px solid rgba(255,255,255,0.05)",
+                animation: "ringPulse 1.6s ease-out infinite",
+                animationDelay: "1s",
+                pointerEvents: "none", zIndex: 1,
+              }} />
+              {/* Halo breathe réactif au micro */}
+              <div style={{
+                position: "absolute", left: "50%", top: "50%",
+                width: 240, height: 240, borderRadius: "50%",
+                background: `radial-gradient(circle, rgba(255,255,255,${0.04 + audioLevel * 0.14}) 0%, transparent 70%)`,
+                transform: `translate(-50%,-50%) scale(${1 + audioLevel * 0.15})`,
+                transition: "all 0.05s linear",
+                pointerEvents: "none", zIndex: 0,
+              }} />
+            </>)}
 
-                <div
-                  style={{
-                    ...styles.listenBreath,
-                    opacity: 0.18 + audioLevel * 0.52,
-                    animation: "techBreath 1.9s ease-in-out infinite",
-                  }}
-                />
+            {/* ── RECOGNIZING : tremblement de terre + strobe ── */}
+            {recognizing && (<>
+              {/* Strobe flash */}
+              <div style={{
+                position: "fixed", inset: 0, zIndex: 50,
+                background: "rgba(255,255,255,0.06)",
+                animation: "strobeIn 0.8s ease-out forwards",
+                pointerEvents: "none",
+              }} />
+              {/* Anneaux rapides */}
+              <div style={{
+                position: "absolute", left: "50%", top: "50%",
+                width: 180, height: 180, borderRadius: "50%",
+                border: "1px solid rgba(255,255,255,0.30)",
+                animation: "ringPulseFast 0.9s ease-out infinite",
+                pointerEvents: "none", zIndex: 1,
+              }} />
+              <div style={{
+                position: "absolute", left: "50%", top: "50%",
+                width: 180, height: 180, borderRadius: "50%",
+                border: "1px solid rgba(255,255,255,0.15)",
+                animation: "ringPulseFast 0.9s ease-out infinite",
+                animationDelay: "0.3s",
+                pointerEvents: "none", zIndex: 1,
+              }} />
+            </>)}
 
-                
-              </>
-            ) : null}
+            {/* ── SUCCESS UNRELEASED : boom blanc ── */}
+            {success && tag === "UNRELEASED" && (<>
+              <div style={{
+                position: "fixed", inset: 0, zIndex: 50,
+                background: "rgba(255,255,255,0.18)",
+                animation: "strobeIn 0.5s ease-out forwards",
+                pointerEvents: "none",
+              }} />
+              <div style={{
+                position: "absolute", left: "50%", top: "50%",
+                width: 180, height: 180, borderRadius: "50%",
+                border: "2px solid rgba(255,255,255,0.9)",
+                animation: "boomRing 0.7s cubic-bezier(0.2,0,0.4,1) forwards",
+                pointerEvents: "none", zIndex: 2,
+              }} />
+              <div style={{
+                position: "absolute", left: "50%", top: "50%",
+                width: 180, height: 180, borderRadius: "50%",
+                border: "1px solid rgba(255,255,255,0.5)",
+                animation: "boomRing2 0.9s cubic-bezier(0.2,0,0.4,1) forwards",
+                animationDelay: "0.1s",
+                pointerEvents: "none", zIndex: 2,
+              }} />
+            </>)}
 
-            {/* SEARCHING: keep scanner + subtle rings */}
-            {recognizing ? (
-              <>
-                <div
-                  style={{
-                    ...styles.k2000Ring,
-                    animation: "k2000 1.05s ease-in-out infinite",
-                    opacity: 0.88,
-                  }}
-                />
-                <div style={{ ...styles.radarRing, animation: "radarWave 1.75s ease-out infinite" }} />
-                <div style={{ ...styles.radarRing2, animation: "radarWave 1.75s ease-out infinite", animationDelay: "360ms" }} />
-              </>
-            ) : null}
+            {/* ── SUCCESS RELEASED : boom vert ── */}
+            {success && tag === "RELEASED" && (<>
+              <div style={{
+                position: "fixed", inset: 0, zIndex: 50,
+                background: "rgba(29,185,84,0.12)",
+                animation: "strobeIn 0.5s ease-out forwards",
+                pointerEvents: "none",
+              }} />
+              <div style={{
+                position: "absolute", left: "50%", top: "50%",
+                width: 180, height: 180, borderRadius: "50%",
+                border: "2px solid rgba(29,185,84,0.9)",
+                animation: "boomRing 0.7s cubic-bezier(0.2,0,0.4,1) forwards",
+                pointerEvents: "none", zIndex: 2,
+              }} />
+              <div style={{
+                position: "absolute", left: "50%", top: "50%",
+                width: 180, height: 180, borderRadius: "50%",
+                border: "1px solid rgba(29,185,84,0.5)",
+                animation: "boomRing2 0.9s cubic-bezier(0.2,0,0.4,1) forwards",
+                animationDelay: "0.1s",
+                pointerEvents: "none", zIndex: 2,
+              }} />
+            </>)}
 
             <button
               onClick={startListening}
@@ -449,7 +537,7 @@ Discover what the scene is playing
               style={{
                 ...styles.button3D,
                 opacity: busy ? 0.92 : 1,
-                transform: busy ? "translateY(1px)" : "translateY(0px)",
+                transform: busy ? "translateY(1px)" : success ? "translateY(0px)" : "translateY(0px)",
                 boxShadow: listening
                   ? "0 0 68px rgba(0,229,255,0.16), " +
                     "0 18px 60px rgba(0,0,0,0.78)"
