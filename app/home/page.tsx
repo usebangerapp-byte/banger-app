@@ -263,7 +263,7 @@ const region = await getRegion();
       : "rgba(225,225,225,0.08)";
 
     return {
-      ...styles.title,
+      ...scanStyles.title,
       background:
         "linear-gradient(180deg, rgba(245,245,245,0.98), rgba(160,160,160,0.62))",
       WebkitBackgroundClip: "text",
@@ -275,7 +275,7 @@ const region = await getRegion();
 
   const subStyle = useMemo(() => {
     return {
-      ...styles.sub,
+      ...scanStyles.sub,
       background:
         "linear-gradient(180deg, rgba(235,235,235,0.92), rgba(150,150,150,0.70))",
       WebkitBackgroundClip: "text",
@@ -297,7 +297,7 @@ const region = await getRegion();
 
   if (sessionLoading) {
     return (
-      <main style={styles.page}>
+      <main style={scanStyles.page}>
       
       <div style={{ display: "grid", placeItems: "center", marginBottom: 12 }}>
           <Image
@@ -309,26 +309,26 @@ const region = await getRegion();
             priority
           />
         </div>
-        <div style={styles.loading}>Loading…</div>
+        <div style={scanStyles.loading}>Loading…</div>
       </main>
     );
   }
 
   if (!sessionOk) {
     return (
-      <main style={{ ...styles.page, background: "#0b0b0c" }}>
-        <div style={{ ...styles.phone, justifyContent: "center" }}>
-          <div style={{ ...styles.center, justifyContent: "center", gap: 18 }}>
-            <div style={styles.logoWrap}>
+      <main style={{ ...scanStyles.page, background: "#0b0b0c" }}>
+        <div style={{ ...scanStyles.phone, justifyContent: "center" }}>
+          <div style={{ ...scanStyles.center, justifyContent: "center", gap: 18 }}>
+            <div style={scanStyles.logoWrap}>
               <Image src="/B-logo.png" alt="BANGER" width={78} height={78} priority />
             </div>
-            <div style={styles.loginHint}>
+            <div style={scanStyles.loginHint}>
               Scan the music around you.{"\n"}Discover what the scene is playing.
             </div>
-            <button onClick={() => signInWith("google")} disabled={loginLoading} style={styles.googleBtn}>
+            <button onClick={() => signInWith("google")} disabled={loginLoading} style={scanStyles.googleBtn}>
               {loginLoading ? "Connecting…" : "Continue with Google"}
             </button>
-            <button onClick={() => signInWith("apple")} disabled={loginLoading} style={styles.appleBtn}>
+            <button onClick={() => signInWith("apple")} disabled={loginLoading} style={scanStyles.appleBtn}>
               {loginLoading ? "Connecting…" : "\uF8FF  Continue with Apple"}
             </button>
           </div>
@@ -338,7 +338,7 @@ const region = await getRegion();
   }
 
   return (
-    <div style={styles.page}>
+    <div style={scanStyles.page}>
       <style>{`
         /* ── Club Strobe animations ── */
         @keyframes ringPulse {
@@ -386,16 +386,16 @@ const region = await getRegion();
         }
       `}</style>
 
-      {success ? <div style={styles.successFlash} /> : null}
-      {failPulse ? <div style={styles.failFlash} /> : null}
+      {success ? <div style={scanStyles.successFlash} /> : null}
+      {failPulse ? <div style={scanStyles.failFlash} /> : null}
 
-      <div style={styles.phone}>
-        <div style={styles.top}>
+      <div style={scanStyles.phone}>
+        <div style={scanStyles.top}>
         </div>
 
-        <div style={styles.center}>
+        <div style={scanStyles.center}>
           <div style={{
-              ...styles.haloWrap,
+              ...scanStyles.haloWrap,
               animation: recognizing ? "quake 0.18s ease-in-out infinite" : "none",
             }}>
 
@@ -535,7 +535,7 @@ const region = await getRegion();
               onClick={startListening}
               disabled={busy}
               style={{
-                ...styles.button3D,
+                ...scanStyles.button3D,
                 opacity: busy ? 0.92 : 1,
                 transform: busy ? "translateY(1px)" : success ? "translateY(0px)" : "translateY(0px)",
                 boxShadow: listening
@@ -548,23 +548,23 @@ const region = await getRegion();
                     "inset 0 1px 0 rgba(255,255,255,0.08)",
                 border: success
                   ? "1px solid rgba(245,245,245,0.34)"
-                  : styles.button3D.border,
+                  : scanStyles.button3D.border,
                 transition: "all 0.22s ease",
               }}
             >
               <div
                 style={{
-                  ...styles.specular,
+                  ...scanStyles.specular,
                   opacity: busy ? 0.07 : 0.14,
                 }}
               />
 
-              {success ? <div style={styles.successGlow} /> : null}
+              {success ? <div style={scanStyles.successGlow} /> : null}
 
               {listening ? (
                 <div
                   style={{
-                    ...styles.listenGlow,
+                    ...scanStyles.listenGlow,
                     opacity: 0.16 + audioLevel * 0.62,
                   }}
                 />
@@ -574,7 +574,7 @@ const region = await getRegion();
                 src="/B-logo.png"
                 alt="Banger"
                 style={{
-                  ...styles.bLogo,
+                  ...scanStyles.bLogo,
                   filter: bFilter,
                   transition: "filter 0.12s linear",
                   animation: success ? "logoSlam 0.55s cubic-bezier(0.2,0,0.4,1) forwards" : "none",
@@ -583,21 +583,21 @@ const region = await getRegion();
             </button>
           </div>
 
-          <div style={styles.status}>
+          <div style={scanStyles.status}>
             {status === "idle" ? "DROP IT" : null}
             {status === "listening" ? "Listening…" : null}
             {status === "recognizing" ? "Identifying…" : null}
           </div>
         </div>
 
-        <div style={styles.recent}>
-          <div style={styles.recentTitle}>LAST ID</div>
-          <div style={styles.card}>
-            <div style={styles.cardRow}>
-              <div style={styles.cardMain}>{title}</div>
-              <div style={{ ...styles.badge, background: (tag === "UNRELEASED" ? "rgba(225,225,225,0.14)" : tag === "RELEASED" ? "rgba(225,225,225,0.10)" : "rgba(225,225,225,0.08)") }}>{tag}</div>
+        <div style={scanStyles.recent}>
+          <div style={scanStyles.recentTitle}>LAST ID</div>
+          <div style={scanStyles.card}>
+            <div style={scanStyles.cardRow}>
+              <div style={scanStyles.cardMain}>{title}</div>
+              <div style={{ ...scanStyles.badge, background: (tag === "UNRELEASED" ? "rgba(225,225,225,0.14)" : tag === "RELEASED" ? "rgba(225,225,225,0.10)" : "rgba(225,225,225,0.08)") }}>{tag}</div>
             </div>
-            <div style={styles.cardSub}>{subtitle}</div>
+            <div style={scanStyles.cardSub}>{subtitle}</div>
 
 
             {tag === "UNRELEASED" && allowPreview && snippetPath && (
@@ -608,12 +608,12 @@ const region = await getRegion();
             {tag === "RELEASED" && (
               <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
                 {spotifyUrl && (
-                  <a href={spotifyUrl} target="_blank" rel="noopener noreferrer" style={styles.spotifyBtn}>
+                  <a href={spotifyUrl} target="_blank" rel="noopener noreferrer" style={scanStyles.spotifyBtn}>
                     ▶ Listen on Spotify
                   </a>
                 )}
                 {beatportUrl && (
-                  <a href={beatportUrl} target="_blank" rel="noopener noreferrer" style={styles.beatportBtn}>
+                  <a href={beatportUrl} target="_blank" rel="noopener noreferrer" style={scanStyles.beatportBtn}>
                     ⬇ Buy on Beatport
                   </a>
                 )}
@@ -627,7 +627,7 @@ const region = await getRegion();
   );
 }
 
-const styles: Record<string, CSSProperties> = {
+const scanStyles: Record<string, CSSProperties> = {
   page: {
     minHeight: "100vh",
     background: "#000",
