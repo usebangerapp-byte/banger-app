@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/bpro/release-check",
-      "schedule": "0 */6 * * *"
+      "schedule": "0 6 * * *"
     },
     {
       "path": "/api/cron/friday-refresh",
