@@ -346,3 +346,4 @@ const unreadBadge: React.CSSProperties = { width:20, height:20, borderRadius:"50
 const sendMsgBtn: React.CSSProperties = { width:44, height:44, borderRadius:"50%", background:"#fff", color:"#000", border:"none", fontSize:18, fontWeight:900, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 };
 const backBtn: React.CSSProperties = { background:"none", border:"none", color:"rgba(255,255,255,0.6)", fontSize:14, cursor:"pointer", padding:0, textAlign:"left" as const };
 const emptyStyle: React.CSSProperties = { fontSize:13, opacity:0.45, padding:"4px 0" };
+// 1781652265
