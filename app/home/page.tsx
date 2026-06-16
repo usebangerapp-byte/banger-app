@@ -336,39 +336,41 @@ Discover what the scene is playing
   return (
     <div style={styles.page}>
       <style>{`
-        @keyframes techBreath {
-          0% { transform: translate(-50%,-50%) scale(0.98); opacity: .18; }
-          50% { transform: translate(-50%,-50%) scale(1.10); opacity: .44; }
-          100% { transform: translate(-50%,-50%) scale(0.98); opacity: .18; }
+        @keyframes ringPulse {
+          0%   { transform: translate(-50%,-50%) scale(1);   opacity: 0.7; }
+          100% { transform: translate(-50%,-50%) scale(2.2); opacity: 0; }
         }
-        @keyframes k2000 {
-          0% { transform: translate(-50%,-50%) rotate(-86deg); opacity: .55; }
-          50% { transform: translate(-50%,-50%) rotate(86deg); opacity: 1; }
-          100% { transform: translate(-50%,-50%) rotate(-86deg); opacity: .55; }
+        @keyframes ringPulseFast {
+          0%   { transform: translate(-50%,-50%) scale(1);   opacity: 0.9; }
+          100% { transform: translate(-50%,-50%) scale(1.8); opacity: 0; }
         }
-        @keyframes radarWave {
-          0% { transform: translate(-50%,-50%) scale(0.86); opacity: 0; }
-          12% { opacity: 1; }
-          100% { transform: translate(-50%,-50%) scale(2.10); opacity: 0; }
+        @keyframes quake {
+          0%,100% { transform: translate(0,0) rotate(0deg); }
+          20%     { transform: translate(-3px, 2px) rotate(-0.4deg); }
+          40%     { transform: translate( 3px,-2px) rotate( 0.4deg); }
+          60%     { transform: translate(-2px, 3px) rotate(-0.3deg); }
+          80%     { transform: translate( 2px,-1px) rotate( 0.3deg); }
         }
-        @keyframes scanLine {
-          0% { transform: translate(-50%,-50%) translateY(-118px); opacity: 0; }
-          18% { opacity: .52; }
-          55% { opacity: .18; }
-          100% { transform: translate(-50%,-50%) translateY(118px); opacity: 0; }
+        @keyframes strobeIn {
+          0%   { opacity: 0; }  8%  { opacity: 0.85; }
+          16%  { opacity: 0; }  24% { opacity: 0.6; }
+          32%  { opacity: 0; }  100% { opacity: 0; }
         }
-        @keyframes particleFloat {
-          0% { transform: translate(var(--x),var(--y)) scale(var(--s)); opacity: var(--o); }
-          100% {
-            transform: translate(calc(var(--x)*1.08), calc(var(--y)*1.08))
-              scale(calc(var(--s) + 0.22));
-            opacity: 0;
-          }
+        @keyframes boomRing {
+          0%   { transform: translate(-50%,-50%) scale(0.6); opacity: 1; }
+          60%  { opacity: 0.8; }
+          100% { transform: translate(-50%,-50%) scale(3.2); opacity: 0; }
         }
-        @keyframes pop {
-          0% { opacity: 0; }
-          20% { opacity: .85; }
-          100% { opacity: 0; }
+        @keyframes boomRing2 {
+          0%   { transform: translate(-50%,-50%) scale(0.6); opacity: 0.7; }
+          100% { transform: translate(-50%,-50%) scale(2.6); opacity: 0; }
+        }
+        @keyframes logoSlam {
+          0%   { transform: scale(1); }
+          30%  { transform: scale(1.22); }
+          55%  { transform: scale(0.94); }
+          75%  { transform: scale(1.06); }
+          100% { transform: scale(1); }
         }
       `}</style>
 
@@ -487,6 +489,7 @@ Discover what the scene is playing
                   ...styles.bLogo,
                   filter: bFilter,
                   transition: "filter 0.12s linear",
+                  animation: success ? "logoSlam 0.55s cubic-bezier(0.2,0,0.4,1) forwards" : "none",
                 }}
               />
             </button>
