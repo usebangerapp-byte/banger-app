@@ -215,7 +215,7 @@ export async function POST(req: Request) {
     if (mapped.result_type === "recognized_unreleased" && mapped.track_title) {
       const { data } = await supabase
         .from("bpro_tracks")
-        .select("id,artist,snippet_path,allow_preview,release_status,release_url,release_checked_at")
+        .select("id,artist,snippet_path,allow_preview,release_status,is_released,release_url,release_checked_at")
         .eq("title", mapped.track_title)
         .limit(1)
         .maybeSingle();
@@ -231,7 +231,7 @@ export async function POST(req: Request) {
           await new Promise(r => setTimeout(r, 1500));
           const { data: refreshed } = await supabase
             .from("bpro_tracks")
-            .select("id,artist,snippet_path,allow_preview,release_status,release_url,release_checked_at")
+            .select("id,artist,snippet_path,allow_preview,release_status,is_released,release_url,release_checked_at")
             .eq("title", mapped.track_title).limit(1).maybeSingle();
           if (refreshed) privateTrackRow = refreshed;
         }
@@ -240,7 +240,7 @@ export async function POST(req: Request) {
 
     const dbSaysReleased =
       mapped.result_type === "recognized_unreleased" &&
-      privateTrackRow?.release_status === "released"
+      (privateTrackRow?.release_status === "released" || privateTrackRow?.is_released === true)
 
     const effectiveResultType = dbSaysReleased
       ? "recognized_world"
