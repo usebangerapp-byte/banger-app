@@ -272,15 +272,47 @@ export default function Home() {
     return data.publicUrl;
   }
 
+  // ── Haptic feedback ──
+  // Android: navigator.vibrate
+  // iOS Safari: AudioContext pulse basse fréquence (seule méthode qui marche)
   function vib(pattern: number | number[]) {
+    // Android
     try {
-      const nav = navigator as Navigator & {
-        vibrate?: (pattern: number | number[]) => boolean;
-      };
+      const nav = navigator as Navigator & { vibrate?: (p: number | number[]) => boolean };
+      if (typeof nav.vibrate === "function") nav.vibrate(pattern);
+    } catch {}
 
-      if (typeof nav.vibrate === "function") {
-        nav.vibrate(pattern);
-      }
+    // iOS — AudioContext haptic pulse
+    try {
+      const AudioCtx = (window.AudioContext || (window as any).webkitAudioContext) as typeof AudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+
+      // Convertir le pattern en liste de durées
+      const durations: number[] = typeof pattern === "number" ? [pattern] : pattern;
+      // On joue une pulse pour chaque durée "on" (index pairs)
+      let time = ctx.currentTime;
+      durations.forEach((ms, idx) => {
+        if (idx % 2 === 1) { time += ms / 1000; return; } // pause
+        const dur = ms / 1000;
+        // Oscillateur basse fréquence (200 Hz) + gain rapide → ressenti haptique
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 200;
+        osc.type = "sine";
+        gain.gain.setValueAtTime(0, time);
+        gain.gain.linearRampToValueAtTime(0.9, time + Math.min(dur * 0.1, 0.01));
+        gain.gain.linearRampToValueAtTime(0, time + dur);
+        osc.start(time);
+        osc.stop(time + dur + 0.01);
+        time += dur;
+      });
+
+      // Fermer le contexte après la dernière pulse
+      const totalMs = durations.reduce((s, ms) => s + ms, 0);
+      setTimeout(() => ctx.close().catch(() => {}), totalMs + 200);
     } catch {}
   }
 
