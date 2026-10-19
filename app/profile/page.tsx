@@ -494,9 +494,9 @@ export default function ProfilePageV2() {
                 : convs.map(c=>(
                   <button key={c.user_id} onClick={()=>setActiveConv(c.user_id)} style={convRow}>
                     <div style={avatarSmall}>{(c.display_name||"?").charAt(0).toUpperCase()}</div>
-                    <div style={{ flex:1, textAlign:"left" as const }}>
-                      <div style={{ fontWeight:700, fontSize:14 }}>{c.display_name||c.user_id.slice(0,8)}</div>
-                      <div style={{ fontSize:12, opacity:0.5 }}>{c.last}</div>
+                    <div style={{ flex:1, textAlign:"left" as const, minWidth:0, overflow:"hidden" }}>
+                      <div style={{ fontWeight:700, fontSize:14, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.display_name||c.user_id.slice(0,8)}</div>
+                      <div style={{ fontSize:12, opacity:0.5, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.last}</div>
                     </div>
                     {c.unread>0 && <div style={unreadBadge}>{c.unread}</div>}
                   </button>
@@ -516,14 +516,14 @@ export default function ProfilePageV2() {
                         <div style={{ fontSize:11, fontWeight:700, opacity:0.45, marginBottom:2, paddingLeft:4 }}>{msg.sender_name || "?"}</div>
                       )}
                       <div style={{ display:"flex", alignItems:"center", gap:6, flexDirection:isMine?"row-reverse":"row" }}>
-                        <div style={{ maxWidth:"75%", padding: msg.file_url && !msg.content ? "8px" : "10px 14px", fontSize:14, lineHeight:1.4,
+                        <div style={{ maxWidth:"75%", minWidth:0, padding: msg.file_url && !msg.content ? "8px" : "10px 14px", fontSize:14, lineHeight:1.4,
                           borderRadius:isMine?"18px 18px 4px 18px":"18px 18px 18px 4px",
                           background:isMine?"rgba(255,255,255,0.14)":"rgba(255,255,255,0.10)",
                           border:isMine?"none":"1px solid rgba(255,255,255,0.08)",
-                          color:"#fff" }}>
+                          color:"#fff", wordBreak:"break-word", overflowWrap:"anywhere" }}>
                           {(() => {
-                            // Detect fallback text pattern: "📎 filename — https://..."
-                            const fallbackMatch = !msg.file_url && msg.content?.match(/^📎\s+(.+?)\s+—\s+(https?:\/\/.+)$/);
+                            // Detect fallback text pattern: "📎 filename — https://..." (em dash or regular dash)
+                            const fallbackMatch = !msg.file_url && msg.content?.match(/^📎\s+(.+?)\s+[—\-–]\s+(https?:\/\/.+)$/);
                             const fileUrl = msg.file_url || (fallbackMatch ? fallbackMatch[2] : null);
                             const fileName = msg.file_name || (fallbackMatch ? fallbackMatch[1] : null);
                             const fileType = msg.file_type || "";
@@ -597,7 +597,7 @@ const saveBtn: React.CSSProperties = { padding:"13px 16px", borderRadius:14, bac
 const tabBarStyle: React.CSSProperties = { display:"flex", borderBottom:"1px solid rgba(255,255,255,0.08)" };
 const tabBtn: React.CSSProperties = { flex:1, padding:"14px 0", background:"none", border:"none", color:"rgba(255,255,255,0.45)", fontWeight:700, fontSize:12, letterSpacing:"0.12em", cursor:"pointer" };
 const tabActive: React.CSSProperties = { color:"#fff", borderBottom:"2px solid #fff" };
-const convRow: React.CSSProperties = { display:"flex", gap:12, alignItems:"center", padding:"12px 0", background:"none", border:"none", color:"#fff", cursor:"pointer", borderBottom:"1px solid rgba(255,255,255,0.06)", width:"100%" };
+const convRow: React.CSSProperties = { display:"flex", gap:12, alignItems:"center", padding:"12px 0", background:"none", border:"none", color:"#fff", cursor:"pointer", borderBottom:"1px solid rgba(255,255,255,0.06)", width:"100%", minWidth:0, overflow:"hidden", boxSizing:"border-box" };
 const unreadBadge: React.CSSProperties = { width:20, height:20, borderRadius:"50%", background:"#fff", color:"#000", fontSize:11, fontWeight:900, display:"flex", alignItems:"center", justifyContent:"center" };
 const sendMsgBtn: React.CSSProperties = { width:44, height:44, borderRadius:"50%", background:"#fff", color:"#000", border:"none", fontSize:18, fontWeight:900, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 };
 const backBtn: React.CSSProperties = { background:"none", border:"none", color:"rgba(255,255,255,0.6)", fontSize:14, cursor:"pointer", padding:0, textAlign:"left" as const };
