@@ -26,6 +26,8 @@ const empty: RadarData = { hot: null, trending: [], mostWanted: [] }
 export default function RadarPage() {
   const [data, setData] = useState<RadarData>(empty)
   const [loading, setLoading] = useState(true)
+  const [showMoreTrending, setShowMoreTrending] = useState(false)
+  const [showMoreWanted, setShowMoreWanted] = useState(false)
 
   useEffect(() => {
     fetch("/api/radar")
@@ -92,19 +94,26 @@ export default function RadarPage() {
             {data.trending.length === 0 ? (
               <div style={empty_}>Nothing yet.</div>
             ) : (
-              <div style={{ display: "grid", gap: 8, marginTop: 4 }}>
-                {data.trending.map((t, i) => (
-                  <div key={i} style={row}>
-                    <div style={rank}>{i + 2}</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 15, fontWeight: 800, lineHeight: 1.2 }}>{t.track_title}</div>
-                      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.50)", marginTop: 2 }}>
-                        {t.track_subtitle || "Unknown"}{t.scans > 0 ? ` · ${t.scans} scans` : ""}
+              <>
+                <div style={{ display: "grid", gap: 8, marginTop: 4 }}>
+                  {(showMoreTrending ? data.trending : data.trending.slice(0, 3)).map((t, i) => (
+                    <div key={i} style={row}>
+                      <div style={rank}>{i + 2}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 15, fontWeight: 800, lineHeight: 1.2 }}>{t.track_title}</div>
+                        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.50)", marginTop: 2 }}>
+                          {t.track_subtitle || "Unknown"}{t.scans > 0 ? ` · ${t.scans} scans` : ""}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+                {data.trending.length > 3 && (
+                  <button onClick={() => setShowMoreTrending(v => !v)} style={showMoreBtn}>
+                    {showMoreTrending ? "Show less ↑" : `Show more ↓`}
+                  </button>
+                )}
+              </>
             )}
           </section>
 
@@ -114,19 +123,26 @@ export default function RadarPage() {
             {data.mostWanted.length === 0 ? (
               <div style={empty_}>No one's chasing these yet.</div>
             ) : (
-              <div style={{ display: "grid", gap: 8, marginTop: 4 }}>
-                {data.mostWanted.map((t, i) => (
-                  <div key={i} style={row}>
-                    <div style={{ ...rank, color: "rgba(255,255,255,0.4)" }}>{i + 1}</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 15, fontWeight: 800, lineHeight: 1.2 }}>{t.track_title}</div>
-                      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.50)", marginTop: 2 }}>
-                        {t.track_subtitle || "Unknown"} · {t.followers} following
+              <>
+                <div style={{ display: "grid", gap: 8, marginTop: 4 }}>
+                  {(showMoreWanted ? data.mostWanted : data.mostWanted.slice(0, 3)).map((t, i) => (
+                    <div key={i} style={row}>
+                      <div style={{ ...rank, color: "rgba(255,255,255,0.4)" }}>{i + 1}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 15, fontWeight: 800, lineHeight: 1.2 }}>{t.track_title}</div>
+                        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.50)", marginTop: 2 }}>
+                          {t.track_subtitle || "Unknown"} · {t.followers} following
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+                {data.mostWanted.length > 3 && (
+                  <button onClick={() => setShowMoreWanted(v => !v)} style={showMoreBtn}>
+                    {showMoreWanted ? "Show less ↑" : `Show more ↓`}
+                  </button>
+                )}
+              </>
             )}
           </section>
 
@@ -171,3 +187,9 @@ const rank: React.CSSProperties = {
   fontSize: 12, fontWeight: 900, flexShrink: 0,
 }
 const empty_: React.CSSProperties = { fontSize: 13, color: "rgba(255,255,255,0.42)", padding: "4px 0" }
+const showMoreBtn: React.CSSProperties = {
+  marginTop: 10, width: "100%", background: "rgba(255,255,255,0.05)",
+  border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12,
+  color: "rgba(255,255,255,0.55)", fontSize: 12, fontWeight: 700,
+  letterSpacing: "0.05em", padding: "8px 0", cursor: "pointer",
+}

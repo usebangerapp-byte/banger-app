@@ -622,38 +622,7 @@ const region = await getRegion();
           {/* ── Woofer : barres audio réactives au micro ── */}
           <WooferBars audioLevel={audioLevel} visible={listening} />
 
-          {/* ── LAST ID — inline sous le bouton, pas de scroll ── */}
-          <div style={scanStyles.recent}>
-          <div style={scanStyles.recentTitle}>LAST ID</div>
-          <div style={scanStyles.card}>
-            <div style={scanStyles.cardRow}>
-              <div style={scanStyles.cardMain}>{title}</div>
-              <div style={{ ...scanStyles.badge, background: (tag === "UNRELEASED" ? "rgba(225,225,225,0.14)" : tag === "RELEASED" ? "rgba(225,225,225,0.10)" : "rgba(225,225,225,0.08)") }}>{tag}</div>
-            </div>
-            <div style={scanStyles.cardSub}>{subtitle}</div>
-
-
-            {tag === "UNRELEASED" && allowPreview && snippetPath && (
-              <div style={{ marginTop: 12, display: "flex", justifyContent: "center" }}>
-                <audio controls src={previewUrl(snippetPath)} style={{ width: "100%" }} />
-              </div>
-            )}
-            {tag === "RELEASED" && (
-              <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
-                {spotifyUrl && (
-                  <a href={spotifyUrl} target="_blank" rel="noopener noreferrer" style={scanStyles.spotifyBtn}>
-                    ▶ Listen on Spotify
-                  </a>
-                )}
-                {beatportUrl && (
-                  <a href={beatportUrl} target="_blank" rel="noopener noreferrer" style={scanStyles.beatportBtn}>
-                    ⬇ Buy on Beatport
-                  </a>
-                )}
-              </div>
-            )}
-          </div>
-          </div>{/* end recent */}
+          {/* LAST ID removed */}
         </div>{/* end center */}
 
       </div>{/* end phone */}
