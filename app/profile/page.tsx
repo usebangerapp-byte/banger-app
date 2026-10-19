@@ -2,11 +2,89 @@
 
 export const dynamic = "force-dynamic";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { getBrowserRole } from "@/lib/auth/getBrowserRole";
 import PageHeader from "@/components/PageHeader";
+
+// ── Custom inline audio player ──
+function AudioPlayer({ src, name }: { src: string; name: string }) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [loading, setLoading] = useState(false);
+
+  const toggle = useCallback(async () => {
+    const a = audioRef.current;
+    if (!a) return;
+    if (playing) {
+      a.pause();
+      setPlaying(false);
+    } else {
+      setLoading(true);
+      try {
+        await a.play();
+        setPlaying(true);
+      } catch {}
+      setLoading(false);
+    }
+  }, [playing]);
+
+  const fmt = (s: number) => {
+    if (!s || isNaN(s)) return "0:00";
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${sec.toString().padStart(2, "0")}`;
+  };
+
+  return (
+    <div style={{ width: "100%", minWidth: 180, maxWidth: 240 }}>
+      {/* Filename */}
+      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", marginBottom: 7,
+        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
+        🎵 {name}
+      </div>
+      {/* Controls row */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {/* Play/pause button */}
+        <button onClick={toggle}
+          style={{ width: 32, height: 32, borderRadius: "50%", border: "none",
+            background: "rgba(255,255,255,0.18)", color: "#fff", fontSize: 13,
+            cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0 }}>
+          {loading ? "⏳" : playing ? "⏸" : "▶"}
+        </button>
+        {/* Progress bar */}
+        <div style={{ flex: 1, height: 3, background: "rgba(255,255,255,0.15)", borderRadius: 2,
+          cursor: "pointer", position: "relative" as const }}
+          onClick={e => {
+            const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+            const ratio = (e.clientX - rect.left) / rect.width;
+            if (audioRef.current) audioRef.current.currentTime = ratio * (audioRef.current.duration || 0);
+          }}>
+          <div style={{ height: "100%", width: `${progress * 100}%`,
+            background: "rgba(255,255,255,0.80)", borderRadius: 2,
+            transition: "width 0.1s linear" }} />
+        </div>
+        {/* Time */}
+        <span style={{ fontSize: 10, color: "rgba(255,255,255,0.40)", flexShrink: 0, minWidth: 28 }}>
+          {fmt(duration > 0 ? progress * duration : 0)}
+        </span>
+      </div>
+      {/* Hidden audio element */}
+      <audio ref={audioRef} src={src} preload="metadata"
+        onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
+        onTimeUpdate={() => {
+          const a = audioRef.current;
+          if (a && a.duration) setProgress(a.currentTime / a.duration);
+        }}
+        onEnded={() => { setPlaying(false); setProgress(0); }}
+        style={{ display: "none" }} />
+    </div>
+  );
+}
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -451,10 +529,7 @@ export default function ProfilePageV2() {
                             const fileType = msg.file_type || "";
                             const isAudio = fileUrl && (fileType.startsWith("audio/") || /\.(mp3|wav|aif|aiff|flac|ogg|m4a)$/i.test(fileName||"") || /\.(mp3|wav|aif|aiff|flac|ogg|m4a)$/i.test(fileUrl));
                             if (fileUrl && isAudio) return (
-                              <div style={{ minWidth:180, maxWidth:220 }}>
-                                <div style={{ fontSize:11, color:"rgba(255,255,255,0.50)", marginBottom:5, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>🎵 {fileName}</div>
-                                <audio controls src={fileUrl} style={{ width:"100%", height:34, borderRadius:8 }} />
-                              </div>
+                              <AudioPlayer src={fileUrl} name={fileName || "audio"} />
                             );
                             if (fileUrl) return (
                               <a href={fileUrl} target="_blank" rel="noreferrer" style={{ display:"flex", alignItems:"center", gap:8, color:"#fff", textDecoration:"none" }}>
