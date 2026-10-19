@@ -135,13 +135,13 @@ export default function TopBar() {
 
           {/* Sign out */}
           <button onClick={async () => { const sb = createSupabaseBrowser(); if (sb) await sb.auth.signOut(); window.location.href = "/"; }}
-            style={{ ...actionRow, color:"rgba(255,100,100,0.75)" }}>
+            style={{ ...actionRow, color:"rgba(255,80,80,0.65)" }}>
             Sign out
           </button>
 
           {/* Delete */}
           {!showDeleteConf ? (
-            <button onClick={() => setShowDeleteConf(true)} style={{ ...actionRow, color:"rgba(255,60,60,0.45)", fontSize:12 }}>
+            <button onClick={() => setShowDeleteConf(true)} style={{ ...actionRow, color:"rgba(255,255,255,0.20)", fontSize:12, letterSpacing:"0.04em" }}>
               Delete account
             </button>
           ) : (
@@ -169,26 +169,22 @@ export default function TopBar() {
             <button onClick={() => setShowNotifs(false)} style={closeBtn}>✕</button>
           </div>
           {notifs.length === 0 ? (
-            <div style={{ fontSize:13, opacity:0.38, padding:"4px 0" }}>No new notifications.</div>
+            <div style={{ fontSize:13, color:"rgba(255,255,255,0.35)", padding:"8px 0", letterSpacing:"0.03em" }}>Nothing new.</div>
           ) : (<>
-            <div style={{ display:"grid", gap:6 }}>
+            <div style={{ display:"grid", gap:1 }}>
               {notifs.map(n => (
                 <div key={n.id} onClick={async () => {
-                  // mark as read on click
                   const sb = createSupabaseBrowser();
                   if (sb) await sb.from("notifications").update({ read:true }).eq("id", n.id);
                   setNotifs(p => p.filter(x => x.id !== n.id));
                   setNotifCount(c => Math.max(0, c-1));
-                  // navigate to relevant content
                   if (n.type === "track_released" || n.type === "new_track") window.location.href = "/radar";
-                }} style={{ padding:"10px 12px", borderRadius:12, background:"rgba(255,255,255,0.04)",
-                  border:"1px solid rgba(255,255,255,0.07)", cursor:"pointer" }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                    <span style={{ fontSize:16 }}>{n.type==="track_released"?"🎉":n.type==="new_message"?"💬":"🔔"}</span>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      {n.track_title && <div style={{ fontWeight:700, fontSize:13, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{n.track_title}</div>}
-                      <div style={{ fontSize:12, opacity:0.6, marginTop:1 }}>{n.message || (n.type==="track_released"?"Just dropped 🎉":"New notification")}</div>
-                    </div>
+                }} style={{ padding:"12px 0", borderBottom:"1px solid rgba(255,255,255,0.05)", cursor:"pointer" }}>
+                  {n.track_title && (
+                    <div style={{ fontSize:14, fontWeight:800, letterSpacing:"-0.01em", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{n.track_title}</div>
+                  )}
+                  <div style={{ fontSize:12, color:"rgba(255,255,255,0.45)", marginTop:3, letterSpacing:"0.02em" }}>
+                    {n.message || (n.type==="track_released" ? "Released — available now" : "New notification")}
                   </div>
                 </div>
               ))}
@@ -197,8 +193,8 @@ export default function TopBar() {
               const sb = createSupabaseBrowser();
               if (sb && userId) await sb.from("notifications").update({read:true}).eq("user_id",userId).eq("read",false);
               setNotifs([]); setNotifCount(0); setShowNotifs(false);
-            }} style={{ fontSize:12, opacity:0.45, background:"none", border:"none", color:"#fff", cursor:"pointer", padding:"6px 0", textAlign:"center" as const, width:"100%" }}>
-              Mark all as read
+            }} style={{ fontSize:11, color:"rgba(255,255,255,0.30)", background:"none", border:"none", cursor:"pointer", padding:"10px 0 2px", letterSpacing:"0.10em", fontWeight:700, textAlign:"left" as const }}>
+              MARK ALL READ
             </button>
           </>)}
         </div>
