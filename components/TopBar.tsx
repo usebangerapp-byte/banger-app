@@ -1,9 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 
+const HIDDEN_PATHS = ["/", "/login", "/unlock", "/onboarding", "/auth/callback", "/privacy", "/terms", "/contact"];
+
 export default function TopBar() {
+  const pathname = usePathname();
+  if (HIDDEN_PATHS.includes(pathname)) return null;
   const [showSettings, setShowSettings] = useState(false);
   const [showNotifs,   setShowNotifs]   = useState(false);
   const [notifCount,   setNotifCount]   = useState(0);

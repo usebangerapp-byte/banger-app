@@ -1,51 +1,23 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useState } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 
-type ScanRange = "day" | "week" | "month";
-
-// Renseigner l'URL App Store ici une fois la fiche publiée.
-const APP_STORE_URL = "";
-
 export default function LandingPage() {
-  const supabase = createSupabaseBrowser();
-  const [stats, setStats] = useState<any>(null);
-  const [range, setRange] = useState<ScanRange>("month");
   const [busy, setBusy] = useState<"" | "google" | "apple">("");
   const [error, setError] = useState("");
-  useEffect(() => {
-    fetch("/api/stats")
-      .then((r) => r.json())
-      .then((j) => { if (j?.ok) setStats(j); })
-      .catch(() => {});
-  }, []);
-
-  const scansLabel = useMemo(() => {
-    if (range === "day") return "SCANS TODAY";
-    if (range === "week") return "SCANS THIS WEEK";
-    return "SCANS THIS MONTH";
-  }, [range]);
 
   async function continueWith(provider: "google" | "apple") {
-    if (!supabase) {
-      setError("Login is unavailable right now. Please try again later.");
-      return;
-    }
+    const supabase = createSupabaseBrowser();
+    if (!supabase) { setError("Login unavailable. Try again later."); return; }
     setBusy(provider);
     setError("");
-
     try {
-      const origin =
-        typeof window !== "undefined"
-          ? window.location.origin
-          : "https://banger-app-zeta.vercel.app";
-
+      const origin = typeof window !== "undefined" ? window.location.origin : "https://usebanger.com";
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: { redirectTo: `${origin}/auth/callback` },
       });
-
       if (error) throw error;
     } catch (e: any) {
       setError(e?.message || "Unable to start login.");
@@ -54,281 +26,120 @@ export default function LandingPage() {
   }
 
   return (
-    <main style={styles.page}>
-      <div style={styles.shell}>
-        <section style={styles.hero}>
-          <div style={styles.eyebrow}>BANGER</div>
-          <h1 style={styles.title}>
-            <span style={styles.titleTop}>Find your</span>
-            <span style={styles.titleBottom}>Un/Released Tracks</span>
-          </h1>
-          <p style={styles.subtitle}>
-            Scan any track — even the ones not out yet.
-            <br />
-            Follow your favorite DJs and get notified the moment they drop.
+    <main style={page}>
+      <div style={shell}>
+
+        {/* Logo */}
+        <div style={logoWrap}>
+          <div style={logoB}>B</div>
+          <div style={logoText}>BANGER</div>
+        </div>
+
+        {/* Hero */}
+        <div style={heroBlock}>
+          <h1 style={headline}>Identify any track.<br />Even unreleased ones.</h1>
+          <p style={sub}>
+            Scan what DJs play — before it drops.<br />
+            Follow tracks & get notified the moment they release.
           </p>
-          <div style={styles.heroMeta}>USED BY DJs WORLDWIDE</div>
-        </section>
+        </div>
 
-        <section style={styles.statsCard}>
-          <div style={styles.statBlock}>
-            <div style={styles.statLabel}>USERS</div>
-            <div style={styles.statValue}>{stats?.users ?? "..."}</div>
-          </div>
+        {/* Features */}
+        <div style={features}>
+          <Feature icon="🎵" text="Scan any track in seconds" />
+          <Feature icon="🔔" text="Follow unreleased IDs" />
+          <Feature icon="📈" text="See what the scene is playing" />
+        </div>
 
-          <div style={styles.divider} />
-
-          <div style={styles.statBlock}>
-            <div style={styles.statHeaderRow}>
-              <div style={styles.statLabel}>{scansLabel}</div>
-              <div style={styles.rangeTabs}>
-                <button
-                  type="button"
-                  onClick={() => setRange("day")}
-                  style={tabButton(range === "day")}
-                >
-                  DAY
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRange("week")}
-                  style={tabButton(range === "week")}
-                >
-                  WEEK
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRange("month")}
-                  style={tabButton(range === "month")}
-                >
-                  MONTH
-                </button>
-              </div>
-            </div>
-            <div style={styles.statValue}>{stats?.scans?.[range] ?? "..."}</div>
-          </div>
-        </section>
-
-        <section style={styles.section}>
-          <div style={styles.sectionTitle}>DOWNLOAD BANGER</div>
-          <button
-            type="button"
-            onClick={() => { if (APP_STORE_URL) window.open(APP_STORE_URL, "_blank"); }}
-            disabled={!APP_STORE_URL}
-            style={styles.secondaryButtonFull}
-          >
-            {APP_STORE_URL ? "Download on the App Store" : "App Store — Coming soon"}
+        {/* Auth */}
+        <div style={authBlock}>
+          <button onClick={() => continueWith("google")} disabled={busy !== ""} style={googleBtn}>
+            <svg width="18" height="18" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+            {busy === "google" ? "Connecting…" : "Continue with Google"}
           </button>
-        </section>
 
-        <section style={styles.section}>
-          <div style={styles.sectionTitle}>ENTER BANGER WEB</div>
-          <div style={styles.webCard}>
-            <p style={styles.webText}>
-              Access BANGER on web and continue with your account.
-            </p>
+          <button onClick={() => continueWith("apple")} disabled={busy !== ""} style={appleBtn}>
+            <span style={{ fontSize: 18, lineHeight: 1 }}></span>
+            {busy === "apple" ? "Connecting…" : "Continue with Apple"}
+          </button>
 
-            <button
-              type="button"
-              onClick={() => continueWith("google")}
-              disabled={busy !== ""}
-              style={styles.primaryButton}
-            >
-              {busy === "google" ? "Connecting..." : "Continue with Google"}
-            </button>
+          {error && <div style={errorStyle}>{error}</div>}
+          <div style={freeNote}>Free plan available · No credit card required</div>
+        </div>
 
-            <button
-              type="button"
-              onClick={() => continueWith("apple")}
-              disabled={busy !== ""}
-              style={styles.appleButton}
-            >
-              {busy === "apple" ? "Connecting..." : "\uF8FF  Continue with Apple"}
-            </button>
-
-            <div style={styles.freePlan}>Free plan available</div>
-            {error ? <div style={styles.errorText}>{error}</div> : null}
-          </div>
-        </section>
       </div>
     </main>
   );
 }
 
-const styles: Record<string, React.CSSProperties> = {
-  page: {
-    minHeight: "100vh",
-    background: "#000",
-    color: "#fff",
-    padding: "24px 18px 40px",
-  },
-  shell: {
-    width: "100%",
-    maxWidth: 520,
-    margin: "0 auto",
-    display: "grid",
-    gap: 22,
-  },
-  hero: {
-    paddingTop: 16,
-    display: "grid",
-    gap: 14,
-  },
-  eyebrow: {
-    fontSize: 12,
-    letterSpacing: "0.24em",
-    opacity: 0.58,
-    fontWeight: 800,
-  },
-  title: {
-    margin: 0,
-    display: "grid",
-    gap: 2,
-    lineHeight: 0.95,
-  },
-  titleTop: {
-    fontSize: "clamp(42px, 12vw, 72px)",
-    fontWeight: 900,
-    letterSpacing: "-0.06em",
-  },
-  titleBottom: {
-    fontSize: "clamp(34px, 10vw, 60px)",
-    fontWeight: 900,
-    letterSpacing: "-0.06em",
-    color: "rgba(255,255,255,0.92)",
-  },
-  subtitle: {
-    margin: 0,
-    fontSize: 15,
-    lineHeight: 1.5,
-    opacity: 0.74,
-    maxWidth: 420,
-  },
-  heroMeta: {
-    fontSize: 12,
-    opacity: 0.5,
-    letterSpacing: "0.15em",
-    fontWeight: 800,
-  },
-  statsCard: {
-    border: "1px solid rgba(255,255,255,0.10)",
-    borderRadius: 24,
-    background: "linear-gradient(180deg, rgba(12,12,12,1) 0%, rgba(5,5,5,1) 100%)",
-    padding: 18,
-    display: "grid",
-    gap: 18,
-  },
-  statBlock: {
-    display: "grid",
-    gap: 10,
-  },
-  statHeaderRow: {
-    display: "grid",
-    gap: 12,
-  },
-  statLabel: {
-    fontSize: 11,
-    letterSpacing: "0.18em",
-    opacity: 0.56,
-    fontWeight: 800,
-  },
-  statValue: {
-    fontSize: "clamp(34px, 9vw, 56px)",
-    fontWeight: 900,
-    letterSpacing: "-0.05em",
-    lineHeight: 0.95,
-  },
-  divider: {
-    height: 1,
-    background: "rgba(255,255,255,0.08)",
-  },
-  rangeTabs: {
-    display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
-    gap: 8,
-  },
-  section: {
-    display: "grid",
-    gap: 12,
-  },
-  sectionTitle: {
-    fontSize: 11,
-    letterSpacing: "0.22em",
-    opacity: 0.6,
-    fontWeight: 800,
-  },
-  webCard: {
-    border: "1px solid rgba(255,255,255,0.10)",
-    borderRadius: 24,
-    background: "rgba(255,255,255,0.03)",
-    padding: 18,
-    display: "grid",
-    gap: 12,
-  },
-  webText: {
-    margin: 0,
-    fontSize: 14,
-    lineHeight: 1.5,
-    opacity: 0.72,
-  },
-  primaryButton: {
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "16px 18px",
-    borderRadius: 18,
-    border: "1px solid rgba(255,255,255,0.14)",
-    background: "#fff",
-    color: "#000",
-    fontWeight: 800,
-    fontSize: 16,
-    cursor: "pointer",
-  },
-  appleButton: {
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "16px 18px",
-    borderRadius: 18,
-    border: "1px solid rgba(255,255,255,0.30)",
-    background: "#000",
-    color: "#fff",
-    fontWeight: 800,
-    fontSize: 16,
-    cursor: "pointer",
-  },
-  secondaryButtonFull: {
-    padding: "15px 18px",
-    borderRadius: 18,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(255,255,255,0.05)",
-    color: "rgba(255,255,255,0.85)",
-    fontWeight: 700,
-    fontSize: 16,
-  },
-  freePlan: {
-    textAlign: "center",
-    fontSize: 12,
-    opacity: 0.62,
-    letterSpacing: "0.08em",
-    fontWeight: 700,
-  },
-  errorText: {
-    color: "#ffb7b7",
-    textAlign: "center",
-    fontSize: 13,
-  },
-};
-
-function tabButton(active: boolean): React.CSSProperties {
-  return {
-    padding: "10px 10px",
-    borderRadius: 999,
-    border: active ? "1px solid rgba(255,255,255,0.22)" : "1px solid rgba(255,255,255,0.08)",
-    background: active ? "rgba(255,255,255,0.12)" : "transparent",
-    color: active ? "#fff" : "rgba(255,255,255,0.58)",
-    fontSize: 11,
-    fontWeight: 800,
-    letterSpacing: "0.12em",
-  };
+function Feature({ icon, text }: { icon: string; text: string }) {
+  return (
+    <div style={featureRow}>
+      <span style={{ fontSize: 18 }}>{icon}</span>
+      <span style={{ fontSize: 14, color: "rgba(255,255,255,0.65)", fontWeight: 600 }}>{text}</span>
+    </div>
+  );
 }
+
+const page: React.CSSProperties = {
+  minHeight: "100vh", background: "#000", color: "#fff",
+  display: "flex", alignItems: "center", justifyContent: "center",
+  padding: "0 20px",
+};
+const shell: React.CSSProperties = {
+  width: "100%", maxWidth: 400,
+  display: "flex", flexDirection: "column", gap: 36,
+  paddingTop: 40, paddingBottom: 48,
+};
+const logoWrap: React.CSSProperties = {
+  display: "flex", alignItems: "center", gap: 12,
+};
+const logoB: React.CSSProperties = {
+  width: 48, height: 48, borderRadius: 14,
+  background: "#fff", color: "#000",
+  display: "flex", alignItems: "center", justifyContent: "center",
+  fontSize: 26, fontWeight: 900, letterSpacing: "-0.04em",
+  flexShrink: 0,
+};
+const logoText: React.CSSProperties = {
+  fontSize: 22, fontWeight: 900, letterSpacing: "0.14em",
+};
+const heroBlock: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 12 };
+const headline: React.CSSProperties = {
+  margin: 0, fontSize: "clamp(30px,8vw,42px)", fontWeight: 900,
+  letterSpacing: "-0.03em", lineHeight: 1.1,
+};
+const sub: React.CSSProperties = {
+  margin: 0, fontSize: 15, lineHeight: 1.6,
+  color: "rgba(255,255,255,0.55)", fontWeight: 500,
+};
+const features: React.CSSProperties = {
+  display: "flex", flexDirection: "column", gap: 12,
+  padding: "16px 0", borderTop: "1px solid rgba(255,255,255,0.06)", borderBottom: "1px solid rgba(255,255,255,0.06)",
+};
+const featureRow: React.CSSProperties = { display: "flex", gap: 12, alignItems: "center" };
+const authBlock: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 10 };
+const googleBtn: React.CSSProperties = {
+  display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+  padding: "15px 18px", borderRadius: 16, width: "100%",
+  background: "#fff", color: "#000", fontWeight: 800, fontSize: 15,
+  border: "none", cursor: "pointer",
+};
+const appleBtn: React.CSSProperties = {
+  display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+  padding: "15px 18px", borderRadius: 16, width: "100%",
+  background: "rgba(255,255,255,0.06)", color: "#fff", fontWeight: 800, fontSize: 15,
+  border: "1px solid rgba(255,255,255,0.14)", cursor: "pointer",
+};
+const errorStyle: React.CSSProperties = {
+  color: "#ffb7b7", fontSize: 13, textAlign: "center", padding: "4px 0",
+};
+const freeNote: React.CSSProperties = {
+  textAlign: "center", fontSize: 12, color: "rgba(255,255,255,0.35)",
+  fontWeight: 600, letterSpacing: "0.04em", paddingTop: 4,
+};
