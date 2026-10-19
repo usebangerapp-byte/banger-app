@@ -48,6 +48,9 @@ export default function ProfilePageV2() {
   const [tracks,   setTracks]   = useState<any[]>([]);
   const [sparkData,setSparkData]= useState<number[]>([]);
   const [tab,      setTab]      = useState<"profile"|"messages">("profile");
+  const [showMoreTracks, setShowMoreTracks] = useState(false);
+  const [showMoreFollows, setShowMoreFollows] = useState(false);
+  const [showMoreScans,  setShowMoreScans]  = useState(false);
   const [messages, setMessages] = useState<any[]>([]);
   const [convs,    setConvs]    = useState<any[]>([]);
   const [activeConv,setActiveConv]=useState<string|null>(null);
@@ -241,7 +244,7 @@ export default function ProfilePageV2() {
 
           {role==="pro" && tracks.length>0 && (
             <Section title="MY TRACKS">
-              {tracks.map(t=>(
+              {(showMoreTracks ? tracks : tracks.slice(0,4)).map(t=>(
                 <div key={t.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 0", borderBottom:"1px solid rgba(255,255,255,0.06)" }}>
                   <div style={{ flex:1 }}>
                     <div style={{ fontWeight:700, fontSize:14 }}>{t.title||"Untitled"}</div>
@@ -271,30 +274,45 @@ export default function ProfilePageV2() {
                   </button>
                 </div>
               ))}
-              <div style={{ fontSize:11, opacity:0.4, marginTop:8 }}>Tap a badge to toggle released / unreleased</div>
+              {tracks.length > 4 && (
+                <button onClick={() => setShowMoreTracks(v=>!v)} style={showMoreBtn}>
+                  {showMoreTracks ? "Show less ↑" : `Show all ${tracks.length} tracks ↓`}
+                </button>
+              )}
+              <div style={{ fontSize:11, opacity:0.35, marginTop:2 }}>Tap a badge to toggle released / unreleased</div>
             </Section>
           )}
 
           <Section title={`FOLLOWED TRACKS (${follows.length})`}>
             {follows.length===0
               ? <div style={emptyStyle}>No followed tracks yet.</div>
-              : follows.slice(0,5).map((f:any,i:number)=>(
+              : (showMoreFollows ? follows : follows.slice(0,4)).map((f:any,i:number)=>(
                 <div key={i} style={{ padding:"10px 0", borderBottom:"1px solid rgba(255,255,255,0.06)" }}>
                   <div style={{ fontWeight:600, fontSize:14 }}>{f.track_title||"Unknown"}</div>
                   {f.track_subtitle && <div style={{ fontSize:12, opacity:0.5 }}>{f.track_subtitle}</div>}
                 </div>
               ))}
+            {follows.length > 4 && (
+              <button onClick={() => setShowMoreFollows(v=>!v)} style={showMoreBtn}>
+                {showMoreFollows ? "Show less ↑" : `Show all ${follows.length} ↓`}
+              </button>
+            )}
           </Section>
 
           <Section title={`MY SCANS (${scans.length})`}>
             {scans.length===0
               ? <div style={emptyStyle}>No scans yet.</div>
-              : scans.slice(0,5).map((s:any,i:number)=>(
+              : (showMoreScans ? scans : scans.slice(0,4)).map((s:any,i:number)=>(
                 <div key={i} style={{ padding:"10px 0", borderBottom:"1px solid rgba(255,255,255,0.06)" }}>
                   <div style={{ fontWeight:600, fontSize:14 }}>{s.track_title||"Unknown"}</div>
                   {s.created_at && <div style={{ fontSize:11, opacity:0.4 }}>{new Date(s.created_at).toLocaleDateString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</div>}
                 </div>
               ))}
+            {scans.length > 4 && (
+              <button onClick={() => setShowMoreScans(v=>!v)} style={showMoreBtn}>
+                {showMoreScans ? "Show less ↑" : `Show all ${scans.length} scans ↓`}
+              </button>
+            )}
           </Section>
         </>)}
 
@@ -366,4 +384,5 @@ const unreadBadge: React.CSSProperties = { width:20, height:20, borderRadius:"50
 const sendMsgBtn: React.CSSProperties = { width:44, height:44, borderRadius:"50%", background:"#fff", color:"#000", border:"none", fontSize:18, fontWeight:900, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 };
 const backBtn: React.CSSProperties = { background:"none", border:"none", color:"rgba(255,255,255,0.6)", fontSize:14, cursor:"pointer", padding:0, textAlign:"left" as const };
 const emptyStyle: React.CSSProperties = { fontSize:13, opacity:0.45, padding:"4px 0" };
+const showMoreBtn: React.CSSProperties = { background:"none", border:"1px solid rgba(255,255,255,0.08)", borderRadius:10, color:"rgba(255,255,255,0.5)", fontSize:12, fontWeight:700, padding:"8px 12px", cursor:"pointer", width:"100%", marginTop:4 };
 // 1781652265
