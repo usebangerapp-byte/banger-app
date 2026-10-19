@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { getBrowserRole } from "@/lib/auth/getBrowserRole";
+import PageHeader from "@/components/PageHeader";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -189,6 +190,8 @@ export default function ProfilePageV2() {
   return (
     <main style={pageStyle}>
       <div style={shellStyle}>
+
+        <PageHeader title="PROFILE" />
 
         <div style={tabBarStyle}>
           {(["profile","messages"] as const).map(t => (

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { getBrowserRole } from "@/lib/auth/getBrowserRole";
 import { FFmpeg } from "@ffmpeg/ffmpeg";
+import PageHeader from "@/components/PageHeader";
 
 const SEGMENT_DURATION = 25;
 const MAX_SEGMENTS     = 20;
@@ -206,7 +207,7 @@ export default function UploadPage() {
     <main style={{ minHeight: "100vh", background: "#000", color: "#fff", padding: "24px 18px 120px" }}>
       <div style={{ maxWidth: 680, margin: "0 auto", display: "grid", gap: 14 }}>
 
-        <h1 style={{ margin: 0, fontSize: 32, fontWeight: 900, letterSpacing: "-0.03em" }}>UPLOAD</h1>
+        <PageHeader title="UPLOAD" sub="Register your track for scanning" />
 
         <Card title="1. Track">
           <div style={{ display: "grid", gap: 10 }}>
