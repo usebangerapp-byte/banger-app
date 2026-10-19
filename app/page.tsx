@@ -32,7 +32,7 @@ export default function LandingPage() {
         {/* Center logo */}
         <div style={logoBlock}>
           <div style={logoMark}>BANGER</div>
-          <div style={tagline}>Identify any track.<br />Even before it drops.</div>
+          <div style={tagline}>Identify any track.<br />Even unreleased.</div>
         </div>
 
         {/* Auth */}
@@ -81,11 +81,11 @@ const logoBlock: React.CSSProperties = {
 };
 const logoMark: React.CSSProperties = {
   fontSize: 18, fontWeight: 900, letterSpacing: "0.32em",
-  color: "rgba(255,255,255,0.70)",
+  color: "rgba(255,255,255,0.45)",
 };
 const tagline: React.CSSProperties = {
   fontSize: "clamp(28px,8vw,38px)", fontWeight: 900,
-  letterSpacing: "-0.03em", lineHeight: 1.15, color: "#fff",
+  letterSpacing: "-0.03em", lineHeight: 1.15, color: "rgba(255,255,255,0.95)",
 };
 const authBlock: React.CSSProperties = {
   display: "flex", flexDirection: "column", gap: 10,
