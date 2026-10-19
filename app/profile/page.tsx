@@ -192,22 +192,31 @@ export default function ProfilePageV2() {
   }
 
   async function sendFile(file: File) {
-    if (!userId) { alert("Not logged in"); return; }
+    if (!userId || !supabase) { alert("Not logged in"); return; }
     if (!activeConv) { alert("No conversation selected"); return; }
     if (file.size > 52_428_800) { alert("Max 50 MB"); return; }
     setUploading(true);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("sender_id", userId);
-      const res = await fetch("/api/messages/upload", { method:"POST", body: fd });
-      const j = await res.json().catch(() => ({ ok: false, error: "Upload parse error" }));
-      if (!j.ok) { alert("Upload error: " + (j.error || "unknown")); return; }
-      const sendRes = await fetch("/api/messages/send", { method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ sender_id: userId, receiver_id: activeConv, content: null, file_url: j.url, file_name: j.name, file_type: j.type }) });
+      // Upload DIRECT browser → Supabase Storage (no server proxy, no size limit)
+      const ext = (file.name.split(".").pop() || "bin").toLowerCase();
+      const path = `chat/${userId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("bpro_uploads")
+        .upload(path, file, { contentType: file.type || "application/octet-stream", upsert: false });
+      if (upErr) { alert("Upload error: " + upErr.message); return; }
+
+      const { data: urlData } = supabase.storage.from("bpro_uploads").getPublicUrl(path);
+      const fileUrl = urlData.publicUrl;
+
+      // Send just the metadata to the API (small JSON, no size issue)
+      const sendRes = await fetch("/api/messages/send", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sender_id: userId, receiver_id: activeConv, content: null, file_url: fileUrl, file_name: file.name, file_type: file.type }),
+      });
       const sj = await sendRes.json().catch(() => ({ ok: false, error: "Send parse error" }));
       if (!sj.ok) { alert("Send error: " + (sj.error || "unknown")); return; }
-      setMessages(p => [...p, { id: Date.now(), created_at: new Date().toISOString(), sender_id: userId, receiver_id: activeConv, content: null, file_url: j.url, file_name: j.name, file_type: j.type, read: false }]);
+
+      setMessages(p => [...p, { id: Date.now(), created_at: new Date().toISOString(), sender_id: userId, receiver_id: activeConv, content: null, file_url: fileUrl, file_name: file.name, file_type: file.type, read: false }]);
     } catch(e: any) {
       alert("Error: " + (e?.message || "unknown"));
     } finally { setUploading(false); }
@@ -434,18 +443,29 @@ export default function ProfilePageV2() {
                           background:isMine?"rgba(255,255,255,0.14)":"rgba(255,255,255,0.10)",
                           border:isMine?"none":"1px solid rgba(255,255,255,0.08)",
                           color:"#fff" }}>
-                          {msg.content && <span>{msg.content}</span>}
-                          {msg.file_url && (msg.file_type?.startsWith("audio/") || /\.(mp3|wav|aif|aiff|flac|ogg|m4a)$/i.test(msg.file_name||"")) ? (
-                            <div style={{ minWidth:200 }}>
-                              <div style={{ fontSize:11, color:"rgba(255,255,255,0.50)", marginBottom:6, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>🎵 {msg.file_name}</div>
-                              <audio controls src={msg.file_url} style={{ width:"100%", height:36, borderRadius:8 }} />
-                            </div>
-                          ) : msg.file_url ? (
-                            <a href={msg.file_url} target="_blank" rel="noreferrer" style={{ display:"flex", alignItems:"center", gap:8, color:"#fff", textDecoration:"none" }}>
-                              <span style={{ fontSize:20 }}>📎</span>
-                              <span style={{ fontSize:12, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{msg.file_name}</span>
-                            </a>
-                          ) : null}
+                          {(() => {
+                            // Detect fallback text pattern: "📎 filename — https://..."
+                            const fallbackMatch = !msg.file_url && msg.content?.match(/^📎\s+(.+?)\s+—\s+(https?:\/\/.+)$/);
+                            const fileUrl = msg.file_url || (fallbackMatch ? fallbackMatch[2] : null);
+                            const fileName = msg.file_name || (fallbackMatch ? fallbackMatch[1] : null);
+                            const fileType = msg.file_type || "";
+                            const isAudio = fileUrl && (fileType.startsWith("audio/") || /\.(mp3|wav|aif|aiff|flac|ogg|m4a)$/i.test(fileName||"") || /\.(mp3|wav|aif|aiff|flac|ogg|m4a)$/i.test(fileUrl));
+                            if (fileUrl && isAudio) return (
+                              <div style={{ minWidth:180, maxWidth:220 }}>
+                                <div style={{ fontSize:11, color:"rgba(255,255,255,0.50)", marginBottom:5, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>🎵 {fileName}</div>
+                                <audio controls src={fileUrl} style={{ width:"100%", height:34, borderRadius:8 }} />
+                              </div>
+                            );
+                            if (fileUrl) return (
+                              <a href={fileUrl} target="_blank" rel="noreferrer" style={{ display:"flex", alignItems:"center", gap:8, color:"#fff", textDecoration:"none" }}>
+                                <span style={{ fontSize:20 }}>📎</span>
+                                <span style={{ fontSize:12, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{fileName}</span>
+                              </a>
+                            );
+                            // Regular text message
+                            if (msg.content && !fallbackMatch) return <span>{msg.content}</span>;
+                            return null;
+                          })()}
                         </div>
                         {isMine && (
                           <button onClick={async()=>{
