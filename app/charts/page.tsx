@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
-import FollowTrackButton from "@/components/FollowTrackButton";
 
 type TrackRow = {
   id: string;
@@ -17,44 +16,6 @@ type TrackRow = {
   result_type?: "recognized_unreleased" | "recognized_world" | "not_found" | null;
 };
 
-function MarqueeText({
-  text,
-  fontSize = 18,
-  fontWeight = 800,
-  opacity = 1,
-}: {
-  text: string;
-  fontSize?: number;
-  fontWeight?: number;
-  opacity?: number;
-}) {
-  const [active, setActive] = useState(false);
-
-  return (
-    <div
-      onClick={() => setActive((v) => !v)}
-      style={{
-        overflow: "hidden",
-        whiteSpace: "nowrap",
-        cursor: "pointer",
-        opacity,
-      }}
-      title="Click to scroll"
-    >
-      <div
-        style={{
-          display: "inline-block",
-          minWidth: "100%",
-          fontSize,
-          fontWeight,
-          animation: active ? "banger-marquee 8s linear infinite" : "none",
-        }}
-      >
-        {text}
-      </div>
-    </div>
-  );
-}
 
 function isReleased(releaseDate?: string | null) {
   if (!releaseDate) return false;
@@ -69,6 +30,12 @@ function normalize(v: string | null | undefined) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .trim();
+}
+
+function trackKey(title: string): string {
+  return normalize(title)
+    .replace(/\s*\(\s*(original|extended|club|radio|vocal|instrumental|dub|remaster|reprise)(\s+(mix|version|edit|cut))?\s*\)/gi, " ")
+    .replace(/\s+/g, " ").trim().slice(0, 60);
 }
 
 function buildSuggestions(rows: any[]) {
@@ -97,7 +64,7 @@ function matchesSearch(track: any, query: string) {
 }
 
 export default function ChartsPage() {
-  const supabase = createSupabaseBrowser();
+  const supabase = useMemo(() => createSupabaseBrowser(), []);
   const [tracks, setTracks] = useState<TrackRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -105,95 +72,119 @@ export default function ChartsPage() {
   const [activeChart, setActiveChart] = useState<"unreleased" | "released">("unreleased");
   const [visibleCount, setVisibleCount] = useState(10);
   const [search, setSearch] = useState("");
+  const [followedTitles, setFollowedTitles] = useState<Set<string>>(new Set());
+  const [userId, setUserId] = useState<string | null>(null);
+
+  // Charger userId + follows indépendamment des charts
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.auth.getUser().then(({ data }) => {
+      const uid = data?.user?.id || null;
+      setUserId(uid);
+      if (!uid) return;
+      fetch(`/api/follow-track?user_id=${uid}`, { cache: "no-store" })
+        .then(r => r.json())
+        .then(json => {
+          const followed = Array.isArray(json?.followed) ? json.followed : [];
+          setFollowedTitles(new Set(followed.map((f: any) => trackKey(String(f.track_title || "")))));
+        })
+        .catch(() => {});
+    });
+  }, [supabase]);
 
   useEffect(() => {
     let mounted = true;
 
     (async () => {
       try {
-        const [{ data: uploads, error: uploadsError }, { data: scans, error: scansError }] = await Promise.all([
-          supabase!
-            .from("unreleased_tracks")
-            .select("id,title,artist,scan_count,snippet_path,allow_preview,release_date,spotify_url,beatport_url")
-            .limit(500),
-          { data: await fetch("/api/charts").then(r=>r.json()), error: null },
-        ]);
+        // 1) Charts toujours en premier (source principale)
+        const chartsRes = await fetch("/api/charts").then(r => r.json()).catch(() => []);
+        if (!mounted) return;
+
+        const scanList = Array.isArray(chartsRes) ? chartsRes : [];
+
+        // 2) bpro_tracks en enrichissement optionnel (ne bloque pas si ça plante)
+        let bproList: any[] = [];
+        if (supabase) {
+          try {
+            const bproRes = await supabase
+              .from("bpro_tracks")
+              .select("id,title,artist,snippet_path,allow_preview,release_url,is_released")
+              .limit(500);
+            bproList = (bproRes.data || []) as any[];
+          } catch {}
+        }
 
         if (!mounted) return;
-        if (uploadsError) throw uploadsError;
-        if (scansError) throw scansError;
 
-        const uploadList = (uploads || []) as any[];
-        const scanList = (scans || []) as any[];
+        // Index bpro_tracks par titre normalisé pour enrichissement rapide
+        const bproIndex = new Map<string, any>();
+        for (const t of bproList) {
+          const key = trackKey(String(t.title || ""));
+          if (key) bproIndex.set(key, t);
+        }
 
-        const merged = uploadList
-          .map((track) => {
-            const title = String(track.title || "").trim();
-            const artist = String(track.artist || "").trim();
+        // Convertir chaque scan en TrackRow directement
+        // Agréger par titre normalisé pour éviter les doublons unreleased+world
+        const mergeMap = new Map<string, TrackRow>();
 
-            const titleNorm = normalize(title);
-            const artistNorm = normalize(artist);
-            const altTitleNorm = titleNorm.includes(" - ")
-              ? normalize(title.split(" - ").slice(1).join(" - "))
-              : "";
+        for (const s of scanList) {
+          if (!s.track_title || String(s.track_title).trim().toLowerCase() === "unknown") continue;
 
-            const matchedScans = scanList.filter((scan: any) => {
-              const scanTitle = normalize(scan.track_title || "");
-              const scanArtist = normalize(scan.track_subtitle || "");
-              const scanCombo = normalize(`${scan.track_title || ""} ${scan.track_subtitle || ""}`);
+          const title  = String(s.track_title  || "").trim();
+          const artist = String(s.track_subtitle || "").trim();
+          const key    = trackKey(title);
 
-              if (!scanTitle) return false;
+          const bpro    = bproIndex.get(key);
+          const released = s.result_type === "recognized_world" || !!bpro?.is_released;
 
-              const directTitleMatch =
-                !!titleNorm &&
-                (scanTitle === titleNorm ||
-                  scanCombo.includes(titleNorm) ||
-                  titleNorm.includes(scanTitle));
+          const existing = mergeMap.get(key);
+          if (existing) {
+            // Additionner les scans des deux types (unreleased + world = même track)
+            existing.scan_count = (existing.scan_count || 0) + (s.scans || 0);
+            // Promouvoir en released si l'un des types l'est
+            if (released) existing.result_type = "recognized_world";
+            // Enrichir avec bpro si pas encore fait
+            if (!existing.beatport_url && bpro?.beatport_url) existing.beatport_url = bpro.beatport_url || bpro.release_url;
+            if (!existing.spotify_url  && bpro?.spotify_url)  existing.spotify_url  = bpro.spotify_url;
+          } else {
+            mergeMap.set(key, {
+              id:            key,
+              title:         title || null,
+              artist:        artist || null,
+              scan_count:    s.scans || 0,
+              snippet_path:  bpro?.snippet_path || null,
+              allow_preview: bpro?.allow_preview ?? null,
+              release_date:  null,
+              spotify_url:   bpro?.spotify_url || null,
+              beatport_url:  bpro?.beatport_url || bpro?.release_url || null,
+              result_type:   released ? "recognized_world" : "recognized_unreleased",
+            } as TrackRow);
+          }
+        }
 
-              const altTitleMatch =
-                !!altTitleNorm &&
-                altTitleNorm.length >= 6 &&
-                (scanTitle === altTitleNorm ||
-                  scanTitle.includes(altTitleNorm) ||
-                  altTitleNorm.includes(scanTitle) ||
-                  scanCombo.includes(altTitleNorm));
-
-              const artistAssist =
-                !!artistNorm &&
-                scanCombo.includes(artistNorm) &&
-                (directTitleMatch || altTitleMatch || scanTitle.includes(artistNorm));
-
-              return directTitleMatch || altTitleMatch || artistAssist;
-            });
-
-            const totalScans = matchedScans.length;
-            const hasReleasedScan = matchedScans.some(
-              (scan: any) => scan.result_type === "recognized_world"
-            );
-            const released = isReleased(track.release_date) || hasReleasedScan;
-
-            return {
-              id: String(track.id),
-              title: track.title || null,
-              artist: track.artist || null,
-              scan_count: totalScans,
-              snippet_path: track.snippet_path || null,
-              allow_preview: track.allow_preview ?? null,
-              release_date: track.release_date || null,
-              spotify_url: track.spotify_url || null,
-              beatport_url: track.beatport_url || null,
-              result_type: released ? "recognized_world" : "recognized_unreleased",
-            } as TrackRow;
-          })
-          .filter((track) => Number(track.scan_count || 0) > 0)
+        const merged: TrackRow[] = Array.from(mergeMap.values())
+          .filter(t => (t.scan_count || 0) > 0)
           .sort((a, b) => Number(b.scan_count || 0) - Number(a.scan_count || 0));
 
         setTracks(merged);
+
+        // Charger tous les follows en une seule requête
+        try {
+          const { data: authData } = await supabase?.auth.getUser() || { data: null };
+          const uid = authData?.user?.id || null;
+          if (uid) {
+            setUserId(uid);
+            const res = await fetch(`/api/follow-track?user_id=${uid}`, { cache: "no-store" });
+            const json = await res.json().catch(() => null);
+            const followed = Array.isArray(json?.followed) ? json.followed : [];
+            setFollowedTitles(new Set(followed.map((f: any) => trackKey(String(f.track_title || "")))));
+          }
+        } catch {}
       } catch (e: any) {
         if (!mounted) return;
         setError(e?.message || "Unable to load charts.");
       } finally {
-        if (!mounted) return;
         setLoading(false);
       }
     })();
@@ -281,7 +272,7 @@ export default function ChartsPage() {
 
                 <div style={{ display: "grid", gap: 8, minWidth: 0 }}>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", minWidth: 0 }}>
-                    <MarqueeText text={displayLine} fontSize={17} fontWeight={800} />
+                    <div style={{ fontSize: 17, fontWeight: 800, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", minWidth: 0 }}>{displayLine}</div>
                     <span style={{ fontSize: 12, opacity: 0.75 }}>• {scans} scans</span>
                     {canPreview ? (
                       <button
@@ -328,43 +319,66 @@ export default function ChartsPage() {
                   </div>
 
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", fontSize: 15, fontWeight: 700, opacity: 0.92 }}>
-                    {kind === "unreleased" ? (
-                      <>
-                        <span style={{ fontSize: 14, fontWeight: 600, opacity: 0.72 }}>Release — {track.releaseDate}</span>
-                        <FollowTrackButton
-                          trackTitle={track.title || "Untitled"}
-                          trackSubtitle={track.artist || "unknown"}
-                        />
-                      </>
-                    ) : null}
+                    {kind === "unreleased" ? (() => {
+                      const titleKey = trackKey(track.title || "");
+                      const isFollowing = followedTitles.has(titleKey);
+                      return (
+                        <button
+                          type="button"
+                          disabled={!userId}
+                          onClick={async () => {
+                            if (!userId) { console.warn("[BANGER] follow: userId null"); return; }
+                            console.log("[BANGER] follow:", isFollowing ? "unfollow" : "follow", track.title);
+                            const action = isFollowing ? "unfollow" : "follow";
+                            const res = await fetch("/api/follow-track", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                action,
+                                user_id: userId,
+                                track_title: track.title || "",
+                                track_subtitle: (track.artist || "").trim() || null,
+                              }),
+                            });
+                            const json = await res.json().catch(() => null);
+                            if (json?.ok) {
+                              setFollowedTitles(prev => {
+                                const next = new Set(prev);
+                                if (action === "follow") next.add(titleKey);
+                                else next.delete(titleKey);
+                                return next;
+                              });
+                            }
+                          }}
+                          style={{
+                            padding: "8px 14px", borderRadius: 999, fontSize: 13, fontWeight: 700,
+                            border: isFollowing ? "1px solid rgba(255,255,255,0.22)" : "1px solid rgba(255,255,255,0.12)",
+                            background: isFollowing ? "rgba(255,255,255,0.10)" : "transparent",
+                            color: isFollowing ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.62)",
+                            cursor: !userId ? "default" : "pointer",
+                          }}
+                        >
+                          {isFollowing ? "Following ✓" : "+ Follow"}
+                        </button>
+                      );
+                    })() : null}
                   </div>
 
-                  {kind === "released" ? (
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", fontSize: 15, fontWeight: 700, opacity: 0.92 }}>
-                      <span style={smallLinkBtn}>Listen:</span>
-                        {track.spotify_url ? (
-                          <a
-                            href={track.spotify_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            style={smallLink}
-                          >
-                            Spotify
-                          </a>
-                        ) : null}
-
-                        {track.beatport_url ? (
-                          <a
-                            href={track.beatport_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            style={smallLink}
-                          >
-                            Beatport
-                          </a>
-                        ) : null}
+                  {kind === "released" ? (() => {
+                    const q = encodeURIComponent(`${track.artist || ""} ${track.title || ""}`.trim());
+                    const spotifyHref  = track.spotify_url  || `https://open.spotify.com/search/${q}`;
+                    const beatportHref = track.beatport_url || `https://www.beatport.com/search?q=${q}`;
+                    return (
+                      <div style={{ display: "grid", gap: 8, marginTop: 4 }}>
+                        <a href={spotifyHref} target="_blank" rel="noreferrer" style={spotifyBtn}>
+                          ▶ Listen on Spotify
+                        </a>
+                        <a href={beatportHref} target="_blank" rel="noreferrer" style={beatportBtn}>
+                          ⬇ Buy on Beatport
+                        </a>
                       </div>
-                    ) : null}
+                    );
+                  })() : null}
                   </div>
                 </div>
               </div>
@@ -376,7 +390,7 @@ export default function ChartsPage() {
 
   return (
     <main style={{ minHeight: "100vh", background: "#000", color: "#fff", padding: "20px 14px 120px" }}>
-      <style jsx global>{`
+      <style>{`
         @keyframes banger-marquee {
           0% { transform: translateX(0); }
           10% { transform: translateX(0); }
@@ -387,11 +401,11 @@ export default function ChartsPage() {
 
       <div style={{ maxWidth: 760, margin: "0 auto", display: "grid", gap: 14 }}>
         <div style={{ display: "grid", placeItems: "center", marginBottom: 4 }}>
-          <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: "-0.03em" }}>Charts</div>
+          <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: "-0.03em" }}>CHARTS</div>
         </div>
 
         {loading ? (
-          <div style={cardStyle}>Loading charts...</div>
+          <div style={cardStyle}>Loading…</div>
         ) : error ? (
           <div style={cardStyle}>{error}</div>
         ) : (
@@ -403,7 +417,7 @@ export default function ChartsPage() {
                   onClick={() => switchChart("unreleased")}
                   style={activeChart === "unreleased" ? activeTabBtn : tabBtn}
                 >
-                  TOP 100<br/>UNRELEASED
+                  UNRELEASED
                 </button>
 
                 <button
@@ -411,7 +425,7 @@ export default function ChartsPage() {
                   onClick={() => switchChart("released")}
                   style={activeChart === "released" ? activeTabBtn : tabBtn}
                 >
-                  TOP 100<br/>RELEASED
+                  RELEASED
                 </button>
               </div>
 
@@ -423,7 +437,7 @@ export default function ChartsPage() {
                     setVisibleCount(10);
                   }}
                   list="charts-search-list"
-                  placeholder="Search"
+                  placeholder="Search a track or artist…"
                   style={searchInputStyle}
                 />
                 <datalist id="charts-search-list">
@@ -437,7 +451,7 @@ export default function ChartsPage() {
             <div style={{ marginTop: 12 }}>
               {filteredRows.length === 0 ? (
                 <div style={{ opacity: 0.62, fontSize: 13 }}>
-                  {activeChart === "unreleased" ? "No unreleased chart data yet." : "No released chart data yet."}
+                  {activeChart === "unreleased" ? "No unreleased IDs charting yet. Be the first to scan." : "No released tracks charting yet."}
                 </div>
               ) : (
                 <>
@@ -586,3 +600,32 @@ const smallLinkBtn: React.CSSProperties = {
   fontSize: 15,
   cursor: "pointer",
 };;
+
+const spotifyBtn: React.CSSProperties = {
+  display: "block",
+  padding: "10px 14px",
+  borderRadius: 12,
+  background: "rgba(29,185,84,0.12)",
+  border: "1px solid rgba(29,185,84,0.35)",
+  color: "#1db954",
+  fontWeight: 700,
+  fontSize: 13,
+  textDecoration: "none",
+  textAlign: "center",
+  letterSpacing: "0.04em",
+};
+
+const beatportBtn: React.CSSProperties = {
+  display: "block",
+  padding: "10px 14px",
+  borderRadius: 12,
+  background: "rgba(0,229,255,0.08)",
+  border: "1px solid rgba(0,229,255,0.28)",
+  color: "#00E5FF",
+  fontWeight: 700,
+  fontSize: 13,
+  textDecoration: "none",
+  textAlign: "center",
+  letterSpacing: "0.04em",
+};
+
