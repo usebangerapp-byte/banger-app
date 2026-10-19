@@ -31,34 +31,133 @@ const PAGE_BG =
 
 
 // Woofer inside the button — arc at the bottom
-function WooferBars({ audioLevel, visible }: { audioLevel: number; visible: boolean }) {
-  const BAR_COUNT = 18;
+// Woofer SVG — cone doré, anneau noir, vis métalliques, dome avec B
+function WooferSVG({ audioLevel, listening }: { audioLevel: number; listening: boolean }) {
+  const pump = 1 + audioLevel * 0.045; // cone pumps with bass
+  const glowA = 0.18 + audioLevel * 0.55;
   return (
     <div style={{
-      position: "absolute", bottom: 18, left: "50%",
-      transform: "translateX(-50%)",
-      display: "flex", alignItems: "flex-end", justifyContent: "center",
-      gap: 3, height: 40, width: 120,
-      opacity: visible ? 1 : 0,
-      transition: "opacity 0.4s ease",
-      pointerEvents: "none", zIndex: 5,
+      position: "absolute", inset: 0, display: "flex",
+      alignItems: "center", justifyContent: "center",
+      pointerEvents: "none", zIndex: 4,
     }}>
-      {Array.from({ length: BAR_COUNT }).map((_, i) => {
-        const center = (BAR_COUNT - 1) / 2;
-        const dist = Math.abs(i - center) / center;
-        // base height visible even at audioLevel=0
-        const base = 4 + (1 - dist) * 4;
-        const dynamic = audioLevel * 28 * (1 - dist * 0.55);
-        const h = base + dynamic;
-        const alpha = 0.55 + audioLevel * 0.40 * (1 - dist * 0.4);
-        return (
-          <div key={i} style={{
-            width: 3, height: h, borderRadius: 99, flexShrink: 0,
-            background: `rgba(255,255,255,${alpha})`,
-            transition: "height 0.06s ease-out, background 0.06s ease",
-          }} />
-        );
-      })}
+      <svg width="190" height="190" viewBox="0 0 190 190" fill="none" xmlns="http://www.w3.org/2000/svg"
+        style={{ transition: "transform 0.06s ease-out", transform: `scale(${pump})` }}>
+        <defs>
+          {/* Outer ring gradient — dark chrome */}
+          <radialGradient id="ringGrad" cx="50%" cy="35%" r="60%">
+            <stop offset="0%" stopColor="#4a4a4a"/>
+            <stop offset="40%" stopColor="#1a1a1a"/>
+            <stop offset="100%" stopColor="#0a0a0a"/>
+          </radialGradient>
+          {/* Cone golden gradient */}
+          <radialGradient id="coneGrad" cx="50%" cy="40%" r="55%">
+            <stop offset="0%" stopColor="#f5c842"/>
+            <stop offset="35%" stopColor="#d4a017"/>
+            <stop offset="70%" stopColor="#a07010"/>
+            <stop offset="100%" stopColor="#4a3000"/>
+          </radialGradient>
+          {/* Cone texture overlay */}
+          <radialGradient id="coneSheen" cx="38%" cy="32%" r="50%">
+            <stop offset="0%" stopColor="rgba(255,220,100,0.55)"/>
+            <stop offset="60%" stopColor="rgba(255,180,20,0.08)"/>
+            <stop offset="100%" stopColor="rgba(0,0,0,0)"/>
+          </radialGradient>
+          {/* Inner surround */}
+          <radialGradient id="surroundGrad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#2a2a2a"/>
+            <stop offset="50%" stopColor="#141414"/>
+            <stop offset="100%" stopColor="#080808"/>
+          </radialGradient>
+          {/* Dome gradient */}
+          <radialGradient id="domeGrad" cx="40%" cy="35%" r="55%">
+            <stop offset="0%" stopColor="#3a3a3a"/>
+            <stop offset="55%" stopColor="#111"/>
+            <stop offset="100%" stopColor="#050505"/>
+          </radialGradient>
+          {/* Glow filter */}
+          <filter id="glowF" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="6" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          {/* Screw gradient */}
+          <radialGradient id="screwGrad" cx="35%" cy="30%" r="60%">
+            <stop offset="0%" stopColor="#888"/>
+            <stop offset="100%" stopColor="#222"/>
+          </radialGradient>
+        </defs>
+
+        {/* ── Glow ring when listening ── */}
+        {listening && (
+          <circle cx="95" cy="95" r="92" fill="none"
+            stroke={`rgba(0,200,220,${glowA})`} strokeWidth="3"
+            style={{ filter: "blur(4px)" }}/>
+        )}
+
+        {/* ── Outer housing ring ── */}
+        <circle cx="95" cy="95" r="90" fill="url(#ringGrad)" stroke="#000" strokeWidth="1"/>
+        {/* Outer ring inner shadow */}
+        <circle cx="95" cy="95" r="90" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1"/>
+        <circle cx="95" cy="95" r="84" fill="none" stroke="rgba(0,0,0,0.8)" strokeWidth="3"/>
+
+        {/* ── Cone (golden speaker membrane) ── */}
+        <circle cx="95" cy="95" r="78" fill="url(#coneGrad)"/>
+        {/* Cone texture lines — radial mesh */}
+        {Array.from({length: 24}).map((_, i) => {
+          const a = (i / 24) * Math.PI * 2;
+          const x1 = 95 + Math.cos(a) * 32;
+          const y1 = 95 + Math.sin(a) * 32;
+          const x2 = 95 + Math.cos(a) * 76;
+          const y2 = 95 + Math.sin(a) * 76;
+          return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
+            stroke="rgba(0,0,0,0.18)" strokeWidth="0.5"/>;
+        })}
+        {/* Cone concentric rings */}
+        {[42, 52, 62, 72].map(r => (
+          <circle key={r} cx="95" cy="95" r={r} fill="none"
+            stroke="rgba(0,0,0,0.22)" strokeWidth="0.7"/>
+        ))}
+        {/* Cone sheen */}
+        <circle cx="95" cy="95" r="78" fill="url(#coneSheen)"/>
+
+        {/* ── Inner surround (rubber edge) ── */}
+        <circle cx="95" cy="95" r="32" fill="url(#surroundGrad)"
+          stroke="rgba(255,255,255,0.04)" strokeWidth="1"/>
+        <circle cx="95" cy="95" r="28" fill="none"
+          stroke="rgba(0,0,0,0.6)" strokeWidth="2"/>
+
+        {/* ── Dome (dust cap) ── */}
+        <circle cx="95" cy="95" r="26" fill="url(#domeGrad)"
+          stroke="rgba(80,80,80,0.4)" strokeWidth="0.5"/>
+        {/* Dome specular */}
+        <ellipse cx="88" cy="87" rx="9" ry="6"
+          fill="rgba(255,255,255,0.10)" style={{filter:"blur(2px)"}}/>
+
+        {/* ── Screws × 6 ── */}
+        {[0, 60, 120, 180, 240, 300].map((deg) => {
+          const a = (deg * Math.PI) / 180;
+          const sx = 95 + Math.cos(a) * 85;
+          const sy = 95 + Math.sin(a) * 85;
+          return (
+            <g key={deg}>
+              <circle cx={sx} cy={sy} r="5.5" fill="url(#screwGrad)" stroke="#000" strokeWidth="0.5"/>
+              <line x1={sx-2.5} y1={sy} x2={sx+2.5} y2={sy} stroke="rgba(0,0,0,0.7)" strokeWidth="1"/>
+              <line x1={sx} y1={sy-2.5} x2={sx} y2={sy+2.5} stroke="rgba(0,0,0,0.7)" strokeWidth="1"/>
+            </g>
+          );
+        })}
+      </svg>
+
+      {/* B logo over dome */}
+      <img src="/B-logo.png" alt="B" style={{
+        position: "absolute",
+        width: 36, height: 36,
+        objectFit: "contain",
+        filter: "brightness(0) invert(1)",
+        opacity: 0.92,
+        transition: "transform 0.06s ease-out",
+        transform: `scale(${pump})`,
+      }}/>
     </div>
   );
 }
@@ -574,72 +673,43 @@ const region = await getRegion();
                 opacity: busy ? 0.92 : 1,
                 transform: busy ? "translateY(1px)" : success ? "translateY(0px)" : "translateY(0px)",
                 boxShadow: listening
-                  ? "0 0 68px rgba(0,229,255,0.16), " +
-                    "0 18px 60px rgba(0,0,0,0.78)"
+                  ? `0 0 ${40 + audioLevel * 60}px rgba(212,160,23,${0.25 + audioLevel * 0.45}), ` +
+                    "0 18px 60px rgba(0,0,0,0.85)"
                   : success
-                  ? "0 0 84px rgba(255,255,255,0.78), " +
-                    "0 18px 60px rgba(0,0,0,0.78)"
+                  ? "0 0 90px rgba(255,220,60,0.70), " +
+                    "0 18px 60px rgba(0,0,0,0.85)"
                   : "0 18px 60px rgba(0,0,0,0.75), " +
-                    "inset 0 1px 0 rgba(255,255,255,0.08)",
+                    "inset 0 1px 0 rgba(255,255,255,0.06)",
                 border: success
                   ? "1px solid rgba(245,245,245,0.34)"
                   : scanStyles.button3D.border,
                 transition: "all 0.22s ease",
               }}
             >
-              <div
-                style={{
-                  ...scanStyles.specular,
-                  opacity: busy ? 0.07 : 0.14,
-                }}
-              />
-
-              {/* listen glow inside button */}
-              {listening ? (
-                <div style={{
-                  ...scanStyles.listenGlow,
-                  opacity: 0.16 + audioLevel * 0.62,
-                }} />
-              ) : null}
-
-              {/* ── SUCCESS glow: radial contained ── */}
+              {/* ── SUCCESS glow overlay ── */}
               {success && (
                 <div style={{
-                  position: "absolute", left: "50%", top: "50%",
-                  width: "140%", height: "140%",
-                  transform: "translate(-50%,-50%)",
-                  borderRadius: "50%",
+                  position: "absolute", inset: 0, borderRadius: "50%",
                   background: tag === "RELEASED"
-                    ? "radial-gradient(circle at 50% 50%, rgba(29,185,84,0.60) 0%, rgba(29,185,84,0.22) 42%, transparent 68%)"
-                    : "radial-gradient(circle at 50% 50%, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0.22) 40%, transparent 66%)",
+                    ? "radial-gradient(circle at 50% 50%, rgba(29,185,84,0.50) 0%, rgba(29,185,84,0.18) 45%, transparent 70%)"
+                    : "radial-gradient(circle at 50% 50%, rgba(255,240,120,0.55) 0%, rgba(255,200,0,0.20) 42%, transparent 68%)",
                   animation: "successGlow 0.85s cubic-bezier(0.1,0,0.35,1) forwards",
-                  pointerEvents: "none", zIndex: 3,
+                  pointerEvents: "none", zIndex: 6,
                 }} />
               )}
 
-              {/* ── FAIL flash inside button ── */}
+              {/* ── FAIL flash ── */}
               {failPulse && (
                 <div style={{
                   position: "absolute", inset: 0, borderRadius: "50%",
-                  background: "radial-gradient(circle, rgba(255,60,60,0.40) 0%, transparent 70%)",
+                  background: "radial-gradient(circle, rgba(255,60,60,0.45) 0%, transparent 70%)",
                   animation: "pop 0.4s ease-out forwards",
-                  pointerEvents: "none", zIndex: 3,
+                  pointerEvents: "none", zIndex: 6,
                 }} />
               )}
 
-              <img
-                src="/B-logo.png"
-                alt="Banger"
-                style={{
-                  ...scanStyles.bLogo,
-                  filter: bFilter,
-                  transition: "filter 0.12s linear",
-                  animation: success ? "logoSlam 0.55s cubic-bezier(0.2,0,0.4,1) forwards" : "none",
-                }}
-              />
-
-              {/* ── Woofer INSIDE button ── */}
-              <WooferBars audioLevel={audioLevel} visible={listening} />
+              {/* ── Woofer SVG ── */}
+              <WooferSVG audioLevel={audioLevel} listening={listening} />
             </button>
           </div>
 
@@ -876,11 +946,8 @@ const scanStyles: Record<string, CSSProperties> = {
     width: 190,
     height: 190,
     borderRadius: 9999,
-    border: "1px solid rgba(220,220,220,0.14)",
-    background:
-      "radial-gradient(220px 220px at 30% 25%, rgba(255,255,255,0.10) 0%, " +
-      "rgba(255,255,255,0.04) 18%, rgba(0,0,0,0.18) 60%, rgba(0,0,0,0.55) 100%), " +
-      "linear-gradient(145deg, #0b0b0b, #040404)",
+    border: "none",
+    background: "transparent",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -888,6 +955,7 @@ const scanStyles: Record<string, CSSProperties> = {
     zIndex: 4,
     position: "relative",
     overflow: "hidden",
+    padding: 0,
   },
 
   specular: {
