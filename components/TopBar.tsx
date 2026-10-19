@@ -12,8 +12,10 @@ export default function TopBar() {
   const [showSettings, setShowSettings] = useState(false);
   const [showNotifs,   setShowNotifs]   = useState(false);
   const [notifCount,   setNotifCount]   = useState(0);
+  const [notifs,       setNotifs]       = useState<any[]>([]);
   const [plan,         setPlan]         = useState<string>("Free");
   const [email,        setEmail]        = useState<string>("");
+  const [userId,       setUserId]       = useState<string>("");
 
   useEffect(() => {
     const sb = createSupabaseBrowser();
@@ -22,12 +24,16 @@ export default function TopBar() {
       const user = data?.session?.user;
       if (!user) return;
       setEmail(user.email || "");
+      setUserId(user.id);
       sb.from("profiles").select("role").eq("id", user.id).maybeSingle()
         .then(({ data: p }) => { if (p?.role === "pro") setPlan("PRO"); });
-      // fetch unread notifications count
-      sb.from("notifications").select("id", { count: "exact", head: true })
+      // fetch unread notifications with content
+      sb.from("notifications").select("id,message,type,track_title,created_at,read")
         .eq("user_id", user.id).eq("read", false)
-        .then(({ count }) => { if (count) setNotifCount(count); });
+        .order("created_at", { ascending: false }).limit(20)
+        .then(({ data: n }) => {
+          if (n) { setNotifs(n); setNotifCount(n.length); }
+        });
     });
   }, []);
 
@@ -119,10 +125,24 @@ export default function TopBar() {
       {showNotifs && (
         <div style={panelStyle}>
           <div style={panelTitle}>NOTIFICATIONS</div>
-          {notifCount === 0 ? (
+          {notifs.length === 0 ? (
             <div style={{ fontSize:13, opacity:0.45, padding:"8px 0" }}>No new notifications.</div>
           ) : (
-            <div style={{ fontSize:13, opacity:0.6 }}>{notifCount} unread notification{notifCount > 1 ? "s" : ""}.</div>
+            <div style={{ display:"grid", gap:8 }}>
+              {notifs.map(n => (
+                <div key={n.id} style={{ fontSize:13, padding:"10px 12px", borderRadius:12, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.07)" }}>
+                  {n.track_title && <div style={{ fontWeight:700, marginBottom:3 }}>{n.track_title}</div>}
+                  <div style={{ opacity:0.7 }}>{n.message || (n.type === "track_released" ? "A track you follow just dropped! 🎉" : n.type || "New notification")}</div>
+                </div>
+              ))}
+              <button onClick={async () => {
+                const sb = createSupabaseBrowser();
+                if (sb && userId) { await sb.from("notifications").update({ read: true }).eq("user_id", userId).eq("read", false); }
+                setNotifs([]); setNotifCount(0); setShowNotifs(false);
+              }} style={{ ...settingsBtn, fontSize:12, opacity:0.55, textAlign:"center" as const }}>
+                Mark all as read
+              </button>
+            </div>
           )}
           <button onClick={() => setShowNotifs(false)} style={closeBtn}>✕</button>
         </div>

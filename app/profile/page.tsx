@@ -137,10 +137,13 @@ export default function ProfilePageV2() {
       .then(r => r.json())
       .then(j => {
         if (!j?.messages) return;
+        const profileMap = j.profiles || {};
         const map = new Map<string, any>();
         for (const msg of j.messages) {
           const other = msg.sender_id === userId ? msg.receiver_id : msg.sender_id;
-          map.set(other, { user_id: other, last: msg.content,
+          const p = profileMap[other];
+          const display_name = p?.display_name || p?.email?.split("@")[0] || other.slice(0,8);
+          map.set(other, { user_id: other, display_name, last: msg.content,
             unread: msg.receiver_id === userId && !msg.read ? (map.get(other)?.unread||0)+1 : (map.get(other)?.unread||0) });
         }
         setConvs(Array.from(map.values()));
@@ -359,16 +362,34 @@ export default function ProfilePageV2() {
                 ))}
             </>) : (<>
               <button onClick={()=>setActiveConv(null)} style={backBtn}>← Back</button>
-              <div style={{ display:"grid", gap:8, maxHeight:"50vh", overflowY:"auto" as const }}>
-                {messages.map(msg=>(
-                  <div key={msg.id} style={{ display:"flex", justifyContent:msg.sender_id===userId?"flex-end":"flex-start" }}>
-                    <div style={{ maxWidth:"75%", padding:"10px 14px", fontSize:14, lineHeight:1.4,
-                      borderRadius:msg.sender_id===userId?"18px 18px 4px 18px":"18px 18px 18px 4px",
-                      background:msg.sender_id===userId?"rgba(255,255,255,0.12)":"rgba(255,255,255,0.06)" }}>
-                      {msg.content}
+              {/* Conversation header */}
+              <div style={{ textAlign:"center", fontSize:13, fontWeight:700, opacity:0.55, paddingBottom:4 }}>
+                {convs.find(c=>c.user_id===activeConv)?.display_name || activeConv?.slice(0,8)}
+              </div>
+              <div style={{ display:"grid", gap:6, maxHeight:"50vh", overflowY:"auto" as const }}>
+                {messages.map(msg=>{
+                  const isMine = msg.sender_id===userId;
+                  return (
+                    <div key={msg.id} style={{ display:"flex", flexDirection:"column", alignItems:isMine?"flex-end":"flex-start" }}>
+                      {!isMine && (
+                        <div style={{ fontSize:11, fontWeight:700, opacity:0.45, marginBottom:2, paddingLeft:4 }}>{msg.sender_name || "?"}</div>
+                      )}
+                      <div style={{ display:"flex", alignItems:"center", gap:6, flexDirection:isMine?"row-reverse":"row" }}>
+                        <div style={{ maxWidth:"75%", padding:"10px 14px", fontSize:14, lineHeight:1.4,
+                          borderRadius:isMine?"18px 18px 4px 18px":"18px 18px 18px 4px",
+                          background:isMine?"rgba(255,255,255,0.12)":"rgba(255,255,255,0.06)" }}>
+                          {msg.content}
+                        </div>
+                        {isMine && (
+                          <button onClick={async()=>{
+                            await fetch("/api/messages/delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message_id:msg.id,user_id:userId})});
+                            setMessages(p=>p.filter(m=>m.id!==msg.id));
+                          }} style={{ background:"none",border:"none",color:"rgba(255,80,80,0.5)",fontSize:14,cursor:"pointer",padding:"0 2px",flexShrink:0 }}>✕</button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 <div ref={msgEndRef} />
               </div>
               <div style={{ display:"flex", gap:8 }}>
