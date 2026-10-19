@@ -30,6 +30,38 @@ const PAGE_BG =
   "rgba(5,5,5,1) 70%, rgba(2,2,2,1) 100%)";
 
 
+function WooferBars({ audioLevel, visible }: { audioLevel: number; visible: boolean }) {
+  const BAR_COUNT = 20;
+  return (
+    <div style={{
+      display: "flex", alignItems: "flex-end", justifyContent: "center",
+      gap: 3, height: 36, width: 160,
+      opacity: visible ? 1 : 0,
+      transition: "opacity 0.4s ease",
+      pointerEvents: "none",
+    }}>
+      {Array.from({ length: BAR_COUNT }).map((_, i) => {
+        // barres plus hautes au centre
+        const center = (BAR_COUNT - 1) / 2;
+        const dist = Math.abs(i - center) / center; // 0 au centre, 1 aux bords
+        const base = 3;
+        const dynamic = audioLevel * 26 * (1 - dist * 0.55);
+        const h = Math.max(base, dynamic + base);
+        return (
+          <div key={i} style={{
+            width: 3,
+            height: h,
+            borderRadius: 99,
+            background: `rgba(255,255,255,${0.20 + audioLevel * 0.65 * (1 - dist * 0.4)})`,
+            transition: "height 0.06s ease, background 0.06s ease",
+            flexShrink: 0,
+          }} />
+        );
+      })}
+    </div>
+  );
+}
+
 export default function Home() {
   const router = useRouter();
   const supabase = useMemo(() => createSupabaseBrowser(), []);
@@ -584,10 +616,13 @@ const region = await getRegion();
           </div>
 
           <div style={scanStyles.status}>
-            {status === "idle" ? "DROP IT" : null}
-            {status === "listening" ? "Listening…" : null}
-            {status === "recognizing" ? "Identifying…" : null}
+            {status === "idle" ? "DROP IT" : null}
+            {status === "listening" ? "LISTENING..." : null}
+            {status === "recognizing" ? "IDENTIFYING..." : null}
           </div>
+
+          {/* ── Woofer : barres audio réactives au micro ── */}
+          <WooferBars audioLevel={audioLevel} visible={listening} />
         </div>
 
         <div style={scanStyles.recent}>
@@ -643,7 +678,7 @@ const scanStyles: Record<string, CSSProperties> = {
     flexDirection: "column",
   },
   top: {
-    paddingTop: 44,
+    paddingTop: 8,
     paddingLeft: 24,
     paddingRight: 24,
     textAlign: "center",
