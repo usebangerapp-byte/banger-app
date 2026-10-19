@@ -81,10 +81,31 @@ export default function UploadPage() {
 
   const canSubmit = artist.trim() && trackTitle.trim() && agreeRights && audioFile && !busy;
 
+  function parseFilename(filename: string) {
+    // Remove extension
+    const base = filename.replace(/\.[^.]+$/, "").trim();
+    // Try "Artist - Title" pattern
+    const sep = base.indexOf(" - ");
+    if (sep > 0) {
+      return { artist: base.slice(0, sep).trim(), title: base.slice(sep + 3).trim() };
+    }
+    // Try "Artist_-_Title" or "Artist-Title" (hyphen without spaces)
+    const dashSep = base.match(/^(.+?)[-_][-_](.+)$/);
+    if (dashSep) {
+      return { artist: dashSep[1].replace(/[_]/g, " ").trim(), title: dashSep[2].replace(/[_]/g, " ").trim() };
+    }
+    // Fallback: put everything in title
+    return { artist: "", title: base.replace(/[_]/g, " ").trim() };
+  }
+
   function onPickAudio(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setAudioFile(file); setError(""); setDone(false); setStep("");
+    // Auto-fill artist & title from filename if fields are empty
+    const parsed = parseFilename(file.name);
+    if (!artist.trim() && parsed.artist) setArtist(parsed.artist);
+    if (!trackTitle.trim() && parsed.title) setTrackTitle(parsed.title);
     const url = URL.createObjectURL(file);
     setAudioUrl(url);
     const audio = new Audio(url);
