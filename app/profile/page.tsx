@@ -253,6 +253,48 @@ export default function ProfilePageV2() {
             )}
           </div>
 
+          {/* ── SCANS LIST ── */}
+          {scans.length > 0 && (
+            <Section title="RECENT SCANS">
+              <div style={{ display:"grid", gap:2 }}>
+                {(showMoreScans ? scans : scans.slice(0,5)).map((s,i) => (
+                  <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 0", borderBottom:"1px solid rgba(255,255,255,0.05)" }}>
+                    <span style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const, maxWidth:"72%" }}>{s.track_title || "Unknown"}</span>
+                    <span style={{ fontSize:11, color:"rgba(255,255,255,0.30)", flexShrink:0, letterSpacing:"0.02em" }}>
+                      {s.result_type === "unreleased" ? "UNRELEASED" : "RELEASED"}
+                    </span>
+                  </div>
+                ))}
+                {scans.length > 5 && (
+                  <button onClick={()=>setShowMoreScans(v=>!v)} style={showMoreBtn}>
+                    {showMoreScans ? "Show less" : `+${scans.length-5} more`}
+                  </button>
+                )}
+              </div>
+            </Section>
+          )}
+
+          {/* ── FOLLOWS LIST ── */}
+          {follows.length > 0 && (
+            <Section title="TRACK FOLLOWS">
+              <div style={{ display:"grid", gap:2 }}>
+                {(showMoreFollows ? follows : follows.slice(0,5)).map((f,i) => (
+                  <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 0", borderBottom:"1px solid rgba(255,255,255,0.05)" }}>
+                    <span style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const, maxWidth:"72%" }}>{f.track_title || "Unknown"}</span>
+                    <span style={{ fontSize:11, color: f.is_released ? "rgba(29,185,84,0.80)" : "rgba(255,255,255,0.30)", flexShrink:0, letterSpacing:"0.02em" }}>
+                      {f.is_released ? "OUT" : "WAITING"}
+                    </span>
+                  </div>
+                ))}
+                {follows.length > 5 && (
+                  <button onClick={()=>setShowMoreFollows(v=>!v)} style={showMoreBtn}>
+                    {showMoreFollows ? "Show less" : `+${follows.length-5} more`}
+                  </button>
+                )}
+              </div>
+            </Section>
+          )}
+
           {editing && (
             <Section title="EDIT PROFILE">
               <div style={{ display:"grid", gap:10 }}>
@@ -309,7 +351,9 @@ export default function ProfilePageV2() {
                       <div style={{ display:"flex", alignItems:"center", gap:6, flexDirection:isMine?"row-reverse":"row" }}>
                         <div style={{ maxWidth:"75%", padding:"10px 14px", fontSize:14, lineHeight:1.4,
                           borderRadius:isMine?"18px 18px 4px 18px":"18px 18px 18px 4px",
-                          background:isMine?"rgba(255,255,255,0.12)":"rgba(255,255,255,0.06)" }}>
+                          background:isMine?"rgba(255,255,255,0.14)":"rgba(255,255,255,0.10)",
+                          border:isMine?"none":"1px solid rgba(255,255,255,0.08)",
+                          color:"#fff" }}>
                           {msg.content}
                         </div>
                         {isMine && (

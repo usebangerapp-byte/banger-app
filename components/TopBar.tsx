@@ -89,75 +89,42 @@ export default function TopBar() {
       {/* Spacer so content doesn't hide under TopBar */}
       <div style={{ height: 52 }} />
 
-      {/* Settings panel — épuré */}
+      {/* Settings panel — 3 lignes */}
       {showSettings && (
         <div style={panelStyle}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
-            <div style={panelTitle}>SETTINGS</div>
-            <button onClick={() => setShowSettings(false)} style={closeBtn}>✕</button>
-          </div>
+          <button onClick={() => setShowSettings(false)} style={closeBtn}>✕</button>
 
-          {/* Email + plan sur une ligne */}
+          {/* Ligne 1: email + plan */}
           <div style={settingsRow}>
-            <span style={panelLabel}>{email || "—"}</span>
-            <span style={{ fontSize:12, fontWeight:800, color: plan==="PRO" ? "#fff" : "rgba(255,255,255,0.35)",
-              border: plan==="PRO" ? "1px solid rgba(255,255,255,0.25)" : "1px solid rgba(255,255,255,0.10)",
-              borderRadius:999, padding:"2px 8px" }}>
+            <span style={{ fontSize:13, color:"rgba(255,255,255,0.55)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const, maxWidth:"65%" }}>{email || "—"}</span>
+            <span style={{ fontSize:12, fontWeight:800, color: plan==="PRO" ? "#fff" : "rgba(255,255,255,0.40)",
+              border: plan==="PRO" ? "1px solid rgba(255,255,255,0.30)" : "1px solid rgba(255,255,255,0.12)",
+              borderRadius:999, padding:"3px 10px", flexShrink:0 }}>
               {plan==="PRO" ? "✦ PRO" : "Free"}
             </span>
           </div>
 
-          {/* Notifications toggle */}
+          {/* Ligne 2: Notifications toggle */}
           <div style={settingsRow}>
-            <span style={panelLabel}>Notifications</span>
+            <span style={{ fontSize:13, color:"rgba(255,255,255,0.55)" }}>Notifications</span>
             <button onClick={async () => {
               const next = !notifsEnabled; setNotifsEnabled(next);
               const sb = createSupabaseBrowser();
               if (sb && userId) await sb.from("profiles").update({ notifs_enabled: next }).eq("id", userId);
-            }} style={{ width:44, height:26, borderRadius:13, border:"none", cursor:"pointer", flexShrink:0,
-              background: notifsEnabled ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.15)",
+            }} style={{ width:46, height:26, borderRadius:13, border:"none", cursor:"pointer", flexShrink:0,
+              background: notifsEnabled ? "#fff" : "rgba(255,255,255,0.15)",
               position:"relative" as const, transition:"background 0.2s" }}>
-              <span style={{ position:"absolute" as const, top:3, left: notifsEnabled ? 21 : 3,
+              <span style={{ position:"absolute" as const, top:3, left: notifsEnabled ? 23 : 3,
                 width:20, height:20, borderRadius:"50%", transition:"left 0.2s",
-                background: notifsEnabled ? "#000" : "rgba(255,255,255,0.6)" }}/>
+                background: notifsEnabled ? "#000" : "rgba(255,255,255,0.55)" }}/>
             </button>
           </div>
 
-          {/* Genre */}
-          <div style={settingsRow}>
-            <span style={panelLabel}>Genre</span>
-            <input value={genre} onChange={e => setGenre(e.target.value)}
-              onBlur={async () => { const sb = createSupabaseBrowser(); if (sb && userId) await sb.from("profiles").update({ genre }).eq("id", userId); }}
-              placeholder="House, Techno…"
-              style={{ background:"transparent", border:"none", color:"#fff", fontSize:13, fontWeight:700,
-                textAlign:"right" as const, outline:"none", maxWidth:150, minWidth:0 }} />
-          </div>
-
-          {/* Sign out */}
+          {/* Ligne 3: Sign out */}
           <button onClick={async () => { const sb = createSupabaseBrowser(); if (sb) await sb.auth.signOut(); window.location.href = "/"; }}
-            style={{ ...actionRow, color:"rgba(255,80,80,0.65)" }}>
+            style={{ fontSize:14, fontWeight:700, color:"rgba(255,70,70,0.80)", background:"none", border:"none", cursor:"pointer", padding:"12px 0 2px", textAlign:"left" as const }}>
             Sign out
           </button>
-
-          {/* Delete */}
-          {!showDeleteConf ? (
-            <button onClick={() => setShowDeleteConf(true)} style={{ ...actionRow, color:"rgba(255,255,255,0.20)", fontSize:12, letterSpacing:"0.04em" }}>
-              Delete account
-            </button>
-          ) : (
-            <div style={{ display:"grid", gap:6 }}>
-              <div style={{ fontSize:12, color:"rgba(255,100,100,0.8)", textAlign:"center" as const }}>Permanent — all data deleted.</div>
-              <div style={{ display:"flex", gap:8 }}>
-                <button onClick={() => setShowDeleteConf(false)} style={{ ...settingsBtn, flex:1, textAlign:"center" as const }}>Cancel</button>
-                <button onClick={async () => {
-                  const sb = createSupabaseBrowser();
-                  if (sb && userId) { await fetch("/api/profile/delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({user_id:userId})}); await sb.auth.signOut(); window.location.href="/"; }
-                }} style={{ ...settingsBtn, flex:1, textAlign:"center" as const, color:"#fff", background:"rgba(255,50,50,0.3)", border:"1px solid rgba(255,80,80,0.35)" }}>
-                  Confirm
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       )}
 

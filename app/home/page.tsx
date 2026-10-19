@@ -140,29 +140,14 @@ function WooferSVG({ audioLevel, listening }: { audioLevel: number; listening: b
         <circle cx={C} cy={C} r="64" fill="none"
           stroke="rgba(0,0,0,0.7)" strokeWidth="2"/>
 
-        {/* ── Cone (golden Kevlar) — pumps with audio ── */}
+        {/* ── Cone (golden KRK) — pumps with audio ── */}
         <g style={{
           transform: `scale(${pump})`,
           transformOrigin: `${C}px ${C}px`,
           transition: "transform 0.05s ease-out",
         }}>
           <circle cx={C} cy={C} r="62" fill="url(#coneG)"/>
-          {/* Cone radial texture lines */}
-          {Array.from({length: 32}).map((_, i) => {
-            const a = (i / 32) * Math.PI * 2;
-            const x1 = C + Math.cos(a) * 27;
-            const y1 = C + Math.sin(a) * 27;
-            const x2 = C + Math.cos(a) * 61;
-            const y2 = C + Math.sin(a) * 61;
-            return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
-              stroke="rgba(0,0,0,0.16)" strokeWidth="0.5"/>;
-          })}
-          {/* Cone concentric rings */}
-          {[34, 42, 50, 58].map(r => (
-            <circle key={r} cx={C} cy={C} r={r} fill="none"
-              stroke="rgba(0,0,0,0.20)" strokeWidth="0.7"/>
-          ))}
-          {/* Kevlar weave highlight */}
+          {/* Sheen highlight — no texture lines, no rings */}
           <circle cx={C} cy={C} r="62" fill="url(#coneSheenG)"/>
 
           {/* ── Spider / voice coil former ── */}
@@ -180,8 +165,8 @@ function WooferSVG({ audioLevel, listening }: { audioLevel: number; listening: b
             fill="rgba(255,255,255,0.11)" style={{filter:"blur(1.5px)"}}/>
         </g>
 
-        {/* ── Screws × 6 (outside cone, on baffle) ── */}
-        {[30, 90, 150, 210, 270, 330].map((deg) => {
+        {/* ── Screws × 4 (outside cone, on baffle) ── */}
+        {[45, 135, 225, 315].map((deg) => {
           const a = (deg * Math.PI) / 180;
           const sx = C + Math.cos(a) * 83;
           const sy = C + Math.sin(a) * 83;
