@@ -180,8 +180,8 @@ function TrackRow({ rank, title, subtitle, meta, followed, loading, onToggle }: 
       <div style={rankStyle}>{rank}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 15, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title}</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
-          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{subtitle}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3, minWidth: 0, overflow: "hidden" }}>
+          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flexShrink: 1 }}>{subtitle}</span>
           <span style={{ fontSize: 11, color: "rgba(255,255,255,0.28)", flexShrink: 0 }}>· {meta}</span>
           <FollowBtn title={title} subtitle={subtitle} followed={followed} loading={loading} onToggle={onToggle} />
         </div>
@@ -220,11 +220,11 @@ function Label({ children }: { children: React.ReactNode }) {
   )
 }
 
-const page: React.CSSProperties = { minHeight: "100vh", background: "#000", color: "#fff", padding: "0 0 120px" }
-const shell: React.CSSProperties = { maxWidth: 680, margin: "0 auto", padding: "16px 16px 0" }
+const page: React.CSSProperties = { minHeight: "100vh", background: "#000", color: "#fff", padding: "0 0 120px", overflowX: "hidden" }
+const shell: React.CSSProperties = { maxWidth: 680, margin: "0 auto", padding: "16px 16px 0", overflowX: "hidden" }
 const heroCard: React.CSSProperties = { border: "1px solid rgba(255,255,255,0.10)", background: "linear-gradient(160deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))", borderRadius: 20, padding: 18, marginBottom: 12 }
 const card: React.CSSProperties = { border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)", borderRadius: 18, padding: 14, marginBottom: 12 }
-const row: React.CSSProperties = { display: "flex", gap: 12, alignItems: "center", padding: "10px 12px", border: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.015)", borderRadius: 14 }
+const row: React.CSSProperties = { display: "flex", gap: 12, alignItems: "center", padding: "10px 12px", border: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.015)", borderRadius: 14, minWidth: 0, overflow: "hidden" }
 const rankStyle: React.CSSProperties = { width: 28, height: 28, borderRadius: 8, display: "grid", placeItems: "center", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", fontSize: 12, fontWeight: 900, flexShrink: 0 }
 const emptyStyle: React.CSSProperties = { fontSize: 13, color: "rgba(255,255,255,0.42)", padding: "4px 0" }
 const nudge: React.CSSProperties = { marginTop: 10, fontSize: 12, color: "rgba(255,255,255,0.45)", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "8px 12px" }

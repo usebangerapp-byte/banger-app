@@ -354,7 +354,7 @@ export default function ChartsPage() {
   }
 
   return (
-    <main style={{ minHeight: "100vh", background: "#000", color: "#fff", padding: "16px 16px 120px" }}>
+    <main style={{ minHeight: "100vh", background: "#000", color: "#fff", padding: "16px 16px 120px", overflowX: "hidden" }}>
       {toast && (
         <div style={{ position: "fixed", bottom: 100, left: "50%", transform: "translateX(-50%)", background: "rgba(20,20,20,0.95)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 20, padding: "10px 20px", fontSize: 13, fontWeight: 600, color: "#fff", zIndex: 999, whiteSpace: "nowrap", backdropFilter: "blur(12px)" }}>
           {toast}
@@ -470,6 +470,8 @@ const rowStyle: React.CSSProperties = {
   background: "rgba(255,255,255,0.02)",
   borderRadius: 16,
   padding: 12,
+  overflow: "hidden",
+  minWidth: 0,
 };
 
 const rankStyle: React.CSSProperties = {
