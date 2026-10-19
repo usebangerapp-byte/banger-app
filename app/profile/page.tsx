@@ -199,7 +199,7 @@ export default function ProfilePageV2() {
         <div style={tabBarStyle}>
           {(["profile","messages"] as const).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{ ...tabBtn, ...(tab===t?tabActive:{}) }}>
-              {t==="profile" ? "PROFILE" : `MESSAGES${convs.reduce((a,c)=>a+c.unread,0)>0?` (${convs.reduce((a,c)=>a+c.unread,0)})`:""}`}
+              {t==="profile" ? "PROFILE" : `CHAT${convs.reduce((a,c)=>a+c.unread,0)>0?` (${convs.reduce((a,c)=>a+c.unread,0)})`:""}`}
             </button>
           ))}
         </div>
