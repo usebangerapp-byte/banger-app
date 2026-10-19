@@ -32,7 +32,7 @@ export default function LandingPage() {
         {/* Center logo */}
         <div style={logoBlock}>
           {/* B logo */}
-          <img src="/B-logo.png" alt="B" style={{ width: 56, height: 56, objectFit: "contain" }} />
+          <img src="/B-logo.png" alt="B" style={{ width: 80, height: 80, objectFit: "contain" }} />
           <div style={logoMark}>BANGER</div>
           <div style={tagline}>Identify any track.<br />Even unreleased.</div>
         </div>
@@ -82,8 +82,8 @@ const logoBlock: React.CSSProperties = {
   display: "flex", flexDirection: "column", gap: 20, alignItems: "center", textAlign: "center",
 };
 const logoMark: React.CSSProperties = {
-  fontSize: 18, fontWeight: 700, letterSpacing: "0.32em",
-  color: "rgba(255,255,255,0.22)",
+  fontSize: 16, fontWeight: 700, letterSpacing: "0.36em",
+  color: "rgba(255,255,255,0.70)",
 };
 const tagline: React.CSSProperties = {
   fontSize: "clamp(28px,8vw,38px)", fontWeight: 500,
