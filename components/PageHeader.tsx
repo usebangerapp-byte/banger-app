@@ -11,13 +11,6 @@ export default function PageHeader({ title, sub }: { title: string; sub?: string
       marginBottom: 16,
     }}>
       <div style={{
-        fontSize: 11,
-        fontWeight: 900,
-        letterSpacing: "0.28em",
-        color: "rgba(255,255,255,0.35)",
-        marginBottom: 4,
-      }}>BANGER</div>
-      <div style={{
         fontSize: 22,
         fontWeight: 900,
         letterSpacing: "0.04em",
