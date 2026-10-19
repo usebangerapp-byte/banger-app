@@ -386,7 +386,7 @@ export default function ProfilePageV2() {
 }
 
 const pageStyle: React.CSSProperties = { minHeight:"100vh", background:"#000", color:"#fff", padding:"0 0 120px" };
-const shellStyle: React.CSSProperties = { maxWidth:680, margin:"0 auto", padding:"24px 18px", display:"grid", gap:16 };
+const shellStyle: React.CSSProperties = { maxWidth:680, margin:"0 auto", padding:"16px 16px", display:"grid", gap:16 };
 const sectionStyle: React.CSSProperties = { border:"1px solid rgba(255,255,255,0.08)", borderRadius:20, padding:16, display:"grid", gap:12 };
 const sectionTitleStyle: React.CSSProperties = { fontSize:10, fontWeight:800, letterSpacing:"0.20em", opacity:0.5 };
 const headerStyle: React.CSSProperties = { border:"1px solid rgba(255,255,255,0.08)", borderRadius:24, padding:20, display:"grid", gap:14, background:"rgba(255,255,255,0.02)" };

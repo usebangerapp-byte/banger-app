@@ -80,8 +80,8 @@ const logoBlock: React.CSSProperties = {
   display: "flex", flexDirection: "column", gap: 20, alignItems: "center", textAlign: "center",
 };
 const logoMark: React.CSSProperties = {
-  fontSize: 13, fontWeight: 900, letterSpacing: "0.32em",
-  color: "rgba(255,255,255,0.40)",
+  fontSize: 18, fontWeight: 900, letterSpacing: "0.32em",
+  color: "rgba(255,255,255,0.70)",
 };
 const tagline: React.CSSProperties = {
   fontSize: "clamp(28px,8vw,38px)", fontWeight: 900,

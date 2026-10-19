@@ -204,7 +204,7 @@ export default function UploadPage() {
   if (!roleReady) return <main style={{ minHeight: "100vh", background: "#000" }} />;
 
   return (
-    <main style={{ minHeight: "100vh", background: "#000", color: "#fff", padding: "24px 18px 120px" }}>
+    <main style={{ minHeight: "100vh", background: "#000", color: "#fff", padding: "16px 16px 120px" }}>
       <div style={{ maxWidth: 680, margin: "0 auto", display: "grid", gap: 14 }}>
 
         <PageHeader title="UPLOAD" sub="Register your track for scanning" />
