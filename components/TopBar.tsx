@@ -30,7 +30,9 @@ export default function TopBar() {
       setUserId(user.id);
       sb.from("profiles").select("role,genre,notifs_enabled").eq("id", user.id).maybeSingle()
         .then(({ data: p }) => {
-          if (p?.role === "pro") setPlan("PRO");
+          // role can be "pro" or anything else (public/free)
+          const isPro = p?.role === "pro";
+          setPlan(isPro ? "PRO" : "Free");
           if (p?.genre) setGenre(p.genre);
           if (p?.notifs_enabled === false) setNotifsEnabled(false);
         });
@@ -154,30 +156,20 @@ export default function TopBar() {
                 placeholder="House, Techno…"
                 style={{ background:"transparent", border:"none", color:"#fff", fontSize:13, fontWeight:700, textAlign:"right" as const, outline:"none", width:140 }} />
             </div>
-            <a href="/profile" onClick={() => setShowSettings(false)} style={settingsBtn}>
-              Edit full profile →
-            </a>
           </div>
 
-          {/* 4 — Danger zone */}
+          {/* 4 — Danger zone (only delete — sign out is in Profile tab) */}
           <div style={settingsSection}>
-            <div style={settingsSectionTitle}>ACCOUNT ACTIONS</div>
-            <button onClick={async () => {
-              const sb = createSupabaseBrowser();
-              if (sb) await sb.auth.signOut();
-              window.location.href = "/";
-            }} style={{ ...settingsBtn, color:"rgba(255,100,100,0.8)", border:"1px solid rgba(255,80,80,0.18)", background:"transparent" }}>
-              Sign out
-            </button>
+            <div style={settingsSectionTitle}>DANGER ZONE</div>
             {!showDeleteConf ? (
               <button onClick={() => setShowDeleteConf(true)}
-                style={{ ...settingsBtn, color:"rgba(255,60,60,0.5)", border:"1px solid rgba(255,60,60,0.10)", background:"transparent", fontSize:12 }}>
+                style={{ ...settingsBtn, color:"rgba(255,60,60,0.6)", border:"1px solid rgba(255,60,60,0.15)", background:"transparent" }}>
                 Delete my account
               </button>
             ) : (
               <div style={{ display:"grid", gap:8 }}>
                 <div style={{ fontSize:12, color:"rgba(255,100,100,0.8)", textAlign:"center" as const }}>
-                  This is permanent. All your data will be deleted.
+                  Permanent. All your data will be deleted.
                 </div>
                 <div style={{ display:"flex", gap:8 }}>
                   <button onClick={() => setShowDeleteConf(false)} style={{ ...settingsBtn, flex:1, textAlign:"center" as const }}>Cancel</button>

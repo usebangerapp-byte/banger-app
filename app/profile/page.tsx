@@ -205,48 +205,68 @@ export default function ProfilePageV2() {
         </div>
 
         {tab==="profile" && (<>
-          <div style={headerStyle}>
-            <div style={{ display:"flex", gap:16, alignItems:"flex-start" }}>
+
+          {/* ── IDENTITY CARD ── */}
+          <div style={identityCard}>
+            {/* Avatar + name row */}
+            <div style={{ display:"flex", alignItems:"center", gap:16 }}>
               <div style={avatarStyle}>{name.charAt(0).toUpperCase()}</div>
-              <div style={{ flex:1 }}>
-                <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                  <div style={{ fontSize:20, fontWeight:900 }}>{name}</div>
+              <div>
+                <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" as const }}>
+                  <span style={{ fontSize:22, fontWeight:900, letterSpacing:"-0.01em" }}>{name}</span>
                   {role==="pro" && <span style={proBadge}>✦ PRO</span>}
                 </div>
-                {profile?.genre && <div style={{ fontSize:13, opacity:0.55, marginTop:2 }}>{profile.genre}</div>}
-                {profile?.bio   && <div style={{ fontSize:13, opacity:0.75, marginTop:6, lineHeight:1.4 }}>{profile.bio}</div>}
-                <div style={{ display:"flex", gap:8, marginTop:8, flexWrap:"wrap" as const }}>
-                  {profile?.instagram  && <a href={`https://instagram.com/${profile.instagram.replace("@","")}`}  target="_blank" rel="noreferrer" style={socialLink}>IG @{profile.instagram.replace("@","")}</a>}
-                  {profile?.soundcloud && <a href={`https://soundcloud.com/${profile.soundcloud.replace("@","")}`} target="_blank" rel="noreferrer" style={socialLink}>SC {profile.soundcloud}</a>}
-                </div>
+                {profile?.genre && <div style={{ fontSize:12, color:"rgba(255,255,255,0.45)", marginTop:3, letterSpacing:"0.04em" }}>{profile.genre}</div>}
               </div>
             </div>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8 }}>
-              {[{l:"SCANS",v:scans.length},{l:"FOLLOWERS",v:profile?.follower_count||0},{l:"FOLLOWING",v:profile?.following_count||0},{l:"FOLLOWS",v:follows.length}].map(({l,v})=>(
-                <div key={l} style={{ textAlign:"center" as const }}>
-                  <div style={{ fontSize:20, fontWeight:900 }}>{v}</div>
-                  <div style={{ fontSize:9, opacity:0.45, letterSpacing:"0.14em" }}>{l}</div>
+
+            {/* Bio */}
+            {profile?.bio && (
+              <div style={{ fontSize:14, color:"rgba(255,255,255,0.70)", lineHeight:1.5, borderLeft:"2px solid rgba(255,255,255,0.12)", paddingLeft:12 }}>
+                {profile.bio}
+              </div>
+            )}
+
+            {/* Social links */}
+            {(profile?.instagram || profile?.soundcloud) && (
+              <div style={{ display:"flex", gap:8, flexWrap:"wrap" as const }}>
+                {profile?.instagram  && <a href={`https://instagram.com/${profile.instagram.replace("@","")}`}  target="_blank" rel="noreferrer" style={socialLink}>IG @{profile.instagram.replace("@","")}</a>}
+                {profile?.soundcloud && <a href={`https://soundcloud.com/${profile.soundcloud.replace("@","")}`} target="_blank" rel="noreferrer" style={socialLink}>SC {profile.soundcloud}</a>}
+              </div>
+            )}
+
+            {/* Stats row */}
+            <div style={statsRow}>
+              {[{l:"SCANS",v:scans.length},{l:"FOLLOWERS",v:profile?.follower_count||0},{l:"FOLLOWING",v:profile?.following_count||0},{l:"FOLLOWS",v:follows.length}].map(({l,v},i)=>(
+                <div key={l} style={{ textAlign:"center" as const, flex:1, ...(i<3?{borderRight:"1px solid rgba(255,255,255,0.07)"}:{}) }}>
+                  <div style={{ fontSize:22, fontWeight:900 }}>{v}</div>
+                  <div style={{ fontSize:9, color:"rgba(255,255,255,0.35)", letterSpacing:"0.14em", marginTop:2 }}>{l}</div>
                 </div>
               ))}
             </div>
+
+            {/* Sparkline */}
             {sparkData.some(v=>v>0) && (
-              <div>
-                <div style={{ fontSize:10, opacity:0.4, letterSpacing:"0.14em", marginBottom:6 }}>SCANS THIS WEEK</div>
+              <div style={{ padding:"0 4px" }}>
+                <div style={{ fontSize:9, color:"rgba(255,255,255,0.30)", letterSpacing:"0.16em", marginBottom:8 }}>SCANS THIS WEEK</div>
                 <Sparkline data={sparkData} />
               </div>
             )}
+
+            {/* Share link */}
             {profile?.display_name && (
               <button onClick={() => navigator.clipboard?.writeText(shareUrl)} style={shareBtn}>
                 🔗 {shareUrl.replace("https://","")}
               </button>
             )}
-            <div style={{ display:"grid", gap:8 }}>
-              <button onClick={() => setEditing(v=>!v)} style={editBtn}>{editing?"Cancel":"Edit Profile"}</button>
-              {role==="public"
-                ? <button onClick={() => router.push("/onboarding")} style={upgradeBtn}>✦ Upgrade to PRO — €9.99/mo</button>
-                : <button onClick={() => switchRole("public")} style={downgradeBtn}>Switch to Public (Free)</button>}
-              <button onClick={async()=>{ if(supabase){await supabase.auth.signOut();router.push("/");} }} style={signOutBtn}>Sign out</button>
-            </div>
+          </div>
+
+          {/* ── ACTION BUTTONS ── */}
+          <div style={{ display:"grid", gap:10 }}>
+            <button onClick={() => setEditing(v=>!v)} style={editBtn}>{editing ? "↑ Cancel editing" : "Edit Profile"}</button>
+            {role !== "pro" && (
+              <button onClick={() => router.push("/onboarding")} style={upgradeBtn}>✦ Upgrade to PRO — €9.99/mo</button>
+            )}
           </div>
 
           {editing && (
@@ -407,19 +427,20 @@ export default function ProfilePageV2() {
 }
 
 const pageStyle: React.CSSProperties = { minHeight:"100vh", background:"#000", color:"#fff", padding:"0 0 120px" };
-const shellStyle: React.CSSProperties = { maxWidth:680, margin:"0 auto", padding:"16px 16px", display:"grid", gap:16 };
-const sectionStyle: React.CSSProperties = { border:"1px solid rgba(255,255,255,0.08)", borderRadius:20, padding:16, display:"grid", gap:12 };
-const sectionTitleStyle: React.CSSProperties = { fontSize:10, fontWeight:800, letterSpacing:"0.20em", opacity:0.5 };
-const headerStyle: React.CSSProperties = { border:"1px solid rgba(255,255,255,0.08)", borderRadius:24, padding:20, display:"grid", gap:14, background:"rgba(255,255,255,0.02)" };
-const avatarStyle: React.CSSProperties = { width:72, height:72, borderRadius:"50%", background:"linear-gradient(135deg,rgba(255,255,255,0.15),rgba(255,255,255,0.05))", border:"1px solid rgba(255,255,255,0.12)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:28, fontWeight:900, flexShrink:0 };
+const shellStyle: React.CSSProperties = { maxWidth:680, margin:"0 auto", padding:"16px 16px", display:"grid", gap:14 };
+const sectionStyle: React.CSSProperties = { border:"1px solid rgba(255,255,255,0.07)", borderRadius:18, padding:"14px 16px", display:"grid", gap:10 };
+const sectionTitleStyle: React.CSSProperties = { fontSize:9, fontWeight:900, letterSpacing:"0.22em", color:"rgba(255,255,255,0.30)" };
+// identity card replaces old headerStyle
+const identityCard: React.CSSProperties = { border:"1px solid rgba(255,255,255,0.09)", borderRadius:24, padding:"20px 18px", display:"grid", gap:16, background:"linear-gradient(160deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))" };
+const statsRow: React.CSSProperties = { display:"flex", background:"rgba(255,255,255,0.03)", borderRadius:16, border:"1px solid rgba(255,255,255,0.07)", padding:"14px 0" };
+const avatarStyle: React.CSSProperties = { width:64, height:64, borderRadius:"50%", background:"linear-gradient(135deg,rgba(255,255,255,0.18),rgba(255,255,255,0.06))", border:"1px solid rgba(255,255,255,0.14)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:26, fontWeight:900, flexShrink:0 };
 const avatarSmall: React.CSSProperties = { width:40, height:40, borderRadius:"50%", background:"rgba(255,255,255,0.08)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:900, flexShrink:0 };
-const proBadge: React.CSSProperties = { fontSize:10, fontWeight:800, letterSpacing:"0.14em", border:"1px solid rgba(255,255,255,0.25)", borderRadius:999, padding:"3px 8px" };
-const socialLink: React.CSSProperties = { fontSize:12, color:"rgba(255,255,255,0.6)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:999, padding:"4px 10px", textDecoration:"none" };
-const shareBtn: React.CSSProperties = { background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:12, padding:"8px 12px", color:"rgba(255,255,255,0.5)", fontSize:12, cursor:"pointer", textAlign:"left" as const };
-const editBtn: React.CSSProperties = { padding:"11px 16px", borderRadius:14, background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.10)", color:"#fff", fontWeight:700, fontSize:14, cursor:"pointer" };
-const upgradeBtn: React.CSSProperties = { padding:"13px 16px", borderRadius:14, background:"linear-gradient(135deg,rgba(255,255,255,0.12),rgba(255,255,255,0.06))", border:"1px solid rgba(255,255,255,0.22)", color:"#fff", fontWeight:800, fontSize:14, cursor:"pointer" };
-const downgradeBtn: React.CSSProperties = { padding:"11px 16px", borderRadius:14, background:"transparent", border:"1px solid rgba(255,255,255,0.06)", color:"rgba(255,255,255,0.4)", fontWeight:600, fontSize:13, cursor:"pointer" };
-const signOutBtn: React.CSSProperties = { padding:"11px 16px", borderRadius:14, background:"transparent", border:"1px solid rgba(255,80,80,0.2)", color:"rgba(255,100,100,0.7)", fontWeight:600, fontSize:13, cursor:"pointer" };
+const proBadge: React.CSSProperties = { fontSize:10, fontWeight:800, letterSpacing:"0.14em", border:"1px solid rgba(255,255,255,0.30)", borderRadius:999, padding:"3px 9px", color:"#fff" };
+const socialLink: React.CSSProperties = { fontSize:12, color:"rgba(255,255,255,0.55)", border:"1px solid rgba(255,255,255,0.10)", borderRadius:999, padding:"5px 12px", textDecoration:"none" };
+const shareBtn: React.CSSProperties = { background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:12, padding:"9px 14px", color:"rgba(255,255,255,0.40)", fontSize:12, cursor:"pointer", textAlign:"left" as const };
+const editBtn: React.CSSProperties = { padding:"13px 16px", borderRadius:14, background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.12)", color:"#fff", fontWeight:700, fontSize:14, cursor:"pointer" };
+const upgradeBtn: React.CSSProperties = { padding:"13px 16px", borderRadius:14, background:"linear-gradient(135deg,rgba(255,255,255,0.13),rgba(255,255,255,0.06))", border:"1px solid rgba(255,255,255,0.22)", color:"#fff", fontWeight:800, fontSize:14, cursor:"pointer" };
+const downgradeBtn: React.CSSProperties = { padding:"11px 16px", borderRadius:14, background:"transparent", border:"1px solid rgba(255,255,255,0.06)", color:"rgba(255,255,255,0.35)", fontWeight:600, fontSize:13, cursor:"pointer" };
 const inputStyle: React.CSSProperties = { display:"block", width:"100%", marginTop:6, padding:"10px 12px", borderRadius:12, background:"#0d0d0d", border:"1px solid rgba(255,255,255,0.10)", color:"#fff", fontSize:14 };
 const saveBtn: React.CSSProperties = { padding:"13px 16px", borderRadius:14, background:"#fff", color:"#000", fontWeight:800, fontSize:14, cursor:"pointer", border:"none" };
 const tabBarStyle: React.CSSProperties = { display:"flex", borderBottom:"1px solid rgba(255,255,255,0.08)" };
