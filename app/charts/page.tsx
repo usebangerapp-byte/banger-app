@@ -274,128 +274,79 @@ export default function ChartsPage() {
 
           return (
             <div key={track.id} style={rowStyle}>
-              <div style={{ display: "grid", gridTemplateColumns: "34px 1fr", gap: 12, alignItems: "start" }}>
+              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
                 <div style={rankStyle}>{index + 1}</div>
 
-                <div style={{ display: "grid", gap: 8, minWidth: 0 }}>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", minWidth: 0 }}>
-                    <div style={{ fontSize: 17, fontWeight: 800, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", minWidth: 0 }}>{displayLine}</div>
-                    <span style={{ fontSize: 12, opacity: 0.75 }}>• {scans} scans</span>
-                    {canPreview ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          let audio = (window as any)._bangerAudio as HTMLAudioElement | undefined;
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {/* Title line */}
+                  <div style={{ fontSize: 15, fontWeight: 800, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{displayLine}</div>
 
-                          if (!audio) {
-                            audio = new Audio();
-                            audio.preload = "none";
-                            (window as any)._bangerAudio = audio;
-                          }
+                  {/* Meta line */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 11, color: "rgba(255,255,255,0.40)", fontWeight: 600 }}>{scans} scans</span>
 
-                          if (!audio) return;
-
-                          const nextSrc = previewUrl(track.snippet_path!);
-                          const currentTrackId = (window as any)._bangerAudioTrackId || null;
-
-                          if (currentTrackId !== track.id) {
-                            audio.pause();
-                            audio.currentTime = 0;
-                            audio.src = nextSrc;
-                            (window as any)._bangerAudioTrackId = track.id;
-
-                            audio.onplay = () => setPlaying(track.id);
-                            audio.onpause = () => setPlaying((current) => (current === track.id ? null : current));
-                            audio.onended = () => setPlaying((current) => (current === track.id ? null : current));
-                          }
-
-                          if (audio.paused) {
-                            audio.play().then(() => {
-                              setPlaying(track.id);
-                            }).catch(() => {});
-                          } else {
-                            audio.pause();
-                            setPlaying(null);
-                          }
-                        }}
-                        style={smallLinkBtn}
-                      >
-                        {isPlaying ? "❚❚" : "Preview ▶"}
+                    {canPreview && (
+                      <button type="button" onClick={() => {
+                        let audio = (window as any)._bangerAudio as HTMLAudioElement | undefined;
+                        if (!audio) { audio = new Audio(); audio.preload = "none"; (window as any)._bangerAudio = audio; }
+                        if (!audio) return;
+                        const nextSrc = previewUrl(track.snippet_path!);
+                        const currentTrackId = (window as any)._bangerAudioTrackId || null;
+                        if (currentTrackId !== track.id) {
+                          audio.pause(); audio.currentTime = 0; audio.src = nextSrc;
+                          (window as any)._bangerAudioTrackId = track.id;
+                          audio.onplay = () => setPlaying(track.id);
+                          audio.onpause = () => setPlaying((c) => c === track.id ? null : c);
+                          audio.onended = () => setPlaying((c) => c === track.id ? null : c);
+                        }
+                        if (audio.paused) { audio.play().then(() => setPlaying(track.id)).catch(() => {}); }
+                        else { audio.pause(); setPlaying(null); }
+                      }} style={previewInlineBtn}>
+                        {isPlaying ? "❚❚" : "▶"} {isPlaying ? "Stop" : "Preview"}
                       </button>
-                    ) : null}
-                  </div>
+                    )}
 
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", fontSize: 15, fontWeight: 700, opacity: 0.92 }}>
-                    {kind === "unreleased" ? (() => {
+                    {kind === "released" && (() => {
+                      const q = encodeURIComponent(`${track.artist || ""} ${track.title || ""}`.trim());
+                      return <>
+                        <a href={track.spotify_url || `https://open.spotify.com/search/${q}`} target="_blank" rel="noreferrer" style={inlineLink}>Spotify</a>
+                        <a href={track.beatport_url || `https://www.beatport.com/search?q=${q}`} target="_blank" rel="noreferrer" style={{ ...inlineLink, color: "rgba(0,229,255,0.8)" }}>Beatport</a>
+                      </>;
+                    })()}
+
+                    {kind === "unreleased" && (() => {
                       const titleKey = trackKey(track.title || "");
                       const isFollowing = followedTitles.has(titleKey);
                       return (
-                        <div style={{ display: "grid", gap: 6 }}>
-                          <button
-                            type="button"
-                            disabled={!userId}
-                            onClick={async () => {
-                              if (!userId) { showToast("Sign in to follow tracks"); return; }
-                              const action = isFollowing ? "unfollow" : "follow";
-                              const res = await fetch("/api/follow-track", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({
-                                  action,
-                                  user_id: userId,
-                                  track_title: track.title || "",
-                                  track_subtitle: (track.artist || "").trim() || null,
-                                }),
-                              });
-                              const json = await res.json().catch(() => null);
-                              if (json?.ok) {
-                                setFollowedTitles(prev => {
-                                  const next = new Set(prev);
-                                  if (action === "follow") next.add(titleKey);
-                                  else next.delete(titleKey);
-                                  return next;
-                                });
-                                if (action === "follow") showToast("Following! You'll be notified when it drops 🔔");
-                              }
-                            }}
-                            style={{
-                              padding: "8px 14px", borderRadius: 999, fontSize: 13, fontWeight: 700,
-                              border: isFollowing ? "1px solid rgba(255,255,255,0.22)" : "1px solid rgba(255,255,255,0.92)",
-                              background: isFollowing ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.92)",
-                              color: isFollowing ? "rgba(255,255,255,0.92)" : "#000",
-                              cursor: !userId ? "default" : "pointer",
-                            }}
-                          >
-                            {isFollowing ? "Following ✓" : "+ Follow & get notified"}
-                          </button>
-                          {!isFollowing && (
-                            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.38)", paddingLeft: 2 }}>
-                              🔔 Get notified when this drops
-                            </div>
-                          )}
-                        </div>
+                        <button type="button" disabled={!userId}
+                          onClick={async () => {
+                            if (!userId) { showToast("Sign in to follow tracks"); return; }
+                            const action = isFollowing ? "unfollow" : "follow";
+                            const res = await fetch("/api/follow-track", {
+                              method: "POST", headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ action, user_id: userId, track_title: track.title || "", track_subtitle: (track.artist || "").trim() || null }),
+                            });
+                            const json = await res.json().catch(() => null);
+                            if (json?.ok) {
+                              setFollowedTitles(prev => { const next = new Set(prev); if (action === "follow") next.add(titleKey); else next.delete(titleKey); return next; });
+                              if (action === "follow") showToast("Following! You'll be notified when it drops 🔔");
+                            }
+                          }}
+                          style={{
+                            padding: "4px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700,
+                            border: isFollowing ? "1px solid rgba(255,255,255,0.18)" : "1px solid rgba(255,255,255,0.55)",
+                            background: isFollowing ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.10)",
+                            color: isFollowing ? "rgba(255,255,255,0.55)" : "#fff",
+                            cursor: !userId ? "default" : "pointer",
+                          }}>
+                          {isFollowing ? "Following ✓" : "🔔 Follow"}
+                        </button>
                       );
-                    })() : null}
-                  </div>
-
-                  {kind === "released" ? (() => {
-                    const q = encodeURIComponent(`${track.artist || ""} ${track.title || ""}`.trim());
-                    const spotifyHref  = track.spotify_url  || `https://open.spotify.com/search/${q}`;
-                    const beatportHref = track.beatport_url || `https://www.beatport.com/search?q=${q}`;
-                    return (
-                      <div style={{ display: "grid", gap: 8, marginTop: 4 }}>
-                        <a href={spotifyHref} target="_blank" rel="noreferrer" style={spotifyBtn}>
-                          ▶ Listen on Spotify
-                        </a>
-                        <a href={beatportHref} target="_blank" rel="noreferrer" style={beatportBtn}>
-                          ⬇ Buy on Beatport
-                        </a>
-                      </div>
-                    );
-                  })() : null}
+                    })()}
                   </div>
                 </div>
               </div>
+            </div>
           );
         })}
       </div>
@@ -616,7 +567,25 @@ const smallLinkBtn: React.CSSProperties = {
   fontWeight: 700,
   fontSize: 15,
   cursor: "pointer",
-};;
+};
+
+const previewInlineBtn: React.CSSProperties = {
+  background: "rgba(255,255,255,0.07)",
+  border: "1px solid rgba(255,255,255,0.12)",
+  borderRadius: 999,
+  color: "#fff",
+  fontSize: 11,
+  fontWeight: 700,
+  padding: "3px 9px",
+  cursor: "pointer",
+};
+
+const inlineLink: React.CSSProperties = {
+  color: "rgba(29,185,84,0.9)",
+  fontWeight: 700,
+  fontSize: 11,
+  textDecoration: "none",
+};
 
 const spotifyBtn: React.CSSProperties = {
   display: "block",
