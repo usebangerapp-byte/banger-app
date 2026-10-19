@@ -247,11 +247,31 @@ export default function ProfilePageV2() {
                     <div style={{ fontWeight:700, fontSize:14 }}>{t.title||"Untitled"}</div>
                     {t.artist && <div style={{ fontSize:12, opacity:0.5 }}>{t.artist}</div>}
                   </div>
-                  <span style={{ fontSize:10, fontWeight:800, color:t.is_released?"#1db954":"rgba(255,255,255,0.55)", border:`1px solid ${t.is_released?"rgba(29,185,84,0.35)":"rgba(255,255,255,0.12)"}`, borderRadius:999, padding:"3px 8px" }}>
-                    {t.is_released?"RELEASED":"UNRELEASED"}
-                  </span>
+                  <button
+                    onClick={async () => {
+                      const next = !t.is_released;
+                      const res = await fetch("/api/bpro/set-release", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ track_id: t.id, is_released: next }),
+                      });
+                      if (res.ok) {
+                        setTracks(prev => prev.map(x => x.id === t.id ? { ...x, is_released: next, release_status: next ? "released" : "unreleased" } : x));
+                      }
+                    }}
+                    style={{
+                      fontSize: 10, fontWeight: 800, borderRadius: 999, padding: "5px 10px",
+                      cursor: "pointer", border: "none",
+                      background: t.is_released ? "rgba(29,185,84,0.18)" : "rgba(255,255,255,0.08)",
+                      color: t.is_released ? "#1db954" : "rgba(255,255,255,0.55)",
+                      outline: `1px solid ${t.is_released ? "rgba(29,185,84,0.35)" : "rgba(255,255,255,0.12)"}`,
+                    }}
+                  >
+                    {t.is_released ? "RELEASED" : "UNRELEASED"}
+                  </button>
                 </div>
               ))}
+              <div style={{ fontSize:11, opacity:0.4, marginTop:8 }}>Tap a badge to toggle released / unreleased</div>
             </Section>
           )}
 

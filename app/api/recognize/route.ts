@@ -217,7 +217,7 @@ export async function POST(req: Request) {
         const lastChecked = privateTrackRow.release_checked_at
           ? new Date(privateTrackRow.release_checked_at).getTime() : 0;
         if (lastChecked < Date.now() - 60 * 60 * 1000) {
-          fetch("https://banger-app-zeta.vercel.app/api/bpro/release-check").catch(() => {});
+          fetch("https://usebanger.com/api/bpro/release-check").catch(() => {});
           await new Promise(r => setTimeout(r, 1500));
           const { data: refreshed } = await supabase
             .from("bpro_tracks")
