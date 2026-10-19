@@ -35,14 +35,20 @@ export async function GET() {
 
   const safeScans = Array.isArray(scans) ? scans.filter(Boolean) : []
 
-  const grouped = new Map<string, {
+  // 7-day window for HOT / TRENDING
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+
+  type TrackEntry = {
     track_id: string
     track_title: string
     track_subtitle: string
-    scans: number
+    scans_all: number
+    scans_week: number
     latest_created_at: string | null
     release_status: string
-  }>()
+  }
+
+  const grouped = new Map<string, TrackEntry>()
 
   for (const e of safeScans) {
     if (!e.track_id) continue
@@ -51,30 +57,22 @@ export async function GET() {
       ? (e as any).bpro_tracks[0]
       : (e as any).bpro_tracks
 
-    const title =
-      linked?.title ||
-      e.track_title ||
-      "Unknown ID"
+    const title = linked?.title || e.track_title || "Unknown ID"
+    const subtitle = linked?.artist || e.track_subtitle || ""
+    const releaseStatus = linked?.release_status || "unknown"
 
-    const subtitle =
-      linked?.artist ||
-      e.track_subtitle ||
-      ""
-
-    const releaseStatus =
-      linked?.release_status ||
-      "unknown"
-
-    const current = grouped.get(e.track_id) || {
+    const current: TrackEntry = grouped.get(e.track_id) || {
       track_id: e.track_id,
       track_title: title,
       track_subtitle: subtitle,
-      scans: 0,
+      scans_all: 0,
+      scans_week: 0,
       latest_created_at: e.created_at || null,
       release_status: releaseStatus,
     }
 
-    current.scans += 1
+    current.scans_all += 1
+    if (e.created_at && e.created_at >= sevenDaysAgo) current.scans_week += 1
 
     if (e.created_at && (!current.latest_created_at || e.created_at > current.latest_created_at)) {
       current.latest_created_at = e.created_at
@@ -89,22 +87,19 @@ export async function GET() {
 
   const allTracks = Array.from(grouped.values())
 
-  const sortTracks = (arr: typeof allTracks) =>
+  // HOT RIGHT NOW + TRENDING: sorted by scans this week (fallback: all-time)
+  const sortByWeek = (arr: TrackEntry[]) =>
     [...arr].sort((a, b) => {
-      if (b.scans !== a.scans) return b.scans - a.scans
-      return String(b.latest_created_at || "").localeCompare(String(a.latest_created_at || ""))
+      if (b.scans_week !== a.scans_week) return b.scans_week - a.scans_week
+      return b.scans_all - a.scans_all
     })
 
-  const topReleased = sortTracks(
-    allTracks.filter((t) => t.release_status === "released")
-  ).slice(0, 100)
-
-  const topUnreleased = sortTracks(
+  const weeklyUnreleased = sortByWeek(
     allTracks.filter((t) => t.release_status !== "released")
-  ).slice(0, 100)
+  ).map(t => ({ ...t, scans: t.scans_week || t.scans_all }))
 
-  const trending = topUnreleased.slice(0, 6)
-  const mostWanted = topUnreleased.slice(0, 6)
+  const trending = weeklyUnreleased.slice(0, 10)
+  const mostWanted = sortByWeek(allTracks).map(t => ({ ...t, scans: t.scans_all })).slice(0, 10)
 
   let recentlyAdded: Array<{ track_title: string; track_subtitle?: string; created_at?: string | null }> = []
 
