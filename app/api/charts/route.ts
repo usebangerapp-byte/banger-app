@@ -45,7 +45,8 @@ export async function GET() {
 
     if (!title.trim() || title.trim().toLowerCase() === "unknown") continue
 
-    const key = `${title}|${subtitle}|${resultType}`
+    // Deduplicate by title only (case-insensitive) — a track changing status shouldn't appear twice
+    const key = title.toLowerCase().trim()
 
     const current = map.get(key) || {
       track_title: row.track_title,
@@ -55,6 +56,8 @@ export async function GET() {
     }
 
     current.scans += 1
+    // Keep the most recent result_type (first row wins since ordered by created_at desc)
+    if (current.scans === 1) current.result_type = resultType
     map.set(key, current)
   }
 

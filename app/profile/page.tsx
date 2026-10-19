@@ -83,7 +83,18 @@ export default function ProfilePageV2() {
 
         const fRes = await fetch(`/api/follow-track?user_id=${uid}`, { cache: "no-store" });
         const fj   = await fRes.json().catch(() => null);
-        if (mounted) setFollows(Array.isArray(fj?.followed) ? fj.followed : []);
+        if (mounted) {
+          const rawFollows = Array.isArray(fj?.followed) ? fj.followed : [];
+          // Deduplicate by track_title
+          const seenF = new Set<string>();
+          const uniqueFollows = rawFollows.filter((f: any) => {
+            const key = (f.track_title || "").toLowerCase().trim();
+            if (seenF.has(key)) return false;
+            seenF.add(key);
+            return true;
+          });
+          setFollows(uniqueFollows);
+        }
 
         const { data: scanData } = await supabase
           .from("scan_events").select("track_title,created_at,result_type")
@@ -91,11 +102,20 @@ export default function ProfilePageV2() {
           .neq("result_type", "not_found")
           .order("created_at", { ascending: false }).limit(50);
         if (mounted && scanData) {
-          setScans(scanData);
+          // Deduplicate: keep only the most recent scan per track_title
+          const seen = new Set<string>();
+          const unique = scanData.filter((s: any) => {
+            const key = (s.track_title || "").toLowerCase().trim();
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+          setScans(unique);
           const days = Array.from({ length: 7 }, (_, i) => {
             const d = new Date(); d.setDate(d.getDate() - (6 - i));
             return d.toISOString().split("T")[0];
           });
+          // Use raw scanData (not deduplicated) for accurate daily counts
           setSparkData(days.map(day => scanData.filter((s:any) => s.created_at?.startsWith(day)).length));
         }
 
