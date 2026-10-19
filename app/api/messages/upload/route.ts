@@ -3,7 +3,6 @@ import { NextRequest } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// Désactive le body parser Next.js — on lit le stream brut
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
