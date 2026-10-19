@@ -214,7 +214,7 @@ export default function ProfilePageV2() {
               <div>
                 <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" as const }}>
                   <span style={{ fontSize:22, fontWeight:900, letterSpacing:"-0.01em" }}>{name}</span>
-                  {role==="pro" && <span style={proBadge}>✦ PRO</span>}
+                  {!loading && role==="pro" && <span style={proBadge}>✦ PRO</span>}
                 </div>
                 {profile?.genre && <div style={{ fontSize:12, color:"rgba(255,255,255,0.45)", marginTop:3, letterSpacing:"0.04em" }}>{profile.genre}</div>}
               </div>
@@ -264,7 +264,7 @@ export default function ProfilePageV2() {
           {/* ── ACTION BUTTONS ── */}
           <div style={{ display:"grid", gap:10 }}>
             <button onClick={() => setEditing(v=>!v)} style={editBtn}>{editing ? "↑ Cancel editing" : "Edit Profile"}</button>
-            {role !== "pro" && (
+            {!loading && role !== "pro" && (
               <button onClick={() => router.push("/onboarding")} style={upgradeBtn}>✦ Upgrade to PRO — €9.99/mo</button>
             )}
           </div>
