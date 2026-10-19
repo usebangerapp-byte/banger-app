@@ -32,29 +32,30 @@ const PAGE_BG =
 
 // Woofer inside the button — arc at the bottom
 function WooferBars({ audioLevel, visible }: { audioLevel: number; visible: boolean }) {
-  const BAR_COUNT = 24;
+  const BAR_COUNT = 18;
   return (
     <div style={{
-      position: "absolute", bottom: 22, left: "50%",
+      position: "absolute", bottom: 18, left: "50%",
       transform: "translateX(-50%)",
       display: "flex", alignItems: "flex-end", justifyContent: "center",
-      gap: 2.5, height: 32, width: 130,
+      gap: 3, height: 40, width: 120,
       opacity: visible ? 1 : 0,
-      transition: "opacity 0.35s ease",
+      transition: "opacity 0.4s ease",
       pointerEvents: "none", zIndex: 5,
     }}>
       {Array.from({ length: BAR_COUNT }).map((_, i) => {
         const center = (BAR_COUNT - 1) / 2;
         const dist = Math.abs(i - center) / center;
-        const base = 2;
-        const dynamic = audioLevel * 22 * (1 - dist * 0.6);
-        const h = Math.max(base, dynamic + base);
-        const alpha = 0.35 + audioLevel * 0.55 * (1 - dist * 0.45);
+        // base height visible even at audioLevel=0
+        const base = 4 + (1 - dist) * 4;
+        const dynamic = audioLevel * 28 * (1 - dist * 0.55);
+        const h = base + dynamic;
+        const alpha = 0.55 + audioLevel * 0.40 * (1 - dist * 0.4);
         return (
           <div key={i} style={{
-            width: 2.5, height: h, borderRadius: 99, flexShrink: 0,
+            width: 3, height: h, borderRadius: 99, flexShrink: 0,
             background: `rgba(255,255,255,${alpha})`,
-            transition: "height 0.05s ease, background 0.05s ease",
+            transition: "height 0.06s ease-out, background 0.06s ease",
           }} />
         );
       })}
