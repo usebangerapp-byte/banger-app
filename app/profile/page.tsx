@@ -9,6 +9,9 @@ import { getBrowserRole } from "@/lib/auth/getBrowserRole";
 import PageHeader from "@/components/PageHeader";
 
 // ── Custom inline audio player ──
+// Gestionnaire global : une seule lecture à la fois
+const activeAudioRef = { current: null as HTMLAudioElement | null };
+
 function AudioPlayer({ src, name }: { src: string; name: string }) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
@@ -22,15 +25,28 @@ function AudioPlayer({ src, name }: { src: string; name: string }) {
     if (playing) {
       a.pause();
       setPlaying(false);
+      if (activeAudioRef.current === a) activeAudioRef.current = null;
     } else {
+      // Pause tout autre audio en cours
+      if (activeAudioRef.current && activeAudioRef.current !== a) {
+        activeAudioRef.current.pause();
+        activeAudioRef.current.dispatchEvent(new Event("externalpause"));
+      }
+      activeAudioRef.current = a;
       setLoading(true);
-      try {
-        await a.play();
-        setPlaying(true);
-      } catch {}
+      try { await a.play(); setPlaying(true); } catch {}
       setLoading(false);
     }
   }, [playing]);
+
+  // Écouter la pause externe (quand un autre player démarre)
+  useEffect(() => {
+    const a = audioRef.current;
+    if (!a) return;
+    const onExt = () => { setPlaying(false); };
+    a.addEventListener("externalpause", onExt);
+    return () => a.removeEventListener("externalpause", onExt);
+  }, []);
 
   const fmt = (s: number) => {
     if (!s || isNaN(s)) return "0:00";
@@ -41,14 +57,23 @@ function AudioPlayer({ src, name }: { src: string; name: string }) {
 
   return (
     <div style={{ width: "100%", minWidth: 180, maxWidth: 240 }}>
-      {/* Filename */}
-      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", marginBottom: 7,
-        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
-        🎵 {name}
+      {/* Filename + download */}
+      <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:7 }}>
+        <div style={{ flex:1, fontSize: 11, color: "rgba(255,255,255,0.55)",
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
+          🎵 {name}
+        </div>
+        <a href={src} download={name} target="_blank" rel="noreferrer"
+          style={{ flexShrink:0, color:"rgba(255,255,255,0.40)", lineHeight:1,
+            display:"flex", alignItems:"center" }}
+          onClick={e => e.stopPropagation()}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 3v13M5 16l7 7 7-7"/><line x1="3" y1="21" x2="21" y2="21"/>
+          </svg>
+        </a>
       </div>
       {/* Controls row */}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        {/* Play/pause button */}
         <button onClick={toggle}
           style={{ width: 32, height: 32, borderRadius: "50%", border: "none",
             background: "rgba(255,255,255,0.18)", color: "#fff", fontSize: 13,
@@ -56,7 +81,6 @@ function AudioPlayer({ src, name }: { src: string; name: string }) {
             flexShrink: 0 }}>
           {loading ? "⏳" : playing ? "⏸" : "▶"}
         </button>
-        {/* Progress bar */}
         <div style={{ flex: 1, height: 3, background: "rgba(255,255,255,0.15)", borderRadius: 2,
           cursor: "pointer", position: "relative" as const }}
           onClick={e => {
@@ -68,19 +92,14 @@ function AudioPlayer({ src, name }: { src: string; name: string }) {
             background: "rgba(255,255,255,0.80)", borderRadius: 2,
             transition: "width 0.1s linear" }} />
         </div>
-        {/* Time */}
         <span style={{ fontSize: 10, color: "rgba(255,255,255,0.40)", flexShrink: 0, minWidth: 28 }}>
           {fmt(duration > 0 ? progress * duration : 0)}
         </span>
       </div>
-      {/* Hidden audio element */}
       <audio ref={audioRef} src={src} preload="metadata"
         onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
-        onTimeUpdate={() => {
-          const a = audioRef.current;
-          if (a && a.duration) setProgress(a.currentTime / a.duration);
-        }}
-        onEnded={() => { setPlaying(false); setProgress(0); }}
+        onTimeUpdate={() => { const a = audioRef.current; if (a && a.duration) setProgress(a.currentTime / a.duration); }}
+        onEnded={() => { setPlaying(false); setProgress(0); activeAudioRef.current = null; }}
         style={{ display: "none" }} />
     </div>
   );
@@ -133,6 +152,7 @@ export default function ProfilePageV2() {
   const [messages, setMessages] = useState<any[]>([]);
   const [convs,    setConvs]    = useState<any[]>([]);
   const [activeConv,setActiveConv]=useState<string|null>(null);
+  const [convToDelete, setConvToDelete] = useState<string|null>(null);
   const [msgInput, setMsgInput] = useState("");
   const [uploading, setUploading] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -242,6 +262,18 @@ export default function ProfilePageV2() {
   }, [activeConv, userId]);
 
   useEffect(() => { msgEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+
+  async function deleteConversation(otherUserId: string) {
+    if (!userId) return;
+    // Supprimer tous les messages entre les deux utilisateurs
+    const sb = createSupabaseBrowser();
+    if (!sb) return;
+    await sb.from("messages")
+      .delete()
+      .or(`and(sender_id.eq.${userId},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${userId})`);
+    setConvs(p => p.filter(c => c.user_id !== otherUserId));
+    setConvToDelete(null);
+  }
 
   async function saveProfile() {
     if (!userId) return;
@@ -493,19 +525,49 @@ export default function ProfilePageV2() {
               {convs.length===0
                 ? <div style={emptyStyle}>No messages yet.</div>
                 : convs.map(c=>(
-                  <button key={c.user_id} onClick={()=>setActiveConv(c.user_id)} style={convRow}>
-                    <div style={avatarSmall}>
-                      {c.avatar_url
-                        ? <img src={c.avatar_url} alt="" style={{ width:"100%", height:"100%", borderRadius:"50%", objectFit:"cover" }} />
-                        : (c.display_name||"?").charAt(0).toUpperCase()}
-                    </div>
-                    <div style={{ flex:1, textAlign:"left" as const, minWidth:0, overflow:"hidden" }}>
-                      <div style={{ fontWeight:700, fontSize:14, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.display_name||c.user_id.slice(0,8)}</div>
-                      <div style={{ fontSize:12, opacity:0.5, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.last}</div>
-                    </div>
-                    {c.unread>0 && <div style={unreadBadge}>{c.unread}</div>}
-                  </button>
+                  <div key={c.user_id} style={{ position:"relative" as const }}>
+                    <button onClick={()=>setActiveConv(c.user_id)} style={convRow}>
+                      <div style={avatarSmall}>
+                        {c.avatar_url
+                          ? <img src={c.avatar_url} alt="" style={{ width:"100%", height:"100%", borderRadius:"50%", objectFit:"cover" }} />
+                          : (c.display_name||"?").charAt(0).toUpperCase()}
+                      </div>
+                      <div style={{ flex:1, textAlign:"left" as const, minWidth:0, overflow:"hidden" }}>
+                        <div style={{ fontWeight:700, fontSize:14, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.display_name||c.user_id.slice(0,8)}</div>
+                        <div style={{ fontSize:12, opacity:0.5, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.last}</div>
+                      </div>
+                      {c.unread>0 && <div style={unreadBadge}>{c.unread}</div>}
+                    </button>
+                    {/* Bouton supprimer */}
+                    <button onClick={e=>{ e.stopPropagation(); setConvToDelete(c.user_id); }}
+                      style={{ position:"absolute", right:0, top:"50%", transform:"translateY(-50%)",
+                        background:"none", border:"none", color:"rgba(255,80,80,0.55)", fontSize:18,
+                        cursor:"pointer", padding:"4px 8px", lineHeight:1 }}>×</button>
+                  </div>
                 ))}
+              {/* Modal confirmation suppression */}
+              {convToDelete && (
+                <div style={{ position:"fixed", inset:0, zIndex:500, background:"rgba(0,0,0,0.7)",
+                  display:"flex", alignItems:"center", justifyContent:"center" }}
+                  onClick={()=>setConvToDelete(null)}>
+                  <div style={{ background:"#111", border:"1px solid rgba(255,255,255,0.12)",
+                    borderRadius:20, padding:"24px 20px", maxWidth:300, width:"90%", textAlign:"center" as const }}
+                    onClick={e=>e.stopPropagation()}>
+                    <div style={{ fontSize:15, fontWeight:700, marginBottom:8 }}>Supprimer la conversation ?</div>
+                    <div style={{ fontSize:13, color:"rgba(255,255,255,0.45)", marginBottom:20 }}>
+                      Tous les messages seront effacés définitivement.
+                    </div>
+                    <div style={{ display:"flex", gap:10 }}>
+                      <button onClick={()=>setConvToDelete(null)}
+                        style={{ flex:1, padding:"11px 0", borderRadius:12, border:"1px solid rgba(255,255,255,0.12)",
+                          background:"none", color:"#fff", fontSize:14, cursor:"pointer" }}>Annuler</button>
+                      <button onClick={()=>deleteConversation(convToDelete)}
+                        style={{ flex:1, padding:"11px 0", borderRadius:12, border:"none",
+                          background:"rgba(255,60,60,0.85)", color:"#fff", fontSize:14, fontWeight:700, cursor:"pointer" }}>Supprimer</button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </>) : (<>
               <button onClick={()=>setActiveConv(null)} style={backBtn}>← Back</button>
               {/* Conversation header */}
