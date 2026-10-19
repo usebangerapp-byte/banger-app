@@ -211,27 +211,26 @@ export default function ProfilePageV2() {
             {/* Avatar + name row */}
             <div style={{ display:"flex", alignItems:"center", gap:16 }}>
               <div style={avatarStyle}>{name.charAt(0).toUpperCase()}</div>
-              <div>
+              <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" as const }}>
                   <span style={{ fontSize:22, fontWeight:900, letterSpacing:"-0.01em" }}>{name}</span>
                   {!loading && role==="pro" && <span style={proBadge}>✦ PRO</span>}
                 </div>
-                {profile?.genre && <div style={{ fontSize:12, color:"rgba(255,255,255,0.45)", marginTop:3, letterSpacing:"0.04em" }}>{profile.genre}</div>}
+                {profile?.genre && <div style={{ fontSize:12, color:"rgba(255,255,255,0.45)", marginTop:3 }}>{profile.genre}</div>}
+                {/* Social links inline */}
+                {(profile?.instagram || profile?.soundcloud) && (
+                  <div style={{ display:"flex", gap:6, marginTop:8, flexWrap:"wrap" as const }}>
+                    {profile?.instagram  && <a href={`https://instagram.com/${profile.instagram.replace("@","")}`}  target="_blank" rel="noreferrer" style={socialLink}>IG @{profile.instagram.replace("@","")}</a>}
+                    {profile?.soundcloud && <a href={`https://soundcloud.com/${profile.soundcloud.replace("@","")}`} target="_blank" rel="noreferrer" style={socialLink}>SC {profile.soundcloud}</a>}
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Bio */}
             {profile?.bio && (
-              <div style={{ fontSize:14, color:"rgba(255,255,255,0.70)", lineHeight:1.5, borderLeft:"2px solid rgba(255,255,255,0.12)", paddingLeft:12 }}>
+              <div style={{ fontSize:13, color:"rgba(255,255,255,0.60)", lineHeight:1.5, borderLeft:"2px solid rgba(255,255,255,0.10)", paddingLeft:12 }}>
                 {profile.bio}
-              </div>
-            )}
-
-            {/* Social links */}
-            {(profile?.instagram || profile?.soundcloud) && (
-              <div style={{ display:"flex", gap:8, flexWrap:"wrap" as const }}>
-                {profile?.instagram  && <a href={`https://instagram.com/${profile.instagram.replace("@","")}`}  target="_blank" rel="noreferrer" style={socialLink}>IG @{profile.instagram.replace("@","")}</a>}
-                {profile?.soundcloud && <a href={`https://soundcloud.com/${profile.soundcloud.replace("@","")}`} target="_blank" rel="noreferrer" style={socialLink}>SC {profile.soundcloud}</a>}
               </div>
             )}
 
@@ -239,31 +238,16 @@ export default function ProfilePageV2() {
             <div style={statsRow}>
               {[{l:"SCANS",v:scans.length},{l:"FOLLOWERS",v:profile?.follower_count||0},{l:"FOLLOWING",v:profile?.following_count||0},{l:"FOLLOWS",v:follows.length}].map(({l,v},i)=>(
                 <div key={l} style={{ textAlign:"center" as const, flex:1, ...(i<3?{borderRight:"1px solid rgba(255,255,255,0.07)"}:{}) }}>
-                  <div style={{ fontSize:22, fontWeight:900 }}>{v}</div>
+                  <div style={{ fontSize:20, fontWeight:900 }}>{v}</div>
                   <div style={{ fontSize:9, color:"rgba(255,255,255,0.35)", letterSpacing:"0.14em", marginTop:2 }}>{l}</div>
                 </div>
               ))}
             </div>
-
-            {/* Sparkline */}
-            {sparkData.some(v=>v>0) && (
-              <div style={{ padding:"0 4px" }}>
-                <div style={{ fontSize:9, color:"rgba(255,255,255,0.30)", letterSpacing:"0.16em", marginBottom:8 }}>SCANS THIS WEEK</div>
-                <Sparkline data={sparkData} />
-              </div>
-            )}
-
-            {/* Share link */}
-            {profile?.display_name && (
-              <button onClick={() => navigator.clipboard?.writeText(shareUrl)} style={shareBtn}>
-                🔗 {shareUrl.replace("https://","")}
-              </button>
-            )}
           </div>
 
           {/* ── ACTION BUTTONS ── */}
           <div style={{ display:"grid", gap:10 }}>
-            <button onClick={() => setEditing(v=>!v)} style={editBtn}>{editing ? "↑ Cancel editing" : "Edit Profile"}</button>
+            <button onClick={() => setEditing(v=>!v)} style={editBtn}>{editing ? "↑ Cancel" : "Edit Profile"}</button>
             {!loading && role !== "pro" && (
               <button onClick={() => router.push("/onboarding")} style={upgradeBtn}>✦ Upgrade to PRO — €9.99/mo</button>
             )}
@@ -290,78 +274,6 @@ export default function ProfilePageV2() {
             </Section>
           )}
 
-          {role==="pro" && tracks.length>0 && (
-            <Section title="MY TRACKS">
-              {(showMoreTracks ? tracks : tracks.slice(0,4)).map(t=>(
-                <div key={t.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 0", borderBottom:"1px solid rgba(255,255,255,0.06)" }}>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontWeight:700, fontSize:14 }}>{t.title||"Untitled"}</div>
-                    {t.artist && <div style={{ fontSize:12, opacity:0.5 }}>{t.artist}</div>}
-                  </div>
-                  <button
-                    onClick={async () => {
-                      const next = !t.is_released;
-                      const res = await fetch("/api/bpro/set-release", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ track_id: t.id, is_released: next }),
-                      });
-                      if (res.ok) {
-                        setTracks(prev => prev.map(x => x.id === t.id ? { ...x, is_released: next, release_status: next ? "released" : "unreleased" } : x));
-                      }
-                    }}
-                    style={{
-                      fontSize: 10, fontWeight: 800, borderRadius: 999, padding: "5px 10px",
-                      cursor: "pointer", border: "none",
-                      background: t.is_released ? "rgba(29,185,84,0.18)" : "rgba(255,255,255,0.08)",
-                      color: t.is_released ? "#1db954" : "rgba(255,255,255,0.55)",
-                      outline: `1px solid ${t.is_released ? "rgba(29,185,84,0.35)" : "rgba(255,255,255,0.12)"}`,
-                    }}
-                  >
-                    {t.is_released ? "RELEASED" : "UNRELEASED"}
-                  </button>
-                </div>
-              ))}
-              {tracks.length > 4 && (
-                <button onClick={() => setShowMoreTracks(v=>!v)} style={showMoreBtn}>
-                  {showMoreTracks ? "Show less ↑" : `Show all ${tracks.length} tracks ↓`}
-                </button>
-              )}
-              <div style={{ fontSize:11, opacity:0.35, marginTop:2 }}>Tap a badge to toggle released / unreleased</div>
-            </Section>
-          )}
-
-          <Section title={`FOLLOWED TRACKS (${follows.length})`}>
-            {follows.length===0
-              ? <div style={emptyStyle}>No followed tracks yet.</div>
-              : (showMoreFollows ? follows : follows.slice(0,4)).map((f:any,i:number)=>(
-                <div key={i} style={{ padding:"10px 0", borderBottom:"1px solid rgba(255,255,255,0.06)" }}>
-                  <div style={{ fontWeight:600, fontSize:14 }}>{f.track_title||"Unknown"}</div>
-                  {f.track_subtitle && <div style={{ fontSize:12, opacity:0.5 }}>{f.track_subtitle}</div>}
-                </div>
-              ))}
-            {follows.length > 4 && (
-              <button onClick={() => setShowMoreFollows(v=>!v)} style={showMoreBtn}>
-                {showMoreFollows ? "Show less ↑" : `Show all ${follows.length} ↓`}
-              </button>
-            )}
-          </Section>
-
-          <Section title={`MY SCANS (${scans.length})`}>
-            {scans.length===0
-              ? <div style={emptyStyle}>No scans yet.</div>
-              : (showMoreScans ? scans : scans.slice(0,4)).map((s:any,i:number)=>(
-                <div key={i} style={{ padding:"10px 0", borderBottom:"1px solid rgba(255,255,255,0.06)" }}>
-                  <div style={{ fontWeight:600, fontSize:14 }}>{s.track_title||"Unknown"}</div>
-                  {s.created_at && <div style={{ fontSize:11, opacity:0.4 }}>{new Date(s.created_at).toLocaleDateString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</div>}
-                </div>
-              ))}
-            {scans.length > 4 && (
-              <button onClick={() => setShowMoreScans(v=>!v)} style={showMoreBtn}>
-                {showMoreScans ? "Show less ↑" : `Show all ${scans.length} scans ↓`}
-              </button>
-            )}
-          </Section>
         </>)}
 
         {tab==="messages" && (
