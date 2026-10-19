@@ -56,6 +56,8 @@ export default function ProfilePageV2() {
   const [convs,    setConvs]    = useState<any[]>([]);
   const [activeConv,setActiveConv]=useState<string|null>(null);
   const [msgInput, setMsgInput] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const msgEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -183,6 +185,21 @@ export default function ProfilePageV2() {
     await fetch("/api/messages/send", { method:"POST", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({ sender_id: userId, receiver_id: activeConv, content }) });
     setMessages(p => [...p, { id: Date.now(), created_at: new Date().toISOString(), sender_id: userId, receiver_id: activeConv, content, read: false }]);
+  }
+
+  async function sendFile(file: File) {
+    if (!activeConv || !userId) return;
+    if (file.size > 52_428_800) { alert("Max 50 MB"); return; }
+    setUploading(true);
+    try {
+      const fd = new FormData(); fd.append("file", file); fd.append("sender_id", userId);
+      const res = await fetch("/api/messages/upload", { method:"POST", body: fd });
+      const j = await res.json();
+      if (!j.ok) { alert(j.error || "Upload failed"); return; }
+      await fetch("/api/messages/send", { method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ sender_id: userId, receiver_id: activeConv, file_url: j.url, file_name: j.name, file_type: j.type }) });
+      setMessages(p => [...p, { id: Date.now(), created_at: new Date().toISOString(), sender_id: userId, receiver_id: activeConv, content: null, file_url: j.url, file_name: j.name, file_type: j.type, read: false }]);
+    } finally { setUploading(false); }
   }
 
   const name     = profile?.display_name || profile?.email?.split("@")[0] || "You";
@@ -349,12 +366,23 @@ export default function ProfilePageV2() {
                         <div style={{ fontSize:11, fontWeight:700, opacity:0.45, marginBottom:2, paddingLeft:4 }}>{msg.sender_name || "?"}</div>
                       )}
                       <div style={{ display:"flex", alignItems:"center", gap:6, flexDirection:isMine?"row-reverse":"row" }}>
-                        <div style={{ maxWidth:"75%", padding:"10px 14px", fontSize:14, lineHeight:1.4,
+                        <div style={{ maxWidth:"75%", padding: msg.file_url && !msg.content ? "8px" : "10px 14px", fontSize:14, lineHeight:1.4,
                           borderRadius:isMine?"18px 18px 4px 18px":"18px 18px 18px 4px",
                           background:isMine?"rgba(255,255,255,0.14)":"rgba(255,255,255,0.10)",
                           border:isMine?"none":"1px solid rgba(255,255,255,0.08)",
                           color:"#fff" }}>
-                          {msg.content}
+                          {msg.content && <span>{msg.content}</span>}
+                          {msg.file_url && (msg.file_type?.startsWith("audio/") || /\.(mp3|wav|aif|aiff|flac|ogg|m4a)$/i.test(msg.file_name||"")) ? (
+                            <div style={{ minWidth:200 }}>
+                              <div style={{ fontSize:11, color:"rgba(255,255,255,0.50)", marginBottom:6, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>🎵 {msg.file_name}</div>
+                              <audio controls src={msg.file_url} style={{ width:"100%", height:36, borderRadius:8 }} />
+                            </div>
+                          ) : msg.file_url ? (
+                            <a href={msg.file_url} target="_blank" rel="noreferrer" style={{ display:"flex", alignItems:"center", gap:8, color:"#fff", textDecoration:"none" }}>
+                              <span style={{ fontSize:20 }}>📎</span>
+                              <span style={{ fontSize:12, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{msg.file_name}</span>
+                            </a>
+                          ) : null}
                         </div>
                         {isMine && (
                           <button onClick={async()=>{
@@ -368,9 +396,17 @@ export default function ProfilePageV2() {
                 })}
                 <div ref={msgEndRef} />
               </div>
-              <div style={{ display:"flex", gap:8 }}>
+              <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                {/* Hidden file input */}
+                <input ref={fileInputRef} type="file" accept="audio/*,.mp3,.wav,.aif,.aiff,.flac,.ogg,.m4a"
+                  style={{ display:"none" }} onChange={e => { const f = e.target.files?.[0]; if (f) sendFile(f); e.target.value=""; }} />
+                {/* Paperclip button */}
+                <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
+                  style={{ width:44, height:44, borderRadius:"50%", background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.12)", color:"#fff", fontSize:18, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, opacity: uploading ? 0.5 : 1 }}>
+                  {uploading ? "⏳" : "📎"}
+                </button>
                 <input value={msgInput} onChange={e=>setMsgInput(e.target.value)}
-                  onKeyDown={e=>e.key==="Enter"&&sendMsg()} placeholder="Message…" style={{ ...inputStyle, flex:1 }} />
+                  onKeyDown={e=>e.key==="Enter"&&sendMsg()} placeholder="Message…" style={{ ...inputStyle, flex:1, marginTop:0 }} />
                 <button onClick={sendMsg} disabled={!msgInput.trim()} style={sendMsgBtn}>↑</button>
               </div>
             </>)}
