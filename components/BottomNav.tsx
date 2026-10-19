@@ -9,17 +9,17 @@ const HIDDEN = ["/","/login","/unlock","/onboarding","/auth/callback","/admin-ac
 
 const PUBLIC_ITEMS = [
   { label: "Profile", href: "/profile" },
-  { label: "Radar",   href: "/library" },
+  { label: "Radar",   href: "/radar" },
   { label: "SCAN",    href: "/home" },
-  { label: "Charts",  href: "/concerts" },
-  { label: "Events",  href: "/events" },
+  { label: "Charts",  href: "/charts" },
+  { label: "Upgrade", href: "/upgrade" },
 ];
 
 const PRO_ITEMS = [
   { label: "Profile", href: "/profile" },
-  { label: "Radar",   href: "/library" },
+  { label: "Radar",   href: "/radar" },
   { label: "SCAN",    href: "/home" },
-  { label: "Charts",  href: "/concerts" },
+  { label: "Charts",  href: "/charts" },
   { label: "Upload",  href: "/bpro" },
 ];
 
