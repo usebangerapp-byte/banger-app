@@ -529,19 +529,11 @@ const region = await getRegion();
           0%,100% { opacity: 0.18; transform: scale(1.00); }
           50%      { opacity: 0.45; transform: scale(1.12); }
         }
-        /* Orbit particles */
-        @keyframes orbit0 { from { transform: rotate(0deg)   translateX(115px) rotate(0deg);   } to { transform: rotate(360deg)  translateX(115px) rotate(-360deg);  } }
-        @keyframes orbit1 { from { transform: rotate(72deg)  translateX(115px) rotate(-72deg);  } to { transform: rotate(432deg) translateX(115px) rotate(-432deg); } }
-        @keyframes orbit2 { from { transform: rotate(144deg) translateX(115px) rotate(-144deg); } to { transform: rotate(504deg) translateX(115px) rotate(-504deg); } }
-        @keyframes orbit3 { from { transform: rotate(216deg) translateX(115px) rotate(-216deg); } to { transform: rotate(576deg) translateX(115px) rotate(-576deg); } }
-        @keyframes orbit4 { from { transform: rotate(288deg) translateX(115px) rotate(-288deg); } to { transform: rotate(648deg) translateX(115px) rotate(-648deg); } }
-        /* Fast orbit for recognizing */
-        @keyframes orbitFast0 { from { transform: rotate(0deg)   translateX(105px) rotate(0deg);   } to { transform: rotate(360deg)  translateX(105px) rotate(-360deg);  } }
-        @keyframes orbitFast1 { from { transform: rotate(60deg)  translateX(105px) rotate(-60deg);  } to { transform: rotate(420deg) translateX(105px) rotate(-420deg); } }
-        @keyframes orbitFast2 { from { transform: rotate(120deg) translateX(105px) rotate(-120deg); } to { transform: rotate(480deg) translateX(105px) rotate(-480deg); } }
-        @keyframes orbitFast3 { from { transform: rotate(180deg) translateX(105px) rotate(-180deg); } to { transform: rotate(540deg) translateX(105px) rotate(-540deg); } }
-        @keyframes orbitFast4 { from { transform: rotate(240deg) translateX(105px) rotate(-240deg); } to { transform: rotate(600deg) translateX(105px) rotate(-600deg); } }
-        @keyframes orbitFast5 { from { transform: rotate(300deg) translateX(105px) rotate(-300deg); } to { transform: rotate(660deg) translateX(105px) rotate(-660deg); } }
+        /* Identifying glow pulse — lent, fluide, sans rotation */
+        @keyframes identifyGlow {
+          0%,100% { opacity: 0.18; }
+          50%      { opacity: 0.55; }
+        }
         /* Boom flash success */
         @keyframes boomFlash {
           0%   { opacity: 0.9; transform: scale(1.0); }
@@ -558,20 +550,13 @@ const region = await getRegion();
       <div style={scanStyles.phone}>
 
         <div style={scanStyles.center}>
-          <div style={{
-              ...scanStyles.haloWrap,
-              animation: recognizing ? "quake 0.18s ease-in-out infinite" : "none",
-            }}>
+          <div style={{ ...scanStyles.haloWrap }}>
 
             {/* ── HALO AMBIANT (toujours présent, pas de position absolue + translate) ── */}
             {/* Rendu via SVG pour zéro problème de centrage */}
             <svg style={{ position:"absolute", inset:0, pointerEvents:"none", zIndex:0 }}
               width="300" height="300" viewBox="0 0 300 300">
-              {/* Idle : légère aura */}
-              {!busy && (
-                <circle cx="150" cy="150" r="135" fill="none"
-                  stroke="rgba(255,255,255,0.07)" strokeWidth="1"/>
-              )}
+              {/* Idle : rien — woofer seul */}
               {/* Listening : aura réactive (rendu via filter + opacité) */}
               {listening && (<>
                 <defs>
@@ -584,15 +569,17 @@ const region = await getRegion();
                 <circle cx="150" cy="150" r="148" fill="url(#listenHalo)"
                   style={{ transition:"all 0.05s linear" }}/>
               </>)}
-              {/* Recognizing : aura froide */}
+              {/* Recognizing : lumière blanche douce qui pulse lentement */}
               {recognizing && (<>
                 <defs>
                   <radialGradient id="recogHalo" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stopColor="rgba(200,220,255,0.14)"/>
+                    <stop offset="0%" stopColor="rgba(230,240,255,0.22)"/>
+                    <stop offset="50%" stopColor="rgba(200,220,255,0.08)"/>
                     <stop offset="100%" stopColor="rgba(0,0,0,0)"/>
                   </radialGradient>
                 </defs>
-                <circle cx="150" cy="150" r="148" fill="url(#recogHalo)"/>
+                <circle cx="150" cy="150" r="148" fill="url(#recogHalo)"
+                  style={{ animation:"identifyGlow 1.8s ease-in-out infinite" }}/>
               </>)}
               {/* Success : flash */}
               {success && (
@@ -602,39 +589,7 @@ const region = await getRegion();
               )}
             </svg>
 
-            {/* ── LISTENING : particules en orbite lente ── */}
-            {listening && (
-              <div style={{ position:"absolute", inset:0, pointerEvents:"none", zIndex:1 }}>
-                {[0,1,2,3,4].map(i => (
-                  <div key={i} style={{
-                    position:"absolute", top:"50%", left:"50%",
-                    width: 5 + audioLevel * 3, height: 5 + audioLevel * 3,
-                    borderRadius:"50%",
-                    background: `rgba(255,${180 + i*12},0,${0.55 + audioLevel * 0.45})`,
-                    boxShadow: `0 0 ${6 + audioLevel*10}px rgba(255,180,0,0.6)`,
-                    marginTop: -(2.5 + audioLevel*1.5),
-                    marginLeft: -(2.5 + audioLevel*1.5),
-                    animation: `orbit${i} ${3.2 - audioLevel*1.4}s linear infinite`,
-                  }}/>
-                ))}
-              </div>
-            )}
-
-            {/* ── RECOGNIZING : particules rapides ── */}
-            {recognizing && (
-              <div style={{ position:"absolute", inset:0, pointerEvents:"none", zIndex:1 }}>
-                {[0,1,2,3,4,5].map(i => (
-                  <div key={i} style={{
-                    position:"absolute", top:"50%", left:"50%",
-                    width:4, height:4, borderRadius:"50%",
-                    background:"rgba(200,220,255,0.85)",
-                    boxShadow:"0 0 8px rgba(180,200,255,0.8)",
-                    marginTop:-2, marginLeft:-2,
-                    animation: `orbitFast${i} 0.9s linear infinite`,
-                  }}/>
-                ))}
-              </div>
-            )}
+            {/* Pas de particules — lumière seule */}
 
             {/* ── SUCCESS : double flash radial (SVG, pas de translate) ── */}
             {success && (
