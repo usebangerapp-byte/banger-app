@@ -422,8 +422,6 @@ const region = await getRegion();
       {failPulse ? <div style={scanStyles.failFlash} /> : null}
 
       <div style={scanStyles.phone}>
-        <div style={scanStyles.top}>
-        </div>
 
         <div style={scanStyles.center}>
           <div style={{
@@ -623,9 +621,9 @@ const region = await getRegion();
 
           {/* ── Woofer : barres audio réactives au micro ── */}
           <WooferBars audioLevel={audioLevel} visible={listening} />
-        </div>
 
-        <div style={scanStyles.recent}>
+          {/* ── LAST ID — inline sous le bouton, pas de scroll ── */}
+          <div style={scanStyles.recent}>
           <div style={scanStyles.recentTitle}>LAST ID</div>
           <div style={scanStyles.card}>
             <div style={scanStyles.cardRow}>
@@ -655,16 +653,18 @@ const region = await getRegion();
               </div>
             )}
           </div>
-        </div>
+          </div>{/* end recent */}
+        </div>{/* end center */}
 
-      </div>
+      </div>{/* end phone */}
     </div>
   );
 }
 
 const scanStyles: Record<string, CSSProperties> = {
   page: {
-    minHeight: "100vh",
+    height: "100vh",
+    overflow: "hidden",
     background: "#000",
     color: "#fff",
     display: "flex",
@@ -673,15 +673,10 @@ const scanStyles: Record<string, CSSProperties> = {
   phone: {
     width: "100%",
     maxWidth: 420,
-    minHeight: "100vh",
+    height: "100%",
     display: "flex",
     flexDirection: "column",
-  },
-  top: {
-    paddingTop: 8,
-    paddingLeft: 24,
-    paddingRight: 24,
-    textAlign: "center",
+    overflow: "hidden",
   },
   title: {
     marginTop: 6,
@@ -702,14 +697,16 @@ const scanStyles: Record<string, CSSProperties> = {
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "column",
-    gap: 18,
-    paddingLeft: 24,
-    paddingRight: 24,
+    gap: 14,
+    paddingLeft: 20,
+    paddingRight: 20,
+    paddingBottom: 80, /* BottomNav height */
+    overflow: "hidden",
   },
   haloWrap: {
     position: "relative",
-    width: 320,
-    height: 320,
+    width: 260,
+    height: 260,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -880,8 +877,8 @@ const scanStyles: Record<string, CSSProperties> = {
   },
 
   button3D: {
-    width: 220,
-    height: 220,
+    width: 190,
+    height: 190,
     borderRadius: 9999,
     border: "1px solid rgba(220,220,220,0.14)",
     background:
@@ -941,8 +938,8 @@ const scanStyles: Record<string, CSSProperties> = {
   },
 
   bLogo: {
-    width: 168,
-    height: 168,
+    width: 140,
+    height: 140,
     objectFit: "contain",
     display: "block",
     zIndex: 2,
@@ -956,7 +953,7 @@ const scanStyles: Record<string, CSSProperties> = {
     textTransform: "uppercase",
   },
 
-  recent: { paddingLeft: 24, paddingRight: 24, paddingBottom: 22 },
+  recent: { width: "100%", paddingLeft: 0, paddingRight: 0 },
   recentTitle: { fontSize: 11, letterSpacing: "0.30em", opacity: 0.55, marginBottom: 10 },
 
   card: {

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
+import PageHeader from "@/components/PageHeader";
 
 type TrackRow = {
   id: string;
@@ -399,10 +400,8 @@ export default function ChartsPage() {
         }
       `}</style>
 
-      <div style={{ maxWidth: 760, margin: "0 auto", display: "grid", gap: 14 }}>
-        <div style={{ display: "grid", placeItems: "center", marginBottom: 4 }}>
-          <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: "-0.03em" }}>CHARTS</div>
-        </div>
+      <div style={{ maxWidth: 680, margin: "0 auto", display: "grid", gap: 14 }}>
+        <PageHeader title="CHARTS" sub="Most scanned tracks in the scene" />
 
         {loading ? (
           <div style={cardStyle}>Loading…</div>
