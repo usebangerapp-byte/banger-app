@@ -63,14 +63,28 @@ function AudioPlayer({ src, name }: { src: string; name: string }) {
           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
           🎵 {name}
         </div>
-        <a href={src} download={name} target="_blank" rel="noreferrer"
+        <button
+          onClick={async e => {
+            e.stopPropagation();
+            try {
+              const res = await fetch(src);
+              const blob = await res.blob();
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = name;
+              document.body.appendChild(a);
+              a.click();
+              setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+            } catch { window.open(src, "_blank"); }
+          }}
           style={{ flexShrink:0, color:"rgba(255,255,255,0.40)", lineHeight:1,
-            display:"flex", alignItems:"center" }}
-          onClick={e => e.stopPropagation()}>
+            display:"flex", alignItems:"center", background:"none", border:"none",
+            cursor:"pointer", padding:2 }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 3v13M5 16l7 7 7-7"/><line x1="3" y1="21" x2="21" y2="21"/>
           </svg>
-        </a>
+        </button>
       </div>
       {/* Controls row */}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
