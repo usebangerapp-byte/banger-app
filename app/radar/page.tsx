@@ -179,12 +179,13 @@ function TrackRow({ rank, title, subtitle, meta, followed, loading, onToggle }: 
     <div style={row}>
       <div style={rankStyle}>{rank}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 15, fontWeight: 800, lineHeight: 1.2 }}>{title}</div>
-        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.50)", marginTop: 2 }}>
-          {subtitle} · {meta}
+        <div style={{ fontSize: 15, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
+          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{subtitle}</span>
+          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.28)", flexShrink: 0 }}>· {meta}</span>
+          <FollowBtn title={title} subtitle={subtitle} followed={followed} loading={loading} onToggle={onToggle} />
         </div>
       </div>
-      <FollowBtn title={title} subtitle={subtitle} followed={followed} loading={loading} onToggle={onToggle} />
     </div>
   )
 }
@@ -199,14 +200,14 @@ function FollowBtn({ title, subtitle, followed, loading, onToggle }: {
   return (
     <button onClick={() => onToggle(title, subtitle)} disabled={isBusy}
       style={{
-        flexShrink: 0, padding: "6px 12px", borderRadius: 20, fontSize: 12, fontWeight: 700,
+        flexShrink: 0, padding: "3px 9px", borderRadius: 999, fontSize: 11, fontWeight: 700,
         cursor: isBusy ? "default" : "pointer",
-        background: isFollowing ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.92)",
-        color: isFollowing ? "rgba(255,255,255,0.7)" : "#000",
-        border: isFollowing ? "1px solid rgba(255,255,255,0.15)" : "none",
+        background: isFollowing ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.10)",
+        color: isFollowing ? "rgba(255,255,255,0.45)" : "#fff",
+        border: isFollowing ? "1px solid rgba(255,255,255,0.12)" : "1px solid rgba(255,255,255,0.30)",
         transition: "all 0.2s",
       }}>
-      {isBusy ? "…" : isFollowing ? "Following ✓" : "+ Follow"}
+      {isBusy ? "…" : isFollowing ? "✓" : "🔔 Follow"}
     </button>
   )
 }
