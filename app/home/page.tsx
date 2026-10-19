@@ -30,31 +30,31 @@ const PAGE_BG =
   "rgba(5,5,5,1) 70%, rgba(2,2,2,1) 100%)";
 
 
+// Woofer inside the button — arc at the bottom
 function WooferBars({ audioLevel, visible }: { audioLevel: number; visible: boolean }) {
-  const BAR_COUNT = 20;
+  const BAR_COUNT = 24;
   return (
     <div style={{
+      position: "absolute", bottom: 22, left: "50%",
+      transform: "translateX(-50%)",
       display: "flex", alignItems: "flex-end", justifyContent: "center",
-      gap: 3, height: 36, width: 160,
+      gap: 2.5, height: 32, width: 130,
       opacity: visible ? 1 : 0,
-      transition: "opacity 0.4s ease",
-      pointerEvents: "none",
+      transition: "opacity 0.35s ease",
+      pointerEvents: "none", zIndex: 5,
     }}>
       {Array.from({ length: BAR_COUNT }).map((_, i) => {
-        // barres plus hautes au centre
         const center = (BAR_COUNT - 1) / 2;
-        const dist = Math.abs(i - center) / center; // 0 au centre, 1 aux bords
-        const base = 3;
-        const dynamic = audioLevel * 26 * (1 - dist * 0.55);
+        const dist = Math.abs(i - center) / center;
+        const base = 2;
+        const dynamic = audioLevel * 22 * (1 - dist * 0.6);
         const h = Math.max(base, dynamic + base);
+        const alpha = 0.35 + audioLevel * 0.55 * (1 - dist * 0.45);
         return (
           <div key={i} style={{
-            width: 3,
-            height: h,
-            borderRadius: 99,
-            background: `rgba(255,255,255,${0.20 + audioLevel * 0.65 * (1 - dist * 0.4)})`,
-            transition: "height 0.06s ease, background 0.06s ease",
-            flexShrink: 0,
+            width: 2.5, height: h, borderRadius: 99, flexShrink: 0,
+            background: `rgba(255,255,255,${alpha})`,
+            transition: "height 0.05s ease, background 0.05s ease",
           }} />
         );
       })}
@@ -401,25 +401,32 @@ const region = await getRegion();
           100% { opacity: 0; }
         }
         @keyframes boomRing {
-          0%   { transform: translate(-50%,-50%) scale(0.6); opacity: 1; }
-          60%  { opacity: 0.8; }
-          100% { transform: translate(-50%,-50%) scale(3.2); opacity: 0; }
+          0%   { transform: translate(-50%,-50%) scale(0.85); opacity: 1; }
+          100% { transform: translate(-50%,-50%) scale(2.0);  opacity: 0; }
         }
         @keyframes boomRing2 {
-          0%   { transform: translate(-50%,-50%) scale(0.6); opacity: 0.7; }
-          100% { transform: translate(-50%,-50%) scale(2.6); opacity: 0; }
+          0%   { transform: translate(-50%,-50%) scale(0.85); opacity: 0.6; }
+          100% { transform: translate(-50%,-50%) scale(1.7);  opacity: 0; }
+        }
+        @keyframes boomRing3 {
+          0%   { transform: translate(-50%,-50%) scale(0.85); opacity: 0.35; }
+          100% { transform: translate(-50%,-50%) scale(1.45); opacity: 0; }
+        }
+        @keyframes successGlow {
+          0%   { opacity: 0; transform: translate(-50%,-50%) scale(0.7); }
+          30%  { opacity: 1; }
+          100% { opacity: 0; transform: translate(-50%,-50%) scale(1.4); }
         }
         @keyframes logoSlam {
           0%   { transform: scale(1); }
-          30%  { transform: scale(1.22); }
-          55%  { transform: scale(0.94); }
-          75%  { transform: scale(1.06); }
+          25%  { transform: scale(1.14); }
+          55%  { transform: scale(0.96); }
+          80%  { transform: scale(1.04); }
           100% { transform: scale(1); }
         }
       `}</style>
 
-      {success ? <div style={scanStyles.successFlash} /> : null}
-      {failPulse ? <div style={scanStyles.failFlash} /> : null}
+      {/* flash effects moved inside button */}
 
       <div style={scanStyles.phone}>
 
@@ -484,15 +491,8 @@ const region = await getRegion();
               }} />
             </>)}
 
-            {/* ── RECOGNIZING : tremblement de terre + strobe ── */}
+            {/* ── RECOGNIZING : tremblement de terre ── */}
             {recognizing && (<>
-              {/* Strobe flash */}
-              <div style={{
-                position: "fixed", inset: 0, zIndex: 50,
-                background: "rgba(255,255,255,0.06)",
-                animation: "strobeIn 0.8s ease-out forwards",
-                pointerEvents: "none",
-              }} />
               {/* Anneaux rapides */}
               <div style={{
                 position: "absolute", left: "50%", top: "50%",
@@ -511,52 +511,56 @@ const region = await getRegion();
               }} />
             </>)}
 
-            {/* ── SUCCESS UNRELEASED : boom blanc ── */}
+            {/* ── SUCCESS UNRELEASED : 3 boom rings blancs ── */}
             {success && tag === "UNRELEASED" && (<>
               <div style={{
-                position: "fixed", inset: 0, zIndex: 50,
-                background: "rgba(255,255,255,0.18)",
-                animation: "strobeIn 0.5s ease-out forwards",
-                pointerEvents: "none",
-              }} />
-              <div style={{
                 position: "absolute", left: "50%", top: "50%",
-                width: 180, height: 180, borderRadius: "50%",
-                border: "2px solid rgba(255,255,255,0.9)",
-                animation: "boomRing 0.7s cubic-bezier(0.2,0,0.4,1) forwards",
+                width: 190, height: 190, borderRadius: "50%",
+                border: "2px solid rgba(255,255,255,0.95)",
+                animation: "boomRing 0.65s cubic-bezier(0.15,0,0.35,1) forwards",
                 pointerEvents: "none", zIndex: 2,
               }} />
               <div style={{
                 position: "absolute", left: "50%", top: "50%",
-                width: 180, height: 180, borderRadius: "50%",
-                border: "1px solid rgba(255,255,255,0.5)",
-                animation: "boomRing2 0.9s cubic-bezier(0.2,0,0.4,1) forwards",
-                animationDelay: "0.1s",
+                width: 190, height: 190, borderRadius: "50%",
+                border: "1px solid rgba(255,255,255,0.55)",
+                animation: "boomRing2 0.85s cubic-bezier(0.15,0,0.35,1) forwards",
+                animationDelay: "0.07s",
+                pointerEvents: "none", zIndex: 2,
+              }} />
+              <div style={{
+                position: "absolute", left: "50%", top: "50%",
+                width: 190, height: 190, borderRadius: "50%",
+                border: "1px solid rgba(255,255,255,0.25)",
+                animation: "boomRing3 1.0s cubic-bezier(0.15,0,0.35,1) forwards",
+                animationDelay: "0.14s",
                 pointerEvents: "none", zIndex: 2,
               }} />
             </>)}
 
-            {/* ── SUCCESS RELEASED : boom vert ── */}
+            {/* ── SUCCESS RELEASED : 3 boom rings verts ── */}
             {success && tag === "RELEASED" && (<>
               <div style={{
-                position: "fixed", inset: 0, zIndex: 50,
-                background: "rgba(29,185,84,0.12)",
-                animation: "strobeIn 0.5s ease-out forwards",
-                pointerEvents: "none",
-              }} />
-              <div style={{
                 position: "absolute", left: "50%", top: "50%",
-                width: 180, height: 180, borderRadius: "50%",
-                border: "2px solid rgba(29,185,84,0.9)",
-                animation: "boomRing 0.7s cubic-bezier(0.2,0,0.4,1) forwards",
+                width: 190, height: 190, borderRadius: "50%",
+                border: "2px solid rgba(29,185,84,0.95)",
+                animation: "boomRing 0.65s cubic-bezier(0.15,0,0.35,1) forwards",
                 pointerEvents: "none", zIndex: 2,
               }} />
               <div style={{
                 position: "absolute", left: "50%", top: "50%",
-                width: 180, height: 180, borderRadius: "50%",
-                border: "1px solid rgba(29,185,84,0.5)",
-                animation: "boomRing2 0.9s cubic-bezier(0.2,0,0.4,1) forwards",
-                animationDelay: "0.1s",
+                width: 190, height: 190, borderRadius: "50%",
+                border: "1px solid rgba(29,185,84,0.55)",
+                animation: "boomRing2 0.85s cubic-bezier(0.15,0,0.35,1) forwards",
+                animationDelay: "0.07s",
+                pointerEvents: "none", zIndex: 2,
+              }} />
+              <div style={{
+                position: "absolute", left: "50%", top: "50%",
+                width: 190, height: 190, borderRadius: "50%",
+                border: "1px solid rgba(29,185,84,0.25)",
+                animation: "boomRing3 1.0s cubic-bezier(0.15,0,0.35,1) forwards",
+                animationDelay: "0.14s",
                 pointerEvents: "none", zIndex: 2,
               }} />
             </>)}
@@ -589,16 +593,38 @@ const region = await getRegion();
                 }}
               />
 
-              {success ? <div style={scanStyles.successGlow} /> : null}
-
+              {/* listen glow inside button */}
               {listening ? (
-                <div
-                  style={{
-                    ...scanStyles.listenGlow,
-                    opacity: 0.16 + audioLevel * 0.62,
-                  }}
-                />
+                <div style={{
+                  ...scanStyles.listenGlow,
+                  opacity: 0.16 + audioLevel * 0.62,
+                }} />
               ) : null}
+
+              {/* ── SUCCESS glow: radial contained ── */}
+              {success && (
+                <div style={{
+                  position: "absolute", left: "50%", top: "50%",
+                  width: "140%", height: "140%",
+                  transform: "translate(-50%,-50%)",
+                  borderRadius: "50%",
+                  background: tag === "RELEASED"
+                    ? "radial-gradient(circle at 50% 50%, rgba(29,185,84,0.60) 0%, rgba(29,185,84,0.22) 42%, transparent 68%)"
+                    : "radial-gradient(circle at 50% 50%, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0.22) 40%, transparent 66%)",
+                  animation: "successGlow 0.85s cubic-bezier(0.1,0,0.35,1) forwards",
+                  pointerEvents: "none", zIndex: 3,
+                }} />
+              )}
+
+              {/* ── FAIL flash inside button ── */}
+              {failPulse && (
+                <div style={{
+                  position: "absolute", inset: 0, borderRadius: "50%",
+                  background: "radial-gradient(circle, rgba(255,60,60,0.40) 0%, transparent 70%)",
+                  animation: "pop 0.4s ease-out forwards",
+                  pointerEvents: "none", zIndex: 3,
+                }} />
+              )}
 
               <img
                 src="/B-logo.png"
@@ -610,6 +636,9 @@ const region = await getRegion();
                   animation: success ? "logoSlam 0.55s cubic-bezier(0.2,0,0.4,1) forwards" : "none",
                 }}
               />
+
+              {/* ── Woofer INSIDE button ── */}
+              <WooferBars audioLevel={audioLevel} visible={listening} />
             </button>
           </div>
 
@@ -618,9 +647,6 @@ const region = await getRegion();
             {status === "listening" ? "LISTENING..." : null}
             {status === "recognizing" ? "IDENTIFYING..." : null}
           </div>
-
-          {/* ── Woofer : barres audio réactives au micro ── */}
-          <WooferBars audioLevel={audioLevel} visible={listening} />
 
           {/* LAST ID removed */}
         </div>{/* end center */}
@@ -954,24 +980,7 @@ const scanStyles: Record<string, CSSProperties> = {
   },
   cardSub: { marginTop: 8, fontSize: 12, opacity: 0.58 },
 
-  successFlash: {
-    position: "fixed",
-    inset: 0,
-    pointerEvents: "none",
-    background:
-      "radial-gradient(circle, rgba(255,255,255,0.22), transparent 62%)",
-    animation: "pop .35s ease-out forwards",
-    opacity: 0,
-  },
-  failFlash: {
-    position: "fixed",
-    inset: 0,
-    pointerEvents: "none",
-    background:
-      "radial-gradient(circle, rgba(0,0,0,0.65), transparent 70%)",
-    animation: "pop .45s ease-out forwards",
-    opacity: 0,
-  },
+  /* successFlash / failFlash removed — effects now inside button */
 
   logoWrap: {
     width: 88,
