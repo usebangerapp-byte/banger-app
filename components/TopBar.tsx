@@ -9,13 +9,16 @@ const HIDDEN_PATHS = ["/", "/login", "/unlock", "/onboarding", "/auth/callback",
 export default function TopBar() {
   const pathname = usePathname();
   if (HIDDEN_PATHS.includes(pathname)) return null;
-  const [showSettings, setShowSettings] = useState(false);
-  const [showNotifs,   setShowNotifs]   = useState(false);
-  const [notifCount,   setNotifCount]   = useState(0);
-  const [notifs,       setNotifs]       = useState<any[]>([]);
-  const [plan,         setPlan]         = useState<string>("Free");
-  const [email,        setEmail]        = useState<string>("");
-  const [userId,       setUserId]       = useState<string>("");
+  const [showSettings,   setShowSettings]   = useState(false);
+  const [showNotifs,     setShowNotifs]     = useState(false);
+  const [notifCount,     setNotifCount]     = useState(0);
+  const [notifs,         setNotifs]         = useState<any[]>([]);
+  const [plan,           setPlan]           = useState<string>("Free");
+  const [email,          setEmail]          = useState<string>("");
+  const [userId,         setUserId]         = useState<string>("");
+  const [notifsEnabled,  setNotifsEnabled]  = useState(true);
+  const [genre,          setGenre]          = useState("");
+  const [showDeleteConf, setShowDeleteConf] = useState(false);
 
   useEffect(() => {
     const sb = createSupabaseBrowser();
@@ -25,8 +28,12 @@ export default function TopBar() {
       if (!user) return;
       setEmail(user.email || "");
       setUserId(user.id);
-      sb.from("profiles").select("role").eq("id", user.id).maybeSingle()
-        .then(({ data: p }) => { if (p?.role === "pro") setPlan("PRO"); });
+      sb.from("profiles").select("role,genre,notifs_enabled").eq("id", user.id).maybeSingle()
+        .then(({ data: p }) => {
+          if (p?.role === "pro") setPlan("PRO");
+          if (p?.genre) setGenre(p.genre);
+          if (p?.notifs_enabled === false) setNotifsEnabled(false);
+        });
       // fetch unread notifications with content
       sb.from("notifications").select("id,message,type,track_title,created_at,read")
         .eq("user_id", user.id).eq("read", false)
@@ -84,40 +91,111 @@ export default function TopBar() {
       {showSettings && (
         <div style={panelStyle}>
           <div style={panelTitle}>SETTINGS</div>
+          <button onClick={() => setShowSettings(false)} style={closeBtn}>✕</button>
 
-          <div style={panelRow}>
-            <span style={panelLabel}>Account</span>
-            <span style={panelValue}>{email || "—"}</span>
-          </div>
-          <div style={panelRow}>
-            <span style={panelLabel}>Plan</span>
-            <span style={{ ...panelValue, color: plan === "PRO" ? "#fff" : "rgba(255,255,255,0.5)" }}>
-              {plan === "PRO" ? "✦ PRO" : "Free"}
-            </span>
-          </div>
-
-          <div style={{ borderTop:"1px solid rgba(255,255,255,0.06)", paddingTop:12, display:"grid", gap:8 }}>
+          {/* 1 — Account */}
+          <div style={settingsSection}>
+            <div style={settingsSectionTitle}>ACCOUNT</div>
+            <div style={panelRow}>
+              <span style={panelLabel}>Email</span>
+              <span style={{ ...panelValue, fontSize:12, opacity:0.6 }}>{email || "—"}</span>
+            </div>
+            <div style={panelRow}>
+              <span style={panelLabel}>Plan</span>
+              <span style={{ ...panelValue, color: plan === "PRO" ? "#fff" : "rgba(255,255,255,0.45)" }}>
+                {plan === "PRO" ? "✦ PRO" : "Free"}
+              </span>
+            </div>
             {plan === "Free" && (
-              <a href="/upgrade" onClick={() => setShowSettings(false)} style={settingsBtn}>
+              <a href="/upgrade" onClick={() => setShowSettings(false)} style={{ ...settingsBtn, background:"rgba(255,255,255,0.08)", borderColor:"rgba(255,255,255,0.20)", fontWeight:800 }}>
                 ✦ Upgrade to PRO
               </a>
             )}
-            <a href="/profile" onClick={() => setShowSettings(false)} style={settingsBtn}>
-              Edit Profile
-            </a>
-            <button
-              onClick={async () => {
-                const sb = createSupabaseBrowser();
-                if (sb) await sb.auth.signOut();
-                window.location.href = "/";
-              }}
-              style={{ ...settingsBtn, color:"rgba(255,100,100,0.8)", border:"1px solid rgba(255,80,80,0.18)", background:"transparent" }}
-            >
-              Sign out
-            </button>
           </div>
 
-          <button onClick={() => setShowSettings(false)} style={closeBtn}>✕</button>
+          {/* 2 — Notifications */}
+          <div style={settingsSection}>
+            <div style={settingsSectionTitle}>NOTIFICATIONS</div>
+            <div style={{ ...panelRow, borderBottom:"none" }}>
+              <span style={panelLabel}>Track drops</span>
+              <button onClick={async () => {
+                const next = !notifsEnabled;
+                setNotifsEnabled(next);
+                const sb = createSupabaseBrowser();
+                if (sb && userId) await sb.from("profiles").update({ notifs_enabled: next }).eq("id", userId);
+              }} style={{
+                width:44, height:26, borderRadius:13, border:"none", cursor:"pointer",
+                background: notifsEnabled ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.15)",
+                position:"relative" as const, transition:"background 0.2s", flexShrink:0,
+              }}>
+                <span style={{
+                  position:"absolute" as const, top:3, left: notifsEnabled ? 21 : 3,
+                  width:20, height:20, borderRadius:"50%",
+                  background: notifsEnabled ? "#000" : "rgba(255,255,255,0.6)",
+                  transition:"left 0.2s",
+                }}/>
+              </button>
+            </div>
+            <div style={{ fontSize:11, opacity:0.38, paddingTop:2 }}>
+              {notifsEnabled ? "You'll be notified when followed tracks drop" : "Notifications off"}
+            </div>
+          </div>
+
+          {/* 3 — Profile */}
+          <div style={settingsSection}>
+            <div style={settingsSectionTitle}>MY PROFILE</div>
+            <div style={panelRow}>
+              <span style={panelLabel}>Genre</span>
+              <input value={genre} onChange={e => setGenre(e.target.value)}
+                onBlur={async () => {
+                  const sb = createSupabaseBrowser();
+                  if (sb && userId) await sb.from("profiles").update({ genre }).eq("id", userId);
+                }}
+                placeholder="House, Techno…"
+                style={{ background:"transparent", border:"none", color:"#fff", fontSize:13, fontWeight:700, textAlign:"right" as const, outline:"none", width:140 }} />
+            </div>
+            <a href="/profile" onClick={() => setShowSettings(false)} style={settingsBtn}>
+              Edit full profile →
+            </a>
+          </div>
+
+          {/* 4 — Danger zone */}
+          <div style={settingsSection}>
+            <div style={settingsSectionTitle}>ACCOUNT ACTIONS</div>
+            <button onClick={async () => {
+              const sb = createSupabaseBrowser();
+              if (sb) await sb.auth.signOut();
+              window.location.href = "/";
+            }} style={{ ...settingsBtn, color:"rgba(255,100,100,0.8)", border:"1px solid rgba(255,80,80,0.18)", background:"transparent" }}>
+              Sign out
+            </button>
+            {!showDeleteConf ? (
+              <button onClick={() => setShowDeleteConf(true)}
+                style={{ ...settingsBtn, color:"rgba(255,60,60,0.5)", border:"1px solid rgba(255,60,60,0.10)", background:"transparent", fontSize:12 }}>
+                Delete my account
+              </button>
+            ) : (
+              <div style={{ display:"grid", gap:8 }}>
+                <div style={{ fontSize:12, color:"rgba(255,100,100,0.8)", textAlign:"center" as const }}>
+                  This is permanent. All your data will be deleted.
+                </div>
+                <div style={{ display:"flex", gap:8 }}>
+                  <button onClick={() => setShowDeleteConf(false)} style={{ ...settingsBtn, flex:1, textAlign:"center" as const }}>Cancel</button>
+                  <button onClick={async () => {
+                    const sb = createSupabaseBrowser();
+                    if (sb && userId) {
+                      await fetch("/api/profile/delete", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ user_id: userId }) });
+                      await sb.auth.signOut();
+                      window.location.href = "/";
+                    }
+                  }} style={{ ...settingsBtn, flex:1, textAlign:"center" as const, color:"#fff", background:"rgba(255,50,50,0.3)", border:"1px solid rgba(255,80,80,0.35)" }}>
+                    Confirm delete
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
         </div>
       )}
 
@@ -164,6 +242,13 @@ const panelStyle: React.CSSProperties = {
   position: "fixed", top: 58, left: 12, right: 12, zIndex: 200,
   background: "#111", border: "1px solid rgba(255,255,255,0.10)",
   borderRadius: 20, padding: "20px 18px 16px", display: "grid", gap: 10,
+  maxHeight: "80vh", overflowY: "auto" as const,
+};
+const settingsSection: React.CSSProperties = {
+  borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 12, display: "grid", gap: 8,
+};
+const settingsSectionTitle: React.CSSProperties = {
+  fontSize: 9, fontWeight: 900, letterSpacing: "0.22em", color: "rgba(255,255,255,0.30)", marginBottom: 2,
 };
 const panelTitle: React.CSSProperties = {
   fontSize: 10, fontWeight: 800, letterSpacing: "0.20em", opacity: 0.45, marginBottom: 4,
