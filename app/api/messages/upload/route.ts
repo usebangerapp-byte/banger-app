@@ -1,27 +1,69 @@
 import { createClient } from "@supabase/supabase-js";
+import { NextRequest } from "next/server";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// Désactive le body parser Next.js — on lit le stream brut
+export const maxDuration = 60;
 
-export async function POST(req: Request) {
-  const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+export async function POST(req: NextRequest) {
+  const sb = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
   try {
-    const form = await req.formData();
+    // Lire le formData depuis le stream brut
+    let form: FormData;
+    try {
+      form = await req.formData();
+    } catch (e: any) {
+      return Response.json({ ok: false, error: "FormData parse failed: " + (e?.message || String(e)) }, { status: 400 });
+    }
+
     const file = form.get("file") as File | null;
     const sender_id = form.get("sender_id") as string | null;
-    if (!file || !sender_id) return Response.json({ ok: false, error: "Missing file or sender_id" }, { status: 400 });
+
+    if (!file) return Response.json({ ok: false, error: "No file in form" }, { status: 400 });
+    if (!sender_id) return Response.json({ ok: false, error: "No sender_id in form" }, { status: 400 });
 
     // 50 MB limit
-    if (file.size > 52_428_800) return Response.json({ ok: false, error: "File too large (max 50MB)" }, { status: 413 });
+    if (file.size > 52_428_800) {
+      return Response.json({ ok: false, error: "File too large (max 50MB)" }, { status: 413 });
+    }
 
-    const ext = file.name.split(".").pop() || "bin";
-    const path = `chat/${sender_id}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-    const arrayBuf = await file.arrayBuffer();
-    const { error } = await sb.storage.from("bpro_uploads").upload(path, arrayBuf, { contentType: file.type, upsert: false });
-    if (error) return Response.json({ ok: false, error: error.message }, { status: 500 });
+    const ext = (file.name.split(".").pop() || "bin").toLowerCase();
+    const safeName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+    const path = `chat/${sender_id}/${safeName}`;
+
+    let arrayBuf: ArrayBuffer;
+    try {
+      arrayBuf = await file.arrayBuffer();
+    } catch (e: any) {
+      return Response.json({ ok: false, error: "Buffer read failed: " + (e?.message || String(e)) }, { status: 500 });
+    }
+
+    const { error: uploadError } = await sb.storage
+      .from("bpro_uploads")
+      .upload(path, arrayBuf, {
+        contentType: file.type || "application/octet-stream",
+        upsert: false,
+      });
+
+    if (uploadError) {
+      return Response.json({ ok: false, error: "Storage: " + uploadError.message }, { status: 500 });
+    }
 
     const { data } = sb.storage.from("bpro_uploads").getPublicUrl(path);
-    return Response.json({ ok: true, url: data.publicUrl, name: file.name, size: file.size, type: file.type });
+
+    return Response.json({
+      ok: true,
+      url: data.publicUrl,
+      name: file.name,
+      size: file.size,
+      type: file.type,
+    });
   } catch (e: any) {
-    return Response.json({ ok: false, error: e?.message || "Upload failed" }, { status: 500 });
+    return Response.json({ ok: false, error: "Unexpected: " + (e?.message || String(e)) }, { status: 500 });
   }
 }
