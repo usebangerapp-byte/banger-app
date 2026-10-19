@@ -254,9 +254,9 @@ export default function ProfilePageV2() {
             {/* Stats row */}
             <div style={statsRow}>
               {[{l:"SCANS",v:scans.length},{l:"FOLLOWERS",v:profile?.follower_count||0},{l:"FOLLOWING",v:profile?.following_count||0},{l:"FOLLOWS",v:follows.length}].map(({l,v},i)=>(
-                <div key={l} style={{ textAlign:"center" as const, flex:1, ...(i<3?{borderRight:"1px solid rgba(255,255,255,0.07)"}:{}) }}>
+                <div key={l} style={{ textAlign:"center" as const, flex:1, minWidth:0, ...(i<3?{borderRight:"1px solid rgba(255,255,255,0.07)"}:{}) }}>
                   <div style={{ fontSize:20, fontWeight:900 }}>{v}</div>
-                  <div style={{ fontSize:9, color:"rgba(255,255,255,0.35)", letterSpacing:"0.14em", marginTop:2 }}>{l}</div>
+                  <div style={{ fontSize:8, color:"rgba(255,255,255,0.35)", letterSpacing:"0.08em", marginTop:2 }}>{l}</div>
                 </div>
               ))}
             </div>
@@ -264,11 +264,32 @@ export default function ProfilePageV2() {
 
           {/* ── ACTION BUTTONS ── */}
           <div style={{ display:"grid", gap:10 }}>
-            <button onClick={() => setEditing(v=>!v)} style={editBtn}>{editing ? "↑ Cancel" : "Edit Profile"}</button>
+            <button onClick={() => setEditing(v=>!v)} style={editBtn}>{editing ? "Cancel" : "Edit Profile"}</button>
             {!loading && role !== "pro" && (
               <button onClick={() => router.push("/onboarding")} style={upgradeBtn}>✦ Upgrade to PRO — €9.99/mo</button>
             )}
           </div>
+
+          {editing && (
+            <Section title="EDIT PROFILE">
+              <div style={{ display:"grid", gap:10 }}>
+                {[{label:"Display name",value:editName,set:setEditName,ph:"DJ Banger"},
+                  {label:"Genre",value:editGenre,set:setEditGenre,ph:"Techno · House · Melodic"},
+                  {label:"Instagram",value:editIG,set:setEditIG,ph:"@yourdj"},
+                  {label:"SoundCloud",value:editSC,set:setEditSC,ph:"soundcloud.com/yourdj"}
+                ].map(({label,value,set,ph})=>(
+                  <label key={label} style={{ fontSize:12, opacity:0.6 }}>
+                    {label}
+                    <input value={value} onChange={e=>set(e.target.value)} placeholder={ph} style={inputStyle} />
+                  </label>
+                ))}
+                <label style={{ fontSize:12, opacity:0.6 }}>Bio
+                  <textarea value={editBio} onChange={e=>setEditBio(e.target.value)} placeholder="Tell your story…" rows={3} style={{ ...inputStyle, resize:"none" as const }} />
+                </label>
+                <button onClick={saveProfile} disabled={saving} style={saveBtn}>{saving?"Saving…":"Save Profile"}</button>
+              </div>
+            </Section>
+          )}
 
           {/* ── SCANS LIST ── */}
           {scans.length > 0 && (
@@ -308,27 +329,6 @@ export default function ProfilePageV2() {
                     {showMoreFollows ? "Show less" : `+${follows.length-5} more`}
                   </button>
                 )}
-              </div>
-            </Section>
-          )}
-
-          {editing && (
-            <Section title="EDIT PROFILE">
-              <div style={{ display:"grid", gap:10 }}>
-                {[{label:"Display name",value:editName,set:setEditName,ph:"DJ Banger"},
-                  {label:"Genre",value:editGenre,set:setEditGenre,ph:"Techno · House · Melodic"},
-                  {label:"Instagram",value:editIG,set:setEditIG,ph:"@yourdj"},
-                  {label:"SoundCloud",value:editSC,set:setEditSC,ph:"soundcloud.com/yourdj"}
-                ].map(({label,value,set,ph})=>(
-                  <label key={label} style={{ fontSize:12, opacity:0.6 }}>
-                    {label}
-                    <input value={value} onChange={e=>set(e.target.value)} placeholder={ph} style={inputStyle} />
-                  </label>
-                ))}
-                <label style={{ fontSize:12, opacity:0.6 }}>Bio
-                  <textarea value={editBio} onChange={e=>setEditBio(e.target.value)} placeholder="Tell your story…" rows={3} style={{ ...inputStyle, resize:"none" as const }} />
-                </label>
-                <button onClick={saveProfile} disabled={saving} style={saveBtn}>{saving?"Saving…":"Save Profile"}</button>
               </div>
             </Section>
           )}
@@ -418,13 +418,13 @@ export default function ProfilePageV2() {
   );
 }
 
-const pageStyle: React.CSSProperties = { minHeight:"100vh", background:"#000", color:"#fff", padding:"0 0 120px" };
-const shellStyle: React.CSSProperties = { maxWidth:680, margin:"0 auto", padding:"16px 16px", display:"grid", gap:14 };
+const pageStyle: React.CSSProperties = { minHeight:"100vh", background:"#000", color:"#fff", padding:"0 0 120px", overflowX:"hidden" };
+const shellStyle: React.CSSProperties = { maxWidth:680, margin:"0 auto", padding:"16px 16px", display:"grid", gap:14, overflowX:"hidden" };
 const sectionStyle: React.CSSProperties = { border:"1px solid rgba(255,255,255,0.07)", borderRadius:18, padding:"14px 16px", display:"grid", gap:10 };
 const sectionTitleStyle: React.CSSProperties = { fontSize:9, fontWeight:900, letterSpacing:"0.22em", color:"rgba(255,255,255,0.30)" };
 // identity card replaces old headerStyle
 const identityCard: React.CSSProperties = { border:"1px solid rgba(255,255,255,0.09)", borderRadius:24, padding:"20px 18px", display:"grid", gap:16, background:"linear-gradient(160deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))" };
-const statsRow: React.CSSProperties = { display:"flex", background:"rgba(255,255,255,0.03)", borderRadius:16, border:"1px solid rgba(255,255,255,0.07)", padding:"14px 0" };
+const statsRow: React.CSSProperties = { display:"flex", background:"rgba(255,255,255,0.03)", borderRadius:16, border:"1px solid rgba(255,255,255,0.07)", padding:"14px 0", overflowX:"hidden" };
 const avatarStyle: React.CSSProperties = { width:64, height:64, borderRadius:"50%", background:"linear-gradient(135deg,rgba(255,255,255,0.18),rgba(255,255,255,0.06))", border:"1px solid rgba(255,255,255,0.14)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:26, fontWeight:900, flexShrink:0 };
 const avatarSmall: React.CSSProperties = { width:40, height:40, borderRadius:"50%", background:"rgba(255,255,255,0.08)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:900, flexShrink:0 };
 const proBadge: React.CSSProperties = { fontSize:10, fontWeight:800, letterSpacing:"0.14em", border:"1px solid rgba(255,255,255,0.30)", borderRadius:999, padding:"3px 9px", color:"#fff" };

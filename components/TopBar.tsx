@@ -31,7 +31,7 @@ export default function TopBar() {
       sb.from("profiles").select("role,genre,notifs_enabled").eq("id", user.id).maybeSingle()
         .then(({ data: p }) => {
           // role can be "pro" or anything else (public/free)
-          const isPro = p?.role === "pro";
+          const isPro = p?.role === "pro" || p?.role === "dj" || p?.role === "label";
           setPlan(isPro ? "PRO" : "Free");
           if (p?.genre) setGenre(p.genre);
           if (p?.notifs_enabled === false) setNotifsEnabled(false);

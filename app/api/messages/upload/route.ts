@@ -16,10 +16,10 @@ export async function POST(req: Request) {
     const ext = file.name.split(".").pop() || "bin";
     const path = `chat/${sender_id}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
     const arrayBuf = await file.arrayBuffer();
-    const { error } = await sb.storage.from("message_files").upload(path, arrayBuf, { contentType: file.type, upsert: false });
+    const { error } = await sb.storage.from("bpro_uploads").upload(path, arrayBuf, { contentType: file.type, upsert: false });
     if (error) return Response.json({ ok: false, error: error.message }, { status: 500 });
 
-    const { data } = sb.storage.from("message_files").getPublicUrl(path);
+    const { data } = sb.storage.from("bpro_uploads").getPublicUrl(path);
     return Response.json({ ok: true, url: data.publicUrl, name: file.name, size: file.size, type: file.type });
   } catch (e: any) {
     return Response.json({ ok: false, error: e?.message || "Upload failed" }, { status: 500 });
