@@ -86,8 +86,10 @@ export default function ProfilePageV2() {
         if (mounted) setFollows(Array.isArray(fj?.followed) ? fj.followed : []);
 
         const { data: scanData } = await supabase
-          .from("scan_events").select("track_title,created_at")
-          .eq("user_id", uid).order("created_at", { ascending: false }).limit(50);
+          .from("scan_events").select("track_title,created_at,result_type")
+          .eq("user_id", uid)
+          .neq("result_type", "not_found")
+          .order("created_at", { ascending: false }).limit(50);
         if (mounted && scanData) {
           setScans(scanData);
           const days = Array.from({ length: 7 }, (_, i) => {
