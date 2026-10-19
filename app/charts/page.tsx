@@ -75,6 +75,12 @@ export default function ChartsPage() {
   const [search, setSearch] = useState("");
   const [followedTitles, setFollowedTitles] = useState<Set<string>>(new Set());
   const [userId, setUserId] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  }
 
   // Charger userId + follows indépendamment des charts
   useEffect(() => {
@@ -324,43 +330,50 @@ export default function ChartsPage() {
                       const titleKey = trackKey(track.title || "");
                       const isFollowing = followedTitles.has(titleKey);
                       return (
-                        <button
-                          type="button"
-                          disabled={!userId}
-                          onClick={async () => {
-                            if (!userId) { console.warn("[BANGER] follow: userId null"); return; }
-                            console.log("[BANGER] follow:", isFollowing ? "unfollow" : "follow", track.title);
-                            const action = isFollowing ? "unfollow" : "follow";
-                            const res = await fetch("/api/follow-track", {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({
-                                action,
-                                user_id: userId,
-                                track_title: track.title || "",
-                                track_subtitle: (track.artist || "").trim() || null,
-                              }),
-                            });
-                            const json = await res.json().catch(() => null);
-                            if (json?.ok) {
-                              setFollowedTitles(prev => {
-                                const next = new Set(prev);
-                                if (action === "follow") next.add(titleKey);
-                                else next.delete(titleKey);
-                                return next;
+                        <div style={{ display: "grid", gap: 6 }}>
+                          <button
+                            type="button"
+                            disabled={!userId}
+                            onClick={async () => {
+                              if (!userId) { showToast("Sign in to follow tracks"); return; }
+                              const action = isFollowing ? "unfollow" : "follow";
+                              const res = await fetch("/api/follow-track", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  action,
+                                  user_id: userId,
+                                  track_title: track.title || "",
+                                  track_subtitle: (track.artist || "").trim() || null,
+                                }),
                               });
-                            }
-                          }}
-                          style={{
-                            padding: "8px 14px", borderRadius: 999, fontSize: 13, fontWeight: 700,
-                            border: isFollowing ? "1px solid rgba(255,255,255,0.22)" : "1px solid rgba(255,255,255,0.12)",
-                            background: isFollowing ? "rgba(255,255,255,0.10)" : "transparent",
-                            color: isFollowing ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.62)",
-                            cursor: !userId ? "default" : "pointer",
-                          }}
-                        >
-                          {isFollowing ? "Following ✓" : "+ Follow"}
-                        </button>
+                              const json = await res.json().catch(() => null);
+                              if (json?.ok) {
+                                setFollowedTitles(prev => {
+                                  const next = new Set(prev);
+                                  if (action === "follow") next.add(titleKey);
+                                  else next.delete(titleKey);
+                                  return next;
+                                });
+                                if (action === "follow") showToast("Following! You'll be notified when it drops 🔔");
+                              }
+                            }}
+                            style={{
+                              padding: "8px 14px", borderRadius: 999, fontSize: 13, fontWeight: 700,
+                              border: isFollowing ? "1px solid rgba(255,255,255,0.22)" : "1px solid rgba(255,255,255,0.92)",
+                              background: isFollowing ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.92)",
+                              color: isFollowing ? "rgba(255,255,255,0.92)" : "#000",
+                              cursor: !userId ? "default" : "pointer",
+                            }}
+                          >
+                            {isFollowing ? "Following ✓" : "+ Follow & get notified"}
+                          </button>
+                          {!isFollowing && (
+                            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.38)", paddingLeft: 2 }}>
+                              🔔 Get notified when this drops
+                            </div>
+                          )}
+                        </div>
                       );
                     })() : null}
                   </div>
@@ -391,6 +404,11 @@ export default function ChartsPage() {
 
   return (
     <main style={{ minHeight: "100vh", background: "#000", color: "#fff", padding: "20px 14px 120px" }}>
+      {toast && (
+        <div style={{ position: "fixed", bottom: 100, left: "50%", transform: "translateX(-50%)", background: "rgba(20,20,20,0.95)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 20, padding: "10px 20px", fontSize: 13, fontWeight: 600, color: "#fff", zIndex: 999, whiteSpace: "nowrap", backdropFilter: "blur(12px)" }}>
+          {toast}
+        </div>
+      )}
       <style>{`
         @keyframes banger-marquee {
           0% { transform: translateX(0); }
