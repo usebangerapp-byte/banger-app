@@ -57,7 +57,10 @@ export default function ProfilePageV2() {
   const [activeConv,setActiveConv]=useState<string|null>(null);
   const [msgInput, setMsgInput] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string|null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const msgEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -82,6 +85,7 @@ export default function ProfilePageV2() {
           setEditGenre(j.profile.genre || "");
           setEditIG(j.profile.instagram || "");
           setEditSC(j.profile.soundcloud || "");
+          if (j.profile.avatar_url) setAvatarUrl(j.profile.avatar_url);
         }
 
         const fRes = await fetch(`/api/follow-track?user_id=${uid}`, { cache: "no-store" });
@@ -188,18 +192,41 @@ export default function ProfilePageV2() {
   }
 
   async function sendFile(file: File) {
-    if (!activeConv || !userId) return;
+    if (!userId) { alert("Not logged in"); return; }
+    if (!activeConv) { alert("No conversation selected"); return; }
     if (file.size > 52_428_800) { alert("Max 50 MB"); return; }
     setUploading(true);
     try {
-      const fd = new FormData(); fd.append("file", file); fd.append("sender_id", userId);
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("sender_id", userId);
       const res = await fetch("/api/messages/upload", { method:"POST", body: fd });
-      const j = await res.json();
-      if (!j.ok) { alert(j.error || "Upload failed"); return; }
-      await fetch("/api/messages/send", { method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ sender_id: userId, receiver_id: activeConv, file_url: j.url, file_name: j.name, file_type: j.type }) });
+      const j = await res.json().catch(() => ({ ok: false, error: "Upload parse error" }));
+      if (!j.ok) { alert("Upload error: " + (j.error || "unknown")); return; }
+      const sendRes = await fetch("/api/messages/send", { method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ sender_id: userId, receiver_id: activeConv, content: null, file_url: j.url, file_name: j.name, file_type: j.type }) });
+      const sj = await sendRes.json().catch(() => ({ ok: false, error: "Send parse error" }));
+      if (!sj.ok) { alert("Send error: " + (sj.error || "unknown")); return; }
       setMessages(p => [...p, { id: Date.now(), created_at: new Date().toISOString(), sender_id: userId, receiver_id: activeConv, content: null, file_url: j.url, file_name: j.name, file_type: j.type, read: false }]);
+    } catch(e: any) {
+      alert("Error: " + (e?.message || "unknown"));
     } finally { setUploading(false); }
+  }
+
+  async function uploadAvatar(file: File) {
+    if (!userId || !supabase) return;
+    setAvatarUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `avatars/${userId}.${ext}`;
+      const ab = await file.arrayBuffer();
+      const { error } = await supabase.storage.from("bpro_uploads").upload(path, ab, { contentType: file.type, upsert: true });
+      if (error) { alert("Avatar upload error: " + error.message); return; }
+      const { data } = supabase.storage.from("bpro_uploads").getPublicUrl(path);
+      const url = data.publicUrl + "?t=" + Date.now();
+      setAvatarUrl(url);
+      await supabase.from("profiles").update({ avatar_url: data.publicUrl }).eq("id", userId);
+    } finally { setAvatarUploading(false); }
   }
 
   const name     = profile?.display_name || profile?.email?.split("@")[0] || "You";
@@ -226,19 +253,55 @@ export default function ProfilePageV2() {
           {/* ── IDENTITY CARD ── */}
           <div style={identityCard}>
             {/* Avatar + name row */}
-            <div style={{ display:"flex", alignItems:"center", gap:16 }}>
-              <div style={avatarStyle}>{name.charAt(0).toUpperCase()}</div>
+            <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+              {/* Avatar — cliquable pour changer la photo */}
+              <input ref={avatarInputRef} type="file" accept="image/*" style={{ display:"none" }}
+                onChange={e => { const f = e.target.files?.[0]; if (f) uploadAvatar(f); e.target.value=""; }} />
+              <div onClick={() => avatarInputRef.current?.click()}
+                style={{ ...avatarStyle, cursor:"pointer", position:"relative", overflow:"hidden", flexShrink:0 }}>
+                {avatarUrl
+                  ? <img src={avatarUrl} alt="avatar" style={{ width:"100%", height:"100%", objectFit:"cover", borderRadius:"50%" }} />
+                  : <span>{name.charAt(0).toUpperCase()}</span>
+                }
+                {avatarUploading && (
+                  <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.6)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11 }}>⏳</div>
+                )}
+                {/* Petit badge caméra */}
+                <div style={{ position:"absolute", bottom:0, right:0, width:20, height:20, borderRadius:"50%", background:"rgba(255,255,255,0.15)", border:"1.5px solid rgba(0,0,0,0.8)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10 }}>📷</div>
+              </div>
+
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" as const }}>
                   <span style={{ fontSize:22, fontWeight:900, letterSpacing:"-0.01em" }}>{name}</span>
                   {!loading && role==="pro" && <span style={proBadge}>✦ PRO</span>}
                 </div>
                 {profile?.genre && <div style={{ fontSize:12, color:"rgba(255,255,255,0.45)", marginTop:3 }}>{profile.genre}</div>}
-                {/* Social links inline */}
+                {/* Social links avec logos SVG */}
                 {(profile?.instagram || profile?.soundcloud) && (
                   <div style={{ display:"flex", gap:6, marginTop:8, flexWrap:"wrap" as const }}>
-                    {profile?.instagram  && <a href={`https://instagram.com/${profile.instagram.replace("@","")}`}  target="_blank" rel="noreferrer" style={socialLink}>IG @{profile.instagram.replace("@","")}</a>}
-                    {profile?.soundcloud && <a href={`https://soundcloud.com/${profile.soundcloud.replace("@","")}`} target="_blank" rel="noreferrer" style={socialLink}>SC {profile.soundcloud}</a>}
+                    {profile?.instagram && (
+                      <a href={`https://instagram.com/${profile.instagram.replace("@","")}`} target="_blank" rel="noreferrer" style={socialLink}>
+                        {/* Instagram logo SVG */}
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ verticalAlign:"middle", marginRight:5 }}>
+                          <rect x="2" y="2" width="20" height="20" rx="5" ry="5" stroke="currentColor" strokeWidth="2"/>
+                          <circle cx="12" cy="12" r="4.5" stroke="currentColor" strokeWidth="2"/>
+                          <circle cx="17.5" cy="6.5" r="1.2" fill="currentColor"/>
+                        </svg>
+                        {profile.instagram.replace("@","")}
+                      </a>
+                    )}
+                    {profile?.soundcloud && (
+                      <a href={`https://soundcloud.com/${profile.soundcloud.replace("@","")}`} target="_blank" rel="noreferrer" style={socialLink}>
+                        {/* SoundCloud logo SVG */}
+                        <svg width="15" height="11" viewBox="0 0 30 20" fill="currentColor" style={{ verticalAlign:"middle", marginRight:5 }}>
+                          <path d="M0 13.5c0 2 1.6 3.5 3.5 3.5H22c2.8 0 5-2.2 5-5 0-2.6-2-4.8-4.5-5-.3-4-3.7-7-7.8-6.4C13.3.8 12 2.5 12 4.5v9H0v0z" opacity="0.9"/>
+                          <rect x="2" y="10" width="1.5" height="6" rx="0.75"/>
+                          <rect x="5" y="8" width="1.5" height="8" rx="0.75"/>
+                          <rect x="8" y="9" width="1.5" height="7" rx="0.75"/>
+                        </svg>
+                        {profile.soundcloud.replace("@","")}
+                      </a>
+                    )}
                   </div>
                 )}
               </div>
@@ -251,12 +314,12 @@ export default function ProfilePageV2() {
               </div>
             )}
 
-            {/* Stats row */}
+            {/* Stats row — compact */}
             <div style={statsRow}>
               {[{l:"SCANS",v:scans.length},{l:"FOLLOWERS",v:profile?.follower_count||0},{l:"FOLLOWING",v:profile?.following_count||0},{l:"FOLLOWS",v:follows.length}].map(({l,v},i)=>(
-                <div key={l} style={{ textAlign:"center" as const, flex:1, minWidth:0, ...(i<3?{borderRight:"1px solid rgba(255,255,255,0.07)"}:{}) }}>
-                  <div style={{ fontSize:20, fontWeight:900 }}>{v}</div>
-                  <div style={{ fontSize:8, color:"rgba(255,255,255,0.35)", letterSpacing:"0.08em", marginTop:2 }}>{l}</div>
+                <div key={l} style={{ textAlign:"center" as const, flex:1, minWidth:0, boxSizing:"border-box" as const, ...(i<3?{borderRight:"1px solid rgba(255,255,255,0.07)"}:{}) }}>
+                  <div style={{ fontSize:17, fontWeight:900, lineHeight:1 }}>{v}</div>
+                  <div style={{ fontSize:7, color:"rgba(255,255,255,0.35)", letterSpacing:"0.06em", marginTop:3 }}>{l}</div>
                 </div>
               ))}
             </div>
@@ -396,17 +459,18 @@ export default function ProfilePageV2() {
                 })}
                 <div ref={msgEndRef} />
               </div>
-              <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-                {/* Hidden file input */}
+              <div style={{ display:"flex", gap:8, alignItems:"center", overflow:"hidden", boxSizing:"border-box" as const }}>
+                {/* Hidden file inputs */}
                 <input ref={fileInputRef} type="file" accept="audio/*,.mp3,.wav,.aif,.aiff,.flac,.ogg,.m4a"
                   style={{ display:"none" }} onChange={e => { const f = e.target.files?.[0]; if (f) sendFile(f); e.target.value=""; }} />
                 {/* Paperclip button */}
                 <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
-                  style={{ width:44, height:44, borderRadius:"50%", background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.12)", color:"#fff", fontSize:18, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, opacity: uploading ? 0.5 : 1 }}>
+                  style={{ width:44, height:44, minWidth:44, borderRadius:"50%", background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.12)", color:"#fff", fontSize:18, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, opacity: uploading ? 0.5 : 1 }}>
                   {uploading ? "⏳" : "📎"}
                 </button>
                 <input value={msgInput} onChange={e=>setMsgInput(e.target.value)}
-                  onKeyDown={e=>e.key==="Enter"&&sendMsg()} placeholder="Message…" style={{ ...inputStyle, flex:1, marginTop:0 }} />
+                  onKeyDown={e=>e.key==="Enter"&&sendMsg()} placeholder="Message…"
+                  style={{ flex:1, minWidth:0, padding:"10px 12px", borderRadius:12, background:"#0d0d0d", border:"1px solid rgba(255,255,255,0.10)", color:"#fff", fontSize:14, boxSizing:"border-box" as const, marginTop:0 }} />
                 <button onClick={sendMsg} disabled={!msgInput.trim()} style={sendMsgBtn}>↑</button>
               </div>
             </>)}
@@ -418,13 +482,13 @@ export default function ProfilePageV2() {
   );
 }
 
-const pageStyle: React.CSSProperties = { minHeight:"100vh", background:"#000", color:"#fff", padding:"0 0 120px", overflowX:"hidden" };
-const shellStyle: React.CSSProperties = { maxWidth:680, margin:"0 auto", padding:"16px 16px", display:"grid", gap:14, overflowX:"hidden" };
-const sectionStyle: React.CSSProperties = { border:"1px solid rgba(255,255,255,0.07)", borderRadius:18, padding:"14px 16px", display:"grid", gap:10 };
+const pageStyle: React.CSSProperties = { minHeight:"100vh", background:"#000", color:"#fff", padding:"0 0 120px", overflowX:"hidden", boxSizing:"border-box" };
+const shellStyle: React.CSSProperties = { maxWidth:680, margin:"0 auto", padding:"16px 14px", display:"grid", gap:14, overflowX:"hidden", boxSizing:"border-box", width:"100%" };
+const sectionStyle: React.CSSProperties = { border:"1px solid rgba(255,255,255,0.07)", borderRadius:18, padding:"14px 14px", display:"grid", gap:10, boxSizing:"border-box", overflow:"hidden" };
 const sectionTitleStyle: React.CSSProperties = { fontSize:9, fontWeight:900, letterSpacing:"0.22em", color:"rgba(255,255,255,0.30)" };
 // identity card replaces old headerStyle
-const identityCard: React.CSSProperties = { border:"1px solid rgba(255,255,255,0.09)", borderRadius:24, padding:"20px 18px", display:"grid", gap:16, background:"linear-gradient(160deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))" };
-const statsRow: React.CSSProperties = { display:"flex", background:"rgba(255,255,255,0.03)", borderRadius:16, border:"1px solid rgba(255,255,255,0.07)", padding:"14px 0", overflowX:"hidden" };
+const identityCard: React.CSSProperties = { border:"1px solid rgba(255,255,255,0.09)", borderRadius:24, padding:"18px 14px", display:"grid", gap:14, background:"linear-gradient(160deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))", boxSizing:"border-box", overflow:"hidden" };
+const statsRow: React.CSSProperties = { display:"flex", background:"rgba(255,255,255,0.03)", borderRadius:14, border:"1px solid rgba(255,255,255,0.07)", padding:"10px 0", overflow:"hidden", boxSizing:"border-box" };
 const avatarStyle: React.CSSProperties = { width:64, height:64, borderRadius:"50%", background:"linear-gradient(135deg,rgba(255,255,255,0.18),rgba(255,255,255,0.06))", border:"1px solid rgba(255,255,255,0.14)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:26, fontWeight:900, flexShrink:0 };
 const avatarSmall: React.CSSProperties = { width:40, height:40, borderRadius:"50%", background:"rgba(255,255,255,0.08)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:900, flexShrink:0 };
 const proBadge: React.CSSProperties = { fontSize:10, fontWeight:800, letterSpacing:"0.14em", border:"1px solid rgba(255,255,255,0.30)", borderRadius:999, padding:"3px 9px", color:"#fff" };
@@ -433,7 +497,7 @@ const shareBtn: React.CSSProperties = { background:"rgba(255,255,255,0.03)", bor
 const editBtn: React.CSSProperties = { padding:"13px 16px", borderRadius:14, background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.12)", color:"#fff", fontWeight:700, fontSize:14, cursor:"pointer" };
 const upgradeBtn: React.CSSProperties = { padding:"13px 16px", borderRadius:14, background:"linear-gradient(135deg,rgba(255,255,255,0.13),rgba(255,255,255,0.06))", border:"1px solid rgba(255,255,255,0.22)", color:"#fff", fontWeight:800, fontSize:14, cursor:"pointer" };
 const downgradeBtn: React.CSSProperties = { padding:"11px 16px", borderRadius:14, background:"transparent", border:"1px solid rgba(255,255,255,0.06)", color:"rgba(255,255,255,0.35)", fontWeight:600, fontSize:13, cursor:"pointer" };
-const inputStyle: React.CSSProperties = { display:"block", width:"100%", marginTop:6, padding:"10px 12px", borderRadius:12, background:"#0d0d0d", border:"1px solid rgba(255,255,255,0.10)", color:"#fff", fontSize:14 };
+const inputStyle: React.CSSProperties = { display:"block", width:"100%", marginTop:6, padding:"10px 12px", borderRadius:12, background:"#0d0d0d", border:"1px solid rgba(255,255,255,0.10)", color:"#fff", fontSize:14, boxSizing:"border-box", minWidth:0 };
 const saveBtn: React.CSSProperties = { padding:"13px 16px", borderRadius:14, background:"#fff", color:"#000", fontWeight:800, fontSize:14, cursor:"pointer", border:"none" };
 const tabBarStyle: React.CSSProperties = { display:"flex", borderBottom:"1px solid rgba(255,255,255,0.08)" };
 const tabBtn: React.CSSProperties = { flex:1, padding:"14px 0", background:"none", border:"none", color:"rgba(255,255,255,0.45)", fontWeight:700, fontSize:12, letterSpacing:"0.12em", cursor:"pointer" };
