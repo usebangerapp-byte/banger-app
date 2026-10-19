@@ -89,132 +89,118 @@ export default function TopBar() {
       {/* Spacer so content doesn't hide under TopBar */}
       <div style={{ height: 52 }} />
 
-      {/* Settings panel */}
+      {/* Settings panel — épuré */}
       {showSettings && (
         <div style={panelStyle}>
-          <div style={panelTitle}>SETTINGS</div>
-          <button onClick={() => setShowSettings(false)} style={closeBtn}>✕</button>
-
-          {/* 1 — Account */}
-          <div style={settingsSection}>
-            <div style={settingsSectionTitle}>ACCOUNT</div>
-            <div style={panelRow}>
-              <span style={panelLabel}>Email</span>
-              <span style={{ ...panelValue, fontSize:12, opacity:0.6 }}>{email || "—"}</span>
-            </div>
-            <div style={panelRow}>
-              <span style={panelLabel}>Plan</span>
-              <span style={{ ...panelValue, color: plan === "PRO" ? "#fff" : "rgba(255,255,255,0.45)" }}>
-                {plan === "PRO" ? "✦ PRO" : "Free"}
-              </span>
-            </div>
-            {plan === "Free" && (
-              <a href="/upgrade" onClick={() => setShowSettings(false)} style={{ ...settingsBtn, background:"rgba(255,255,255,0.08)", borderColor:"rgba(255,255,255,0.20)", fontWeight:800 }}>
-                ✦ Upgrade to PRO
-              </a>
-            )}
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
+            <div style={panelTitle}>SETTINGS</div>
+            <button onClick={() => setShowSettings(false)} style={closeBtn}>✕</button>
           </div>
 
-          {/* 2 — Notifications */}
-          <div style={settingsSection}>
-            <div style={settingsSectionTitle}>NOTIFICATIONS</div>
-            <div style={{ ...panelRow, borderBottom:"none" }}>
-              <span style={panelLabel}>Track drops</span>
-              <button onClick={async () => {
-                const next = !notifsEnabled;
-                setNotifsEnabled(next);
-                const sb = createSupabaseBrowser();
-                if (sb && userId) await sb.from("profiles").update({ notifs_enabled: next }).eq("id", userId);
-              }} style={{
-                width:44, height:26, borderRadius:13, border:"none", cursor:"pointer",
-                background: notifsEnabled ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.15)",
-                position:"relative" as const, transition:"background 0.2s", flexShrink:0,
-              }}>
-                <span style={{
-                  position:"absolute" as const, top:3, left: notifsEnabled ? 21 : 3,
-                  width:20, height:20, borderRadius:"50%",
-                  background: notifsEnabled ? "#000" : "rgba(255,255,255,0.6)",
-                  transition:"left 0.2s",
-                }}/>
-              </button>
-            </div>
-            <div style={{ fontSize:11, opacity:0.38, paddingTop:2 }}>
-              {notifsEnabled ? "You'll be notified when followed tracks drop" : "Notifications off"}
-            </div>
+          {/* Email + plan sur une ligne */}
+          <div style={settingsRow}>
+            <span style={panelLabel}>{email || "—"}</span>
+            <span style={{ fontSize:12, fontWeight:800, color: plan==="PRO" ? "#fff" : "rgba(255,255,255,0.35)",
+              border: plan==="PRO" ? "1px solid rgba(255,255,255,0.25)" : "1px solid rgba(255,255,255,0.10)",
+              borderRadius:999, padding:"2px 8px" }}>
+              {plan==="PRO" ? "✦ PRO" : "Free"}
+            </span>
           </div>
 
-          {/* 3 — Profile */}
-          <div style={settingsSection}>
-            <div style={settingsSectionTitle}>MY PROFILE</div>
-            <div style={panelRow}>
-              <span style={panelLabel}>Genre</span>
-              <input value={genre} onChange={e => setGenre(e.target.value)}
-                onBlur={async () => {
+          {/* Notifications toggle */}
+          <div style={settingsRow}>
+            <span style={panelLabel}>Notifications</span>
+            <button onClick={async () => {
+              const next = !notifsEnabled; setNotifsEnabled(next);
+              const sb = createSupabaseBrowser();
+              if (sb && userId) await sb.from("profiles").update({ notifs_enabled: next }).eq("id", userId);
+            }} style={{ width:44, height:26, borderRadius:13, border:"none", cursor:"pointer", flexShrink:0,
+              background: notifsEnabled ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.15)",
+              position:"relative" as const, transition:"background 0.2s" }}>
+              <span style={{ position:"absolute" as const, top:3, left: notifsEnabled ? 21 : 3,
+                width:20, height:20, borderRadius:"50%", transition:"left 0.2s",
+                background: notifsEnabled ? "#000" : "rgba(255,255,255,0.6)" }}/>
+            </button>
+          </div>
+
+          {/* Genre */}
+          <div style={settingsRow}>
+            <span style={panelLabel}>Genre</span>
+            <input value={genre} onChange={e => setGenre(e.target.value)}
+              onBlur={async () => { const sb = createSupabaseBrowser(); if (sb && userId) await sb.from("profiles").update({ genre }).eq("id", userId); }}
+              placeholder="House, Techno…"
+              style={{ background:"transparent", border:"none", color:"#fff", fontSize:13, fontWeight:700,
+                textAlign:"right" as const, outline:"none", maxWidth:150, minWidth:0 }} />
+          </div>
+
+          {/* Sign out */}
+          <button onClick={async () => { const sb = createSupabaseBrowser(); if (sb) await sb.auth.signOut(); window.location.href = "/"; }}
+            style={{ ...actionRow, color:"rgba(255,100,100,0.75)" }}>
+            Sign out
+          </button>
+
+          {/* Delete */}
+          {!showDeleteConf ? (
+            <button onClick={() => setShowDeleteConf(true)} style={{ ...actionRow, color:"rgba(255,60,60,0.45)", fontSize:12 }}>
+              Delete account
+            </button>
+          ) : (
+            <div style={{ display:"grid", gap:6 }}>
+              <div style={{ fontSize:12, color:"rgba(255,100,100,0.8)", textAlign:"center" as const }}>Permanent — all data deleted.</div>
+              <div style={{ display:"flex", gap:8 }}>
+                <button onClick={() => setShowDeleteConf(false)} style={{ ...settingsBtn, flex:1, textAlign:"center" as const }}>Cancel</button>
+                <button onClick={async () => {
                   const sb = createSupabaseBrowser();
-                  if (sb && userId) await sb.from("profiles").update({ genre }).eq("id", userId);
-                }}
-                placeholder="House, Techno…"
-                style={{ background:"transparent", border:"none", color:"#fff", fontSize:13, fontWeight:700, textAlign:"right" as const, outline:"none", width:140 }} />
-            </div>
-          </div>
-
-          {/* 4 — Danger zone (only delete — sign out is in Profile tab) */}
-          <div style={settingsSection}>
-            <div style={settingsSectionTitle}>DANGER ZONE</div>
-            {!showDeleteConf ? (
-              <button onClick={() => setShowDeleteConf(true)}
-                style={{ ...settingsBtn, color:"rgba(255,60,60,0.6)", border:"1px solid rgba(255,60,60,0.15)", background:"transparent" }}>
-                Delete my account
-              </button>
-            ) : (
-              <div style={{ display:"grid", gap:8 }}>
-                <div style={{ fontSize:12, color:"rgba(255,100,100,0.8)", textAlign:"center" as const }}>
-                  Permanent. All your data will be deleted.
-                </div>
-                <div style={{ display:"flex", gap:8 }}>
-                  <button onClick={() => setShowDeleteConf(false)} style={{ ...settingsBtn, flex:1, textAlign:"center" as const }}>Cancel</button>
-                  <button onClick={async () => {
-                    const sb = createSupabaseBrowser();
-                    if (sb && userId) {
-                      await fetch("/api/profile/delete", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ user_id: userId }) });
-                      await sb.auth.signOut();
-                      window.location.href = "/";
-                    }
-                  }} style={{ ...settingsBtn, flex:1, textAlign:"center" as const, color:"#fff", background:"rgba(255,50,50,0.3)", border:"1px solid rgba(255,80,80,0.35)" }}>
-                    Confirm delete
-                  </button>
-                </div>
+                  if (sb && userId) { await fetch("/api/profile/delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({user_id:userId})}); await sb.auth.signOut(); window.location.href="/"; }
+                }} style={{ ...settingsBtn, flex:1, textAlign:"center" as const, color:"#fff", background:"rgba(255,50,50,0.3)", border:"1px solid rgba(255,80,80,0.35)" }}>
+                  Confirm
+                </button>
               </div>
-            )}
-          </div>
-
+            </div>
+          )}
         </div>
       )}
 
       {/* Notifications panel */}
       {showNotifs && (
         <div style={panelStyle}>
-          <div style={panelTitle}>NOTIFICATIONS</div>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+            <div style={panelTitle}>NOTIFICATIONS</div>
+            <button onClick={() => setShowNotifs(false)} style={closeBtn}>✕</button>
+          </div>
           {notifs.length === 0 ? (
-            <div style={{ fontSize:13, opacity:0.45, padding:"8px 0" }}>No new notifications.</div>
-          ) : (
-            <div style={{ display:"grid", gap:8 }}>
+            <div style={{ fontSize:13, opacity:0.38, padding:"4px 0" }}>No new notifications.</div>
+          ) : (<>
+            <div style={{ display:"grid", gap:6 }}>
               {notifs.map(n => (
-                <div key={n.id} style={{ fontSize:13, padding:"10px 12px", borderRadius:12, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.07)" }}>
-                  {n.track_title && <div style={{ fontWeight:700, marginBottom:3 }}>{n.track_title}</div>}
-                  <div style={{ opacity:0.7 }}>{n.message || (n.type === "track_released" ? "A track you follow just dropped! 🎉" : n.type || "New notification")}</div>
+                <div key={n.id} onClick={async () => {
+                  // mark as read on click
+                  const sb = createSupabaseBrowser();
+                  if (sb) await sb.from("notifications").update({ read:true }).eq("id", n.id);
+                  setNotifs(p => p.filter(x => x.id !== n.id));
+                  setNotifCount(c => Math.max(0, c-1));
+                  // navigate to relevant content
+                  if (n.type === "track_released" || n.type === "new_track") window.location.href = "/radar";
+                }} style={{ padding:"10px 12px", borderRadius:12, background:"rgba(255,255,255,0.04)",
+                  border:"1px solid rgba(255,255,255,0.07)", cursor:"pointer" }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                    <span style={{ fontSize:16 }}>{n.type==="track_released"?"🎉":n.type==="new_message"?"💬":"🔔"}</span>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      {n.track_title && <div style={{ fontWeight:700, fontSize:13, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{n.track_title}</div>}
+                      <div style={{ fontSize:12, opacity:0.6, marginTop:1 }}>{n.message || (n.type==="track_released"?"Just dropped 🎉":"New notification")}</div>
+                    </div>
+                  </div>
                 </div>
               ))}
-              <button onClick={async () => {
-                const sb = createSupabaseBrowser();
-                if (sb && userId) { await sb.from("notifications").update({ read: true }).eq("user_id", userId).eq("read", false); }
-                setNotifs([]); setNotifCount(0); setShowNotifs(false);
-              }} style={{ ...settingsBtn, fontSize:12, opacity:0.55, textAlign:"center" as const }}>
-                Mark all as read
-              </button>
             </div>
-          )}
-          <button onClick={() => setShowNotifs(false)} style={closeBtn}>✕</button>
+            <button onClick={async () => {
+              const sb = createSupabaseBrowser();
+              if (sb && userId) await sb.from("notifications").update({read:true}).eq("user_id",userId).eq("read",false);
+              setNotifs([]); setNotifCount(0); setShowNotifs(false);
+            }} style={{ fontSize:12, opacity:0.45, background:"none", border:"none", color:"#fff", cursor:"pointer", padding:"6px 0", textAlign:"center" as const, width:"100%" }}>
+              Mark all as read
+            </button>
+          </>)}
         </div>
       )}
 
@@ -233,15 +219,23 @@ const iconBtn: React.CSSProperties = {
 const panelStyle: React.CSSProperties = {
   position: "fixed", top: 58, left: 12, right: 12, zIndex: 200,
   background: "#111", border: "1px solid rgba(255,255,255,0.10)",
-  borderRadius: 20, padding: "20px 18px 16px", display: "grid", gap: 10,
-  maxHeight: "80vh", overflowY: "auto" as const,
+  borderRadius: 20, padding: "16px 16px 14px", display: "grid", gap: 4,
+  maxHeight: "80vh", overflowY: "auto" as const, overflowX: "hidden" as const,
+  boxSizing: "border-box" as const,
 };
-const settingsSection: React.CSSProperties = {
-  borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 12, display: "grid", gap: 8,
+const settingsRow: React.CSSProperties = {
+  display: "flex", justifyContent: "space-between", alignItems: "center",
+  padding: "11px 0", borderBottom: "1px solid rgba(255,255,255,0.05)",
+  minWidth: 0, overflow: "hidden",
 };
-const settingsSectionTitle: React.CSSProperties = {
-  fontSize: 9, fontWeight: 900, letterSpacing: "0.22em", color: "rgba(255,255,255,0.30)", marginBottom: 2,
+const actionRow: React.CSSProperties = {
+  display: "block", width: "100%", padding: "11px 0", background: "none", border: "none",
+  textAlign: "left" as const, fontSize: 13, fontWeight: 700, cursor: "pointer",
+  borderBottom: "1px solid rgba(255,255,255,0.05)",
 };
+// keep old names for compat
+const settingsSection: React.CSSProperties = { display: "grid", gap: 8 };
+const settingsSectionTitle: React.CSSProperties = { fontSize: 9, fontWeight: 900, letterSpacing: "0.22em", color: "rgba(255,255,255,0.30)" };
 const panelTitle: React.CSSProperties = {
   fontSize: 10, fontWeight: 800, letterSpacing: "0.20em", opacity: 0.45, marginBottom: 4,
 };
