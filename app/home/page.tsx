@@ -511,19 +511,7 @@ const region = await getRegion();
   return (
     <div style={scanStyles.page}>
       <style>{`
-        /* ── Club Strobe animations ── */
-        @keyframes ringPulse {
-          0%   { transform: translate(-50%,-50%) scale(1);    opacity: 0.7; }
-          100% { transform: translate(-50%,-50%) scale(2.2);  opacity: 0; }
-        }
-        @keyframes ringPulseFast {
-          0%   { transform: translate(-50%,-50%) scale(1);    opacity: 0.9; }
-          100% { transform: translate(-50%,-50%) scale(1.8);  opacity: 0; }
-        }
-        @keyframes breathe {
-          0%,100% { transform: translate(-50%,-50%) scale(1.00); opacity: 0.12; }
-          50%      { transform: translate(-50%,-50%) scale(1.18); opacity: 0.32; }
-        }
+        /* ── Animations nouvelle génération — ZERO cercle décalé ── */
         @keyframes quake {
           0%,100% { transform: translate(0,0) rotate(0deg); }
           20%     { transform: translate(-3px, 2px) rotate(-0.4deg); }
@@ -531,41 +519,41 @@ const region = await getRegion();
           60%     { transform: translate(-2px, 3px) rotate(-0.3deg); }
           80%     { transform: translate( 2px,-1px) rotate( 0.3deg); }
         }
-        @keyframes strobeIn {
-          0%   { opacity: 0; }
-          8%   { opacity: 0.85; }
-          16%  { opacity: 0; }
-          24%  { opacity: 0.6; }
-          32%  { opacity: 0; }
-          100% { opacity: 0; }
-        }
-        @keyframes boomRing {
-          0%   { transform: translate(-50%,-50%) scale(0.85); opacity: 1; }
-          100% { transform: translate(-50%,-50%) scale(2.0);  opacity: 0; }
-        }
-        @keyframes boomRing2 {
-          0%   { transform: translate(-50%,-50%) scale(0.85); opacity: 0.6; }
-          100% { transform: translate(-50%,-50%) scale(1.7);  opacity: 0; }
-        }
-        @keyframes boomRing3 {
-          0%   { transform: translate(-50%,-50%) scale(0.85); opacity: 0.35; }
-          100% { transform: translate(-50%,-50%) scale(1.45); opacity: 0; }
-        }
         @keyframes successGlow {
-          0%   { opacity: 0; transform: translate(-50%,-50%) scale(0.7); }
+          0%   { opacity: 0; transform: scale(0.7); }
           30%  { opacity: 1; }
-          100% { opacity: 0; transform: translate(-50%,-50%) scale(1.4); }
+          100% { opacity: 0; transform: scale(1.4); }
         }
-        @keyframes logoSlam {
-          0%   { transform: scale(1); }
-          25%  { transform: scale(1.14); }
-          55%  { transform: scale(0.96); }
-          80%  { transform: scale(1.04); }
-          100% { transform: scale(1); }
+        /* Halo pulse — réactif, pas de translate */
+        @keyframes haloPulse {
+          0%,100% { opacity: 0.18; transform: scale(1.00); }
+          50%      { opacity: 0.45; transform: scale(1.12); }
+        }
+        /* Orbit particles */
+        @keyframes orbit0 { from { transform: rotate(0deg)   translateX(115px) rotate(0deg);   } to { transform: rotate(360deg)  translateX(115px) rotate(-360deg);  } }
+        @keyframes orbit1 { from { transform: rotate(72deg)  translateX(115px) rotate(-72deg);  } to { transform: rotate(432deg) translateX(115px) rotate(-432deg); } }
+        @keyframes orbit2 { from { transform: rotate(144deg) translateX(115px) rotate(-144deg); } to { transform: rotate(504deg) translateX(115px) rotate(-504deg); } }
+        @keyframes orbit3 { from { transform: rotate(216deg) translateX(115px) rotate(-216deg); } to { transform: rotate(576deg) translateX(115px) rotate(-576deg); } }
+        @keyframes orbit4 { from { transform: rotate(288deg) translateX(115px) rotate(-288deg); } to { transform: rotate(648deg) translateX(115px) rotate(-648deg); } }
+        /* Fast orbit for recognizing */
+        @keyframes orbitFast0 { from { transform: rotate(0deg)   translateX(105px) rotate(0deg);   } to { transform: rotate(360deg)  translateX(105px) rotate(-360deg);  } }
+        @keyframes orbitFast1 { from { transform: rotate(60deg)  translateX(105px) rotate(-60deg);  } to { transform: rotate(420deg) translateX(105px) rotate(-420deg); } }
+        @keyframes orbitFast2 { from { transform: rotate(120deg) translateX(105px) rotate(-120deg); } to { transform: rotate(480deg) translateX(105px) rotate(-480deg); } }
+        @keyframes orbitFast3 { from { transform: rotate(180deg) translateX(105px) rotate(-180deg); } to { transform: rotate(540deg) translateX(105px) rotate(-540deg); } }
+        @keyframes orbitFast4 { from { transform: rotate(240deg) translateX(105px) rotate(-240deg); } to { transform: rotate(600deg) translateX(105px) rotate(-600deg); } }
+        @keyframes orbitFast5 { from { transform: rotate(300deg) translateX(105px) rotate(-300deg); } to { transform: rotate(660deg) translateX(105px) rotate(-660deg); } }
+        /* Boom flash success */
+        @keyframes boomFlash {
+          0%   { opacity: 0.9; transform: scale(1.0); }
+          60%  { opacity: 0.4; transform: scale(1.35); }
+          100% { opacity: 0;   transform: scale(1.55); }
+        }
+        @keyframes boomFlash2 {
+          0%   { opacity: 0; }
+          15%  { opacity: 0.7; transform: scale(1.0); }
+          100% { opacity: 0; transform: scale(1.4); }
         }
       `}</style>
-
-      {/* flash effects moved inside button */}
 
       <div style={scanStyles.phone}>
 
@@ -575,134 +563,95 @@ const region = await getRegion();
               animation: recognizing ? "quake 0.18s ease-in-out infinite" : "none",
             }}>
 
-            {/* ── IDLE : anneau statique subtil ── */}
-            {!busy && (
-              <div style={{
-                position: "absolute", left: "50%", top: "50%",
-                width: 200, height: 200, borderRadius: "50%",
-                border: "1px solid rgba(255,255,255,0.08)",
-                transform: "translate(-50%,-50%)",
-                pointerEvents: "none",
-              }} />
+            {/* ── HALO AMBIANT (toujours présent, pas de position absolue + translate) ── */}
+            {/* Rendu via SVG pour zéro problème de centrage */}
+            <svg style={{ position:"absolute", inset:0, pointerEvents:"none", zIndex:0 }}
+              width="300" height="300" viewBox="0 0 300 300">
+              {/* Idle : légère aura */}
+              {!busy && (
+                <circle cx="150" cy="150" r="135" fill="none"
+                  stroke="rgba(255,255,255,0.07)" strokeWidth="1"/>
+              )}
+              {/* Listening : aura réactive (rendu via filter + opacité) */}
+              {listening && (<>
+                <defs>
+                  <radialGradient id="listenHalo" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stopColor={`rgba(255,200,50,${0.10 + audioLevel * 0.22})`}/>
+                    <stop offset="60%" stopColor={`rgba(255,160,0,${0.04 + audioLevel * 0.08})`}/>
+                    <stop offset="100%" stopColor="rgba(0,0,0,0)"/>
+                  </radialGradient>
+                </defs>
+                <circle cx="150" cy="150" r="148" fill="url(#listenHalo)"
+                  style={{ transition:"all 0.05s linear" }}/>
+              </>)}
+              {/* Recognizing : aura froide */}
+              {recognizing && (<>
+                <defs>
+                  <radialGradient id="recogHalo" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stopColor="rgba(200,220,255,0.14)"/>
+                    <stop offset="100%" stopColor="rgba(0,0,0,0)"/>
+                  </radialGradient>
+                </defs>
+                <circle cx="150" cy="150" r="148" fill="url(#recogHalo)"/>
+              </>)}
+              {/* Success : flash */}
+              {success && (
+                <circle cx="150" cy="150" r="145"
+                  fill={tag==="RELEASED" ? "rgba(29,185,84,0.22)" : "rgba(255,220,60,0.22)"}
+                  style={{ animation:"boomFlash 0.75s ease-out forwards" }}/>
+              )}
+            </svg>
+
+            {/* ── LISTENING : particules en orbite lente ── */}
+            {listening && (
+              <div style={{ position:"absolute", inset:0, pointerEvents:"none", zIndex:1 }}>
+                {[0,1,2,3,4].map(i => (
+                  <div key={i} style={{
+                    position:"absolute", top:"50%", left:"50%",
+                    width: 5 + audioLevel * 3, height: 5 + audioLevel * 3,
+                    borderRadius:"50%",
+                    background: `rgba(255,${180 + i*12},0,${0.55 + audioLevel * 0.45})`,
+                    boxShadow: `0 0 ${6 + audioLevel*10}px rgba(255,180,0,0.6)`,
+                    marginTop: -(2.5 + audioLevel*1.5),
+                    marginLeft: -(2.5 + audioLevel*1.5),
+                    animation: `orbit${i} ${3.2 - audioLevel*1.4}s linear infinite`,
+                  }}/>
+                ))}
+              </div>
             )}
 
-            {/* ── LISTENING : 3 anneaux qui pulsent au rythme du micro ── */}
-            {listening && (<>
-              <div style={{
-                position: "absolute", left: "50%", top: "50%",
-                width: 180, height: 180, borderRadius: "50%",
-                border: `${1 + audioLevel * 2}px solid rgba(255,255,255,${0.15 + audioLevel * 0.5})`,
-                transform: `translate(-50%,-50%) scale(${1 + audioLevel * 0.08})`,
-                transition: "all 0.05s linear",
-                pointerEvents: "none", zIndex: 1,
-              }} />
-              <div style={{
-                position: "absolute", left: "50%", top: "50%",
-                width: 180, height: 180, borderRadius: "50%",
-                border: "1px solid rgba(255,255,255,0.12)",
-                animation: "ringPulse 1.6s ease-out infinite",
-                pointerEvents: "none", zIndex: 1,
-              }} />
-              <div style={{
-                position: "absolute", left: "50%", top: "50%",
-                width: 180, height: 180, borderRadius: "50%",
-                border: "1px solid rgba(255,255,255,0.08)",
-                animation: "ringPulse 1.6s ease-out infinite",
-                animationDelay: "0.5s",
-                pointerEvents: "none", zIndex: 1,
-              }} />
-              <div style={{
-                position: "absolute", left: "50%", top: "50%",
-                width: 180, height: 180, borderRadius: "50%",
-                border: "1px solid rgba(255,255,255,0.05)",
-                animation: "ringPulse 1.6s ease-out infinite",
-                animationDelay: "1s",
-                pointerEvents: "none", zIndex: 1,
-              }} />
-              {/* Halo breathe réactif au micro */}
-              <div style={{
-                position: "absolute", left: "50%", top: "50%",
-                width: 240, height: 240, borderRadius: "50%",
-                background: `radial-gradient(circle, rgba(255,255,255,${0.04 + audioLevel * 0.14}) 0%, transparent 70%)`,
-                transform: `translate(-50%,-50%) scale(${1 + audioLevel * 0.15})`,
-                transition: "all 0.05s linear",
-                pointerEvents: "none", zIndex: 0,
-              }} />
-            </>)}
+            {/* ── RECOGNIZING : particules rapides ── */}
+            {recognizing && (
+              <div style={{ position:"absolute", inset:0, pointerEvents:"none", zIndex:1 }}>
+                {[0,1,2,3,4,5].map(i => (
+                  <div key={i} style={{
+                    position:"absolute", top:"50%", left:"50%",
+                    width:4, height:4, borderRadius:"50%",
+                    background:"rgba(200,220,255,0.85)",
+                    boxShadow:"0 0 8px rgba(180,200,255,0.8)",
+                    marginTop:-2, marginLeft:-2,
+                    animation: `orbitFast${i} 0.9s linear infinite`,
+                  }}/>
+                ))}
+              </div>
+            )}
 
-            {/* ── RECOGNIZING : tremblement de terre ── */}
-            {recognizing && (<>
-              {/* Anneaux rapides */}
-              <div style={{
-                position: "absolute", left: "50%", top: "50%",
-                width: 180, height: 180, borderRadius: "50%",
-                border: "1px solid rgba(255,255,255,0.30)",
-                animation: "ringPulseFast 0.9s ease-out infinite",
-                pointerEvents: "none", zIndex: 1,
-              }} />
-              <div style={{
-                position: "absolute", left: "50%", top: "50%",
-                width: 180, height: 180, borderRadius: "50%",
-                border: "1px solid rgba(255,255,255,0.15)",
-                animation: "ringPulseFast 0.9s ease-out infinite",
-                animationDelay: "0.3s",
-                pointerEvents: "none", zIndex: 1,
-              }} />
-            </>)}
-
-            {/* ── SUCCESS UNRELEASED : 3 boom rings blancs ── */}
-            {success && tag === "UNRELEASED" && (<>
-              <div style={{
-                position: "absolute", left: "50%", top: "50%",
-                width: 190, height: 190, borderRadius: "50%",
-                border: "2px solid rgba(255,255,255,0.95)",
-                animation: "boomRing 0.65s cubic-bezier(0.15,0,0.35,1) forwards",
-                pointerEvents: "none", zIndex: 2,
-              }} />
-              <div style={{
-                position: "absolute", left: "50%", top: "50%",
-                width: 190, height: 190, borderRadius: "50%",
-                border: "1px solid rgba(255,255,255,0.55)",
-                animation: "boomRing2 0.85s cubic-bezier(0.15,0,0.35,1) forwards",
-                animationDelay: "0.07s",
-                pointerEvents: "none", zIndex: 2,
-              }} />
-              <div style={{
-                position: "absolute", left: "50%", top: "50%",
-                width: 190, height: 190, borderRadius: "50%",
-                border: "1px solid rgba(255,255,255,0.25)",
-                animation: "boomRing3 1.0s cubic-bezier(0.15,0,0.35,1) forwards",
-                animationDelay: "0.14s",
-                pointerEvents: "none", zIndex: 2,
-              }} />
-            </>)}
-
-            {/* ── SUCCESS RELEASED : 3 boom rings verts ── */}
-            {success && tag === "RELEASED" && (<>
-              <div style={{
-                position: "absolute", left: "50%", top: "50%",
-                width: 190, height: 190, borderRadius: "50%",
-                border: "2px solid rgba(29,185,84,0.95)",
-                animation: "boomRing 0.65s cubic-bezier(0.15,0,0.35,1) forwards",
-                pointerEvents: "none", zIndex: 2,
-              }} />
-              <div style={{
-                position: "absolute", left: "50%", top: "50%",
-                width: 190, height: 190, borderRadius: "50%",
-                border: "1px solid rgba(29,185,84,0.55)",
-                animation: "boomRing2 0.85s cubic-bezier(0.15,0,0.35,1) forwards",
-                animationDelay: "0.07s",
-                pointerEvents: "none", zIndex: 2,
-              }} />
-              <div style={{
-                position: "absolute", left: "50%", top: "50%",
-                width: 190, height: 190, borderRadius: "50%",
-                border: "1px solid rgba(29,185,84,0.25)",
-                animation: "boomRing3 1.0s cubic-bezier(0.15,0,0.35,1) forwards",
-                animationDelay: "0.14s",
-                pointerEvents: "none", zIndex: 2,
-              }} />
-            </>)}
+            {/* ── SUCCESS : double flash radial (SVG, pas de translate) ── */}
+            {success && (
+              <svg style={{ position:"absolute", inset:0, pointerEvents:"none", zIndex:2 }}
+                width="300" height="300" viewBox="0 0 300 300">
+                <circle cx="150" cy="150" r="100"
+                  fill="none"
+                  stroke={tag==="RELEASED" ? "rgba(29,185,84,0.9)" : "rgba(255,220,50,0.9)"}
+                  strokeWidth="2"
+                  style={{ animation:"boomFlash 0.65s ease-out forwards" }}/>
+                <circle cx="150" cy="150" r="100"
+                  fill="none"
+                  stroke={tag==="RELEASED" ? "rgba(29,185,84,0.5)" : "rgba(255,220,50,0.5)"}
+                  strokeWidth="1"
+                  style={{ animation:"boomFlash2 0.9s ease-out forwards", animationDelay:"0.07s" }}/>
+              </svg>
+            )}
 
             <button
               onClick={startListening}

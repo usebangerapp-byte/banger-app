@@ -68,7 +68,8 @@ export default function TopBar() {
         </button>
 
         {/* Logo center */}
-        <span style={{ fontSize: 15, fontWeight: 900, letterSpacing: "0.18em", opacity: 0.9 }}>BANGER</span>
+        <span style={{ fontSize: 17, fontWeight: 900, letterSpacing: "0.22em", color: "#fff",
+          textShadow: "0 0 18px rgba(255,255,255,0.25)" }}>BANGER</span>
 
         {/* Notifications — right */}
         <button onClick={() => { setShowNotifs(v => !v); setShowSettings(false); }} style={{ ...iconBtn, position: "relative" }}>
