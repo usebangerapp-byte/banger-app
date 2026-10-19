@@ -16,14 +16,16 @@ export async function GET(req: Request) {
 
   // Enrich with display_name from profiles
   const ids = [...new Set((data || []).flatMap((m: any) => [m.sender_id, m.receiver_id]))];
-  const { data: profiles } = await sb.from("profiles").select("id,display_name,email").in("id", ids);
+  const { data: profiles } = await sb.from("profiles").select("id,display_name,email,avatar_url").in("id", ids);
   const profileMap: Record<string, any> = {};
   for (const p of profiles || []) profileMap[p.id] = p;
 
   const enriched = (data || []).map((m: any) => ({
     ...m,
     sender_name: profileMap[m.sender_id]?.display_name || profileMap[m.sender_id]?.email?.split("@")[0] || "?",
+    sender_avatar: profileMap[m.sender_id]?.avatar_url || null,
     receiver_name: profileMap[m.receiver_id]?.display_name || profileMap[m.receiver_id]?.email?.split("@")[0] || "?",
+    receiver_avatar: profileMap[m.receiver_id]?.avatar_url || null,
   }));
 
   if (other_id && data?.length) await sb.from("messages").update({ read: true }).eq("sender_id", other_id).eq("receiver_id", user_id).eq("read", false);

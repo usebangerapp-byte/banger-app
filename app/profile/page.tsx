@@ -227,7 +227,8 @@ export default function ProfilePageV2() {
           const other = msg.sender_id === userId ? msg.receiver_id : msg.sender_id;
           const p = profileMap[other];
           const display_name = p?.display_name || p?.email?.split("@")[0] || other.slice(0,8);
-          map.set(other, { user_id: other, display_name, last: msg.content,
+          const avatar_url = p?.avatar_url || null;
+          map.set(other, { user_id: other, display_name, avatar_url, last: msg.content,
             unread: msg.receiver_id === userId && !msg.read ? (map.get(other)?.unread||0)+1 : (map.get(other)?.unread||0) });
         }
         setConvs(Array.from(map.values()));
@@ -493,7 +494,11 @@ export default function ProfilePageV2() {
                 ? <div style={emptyStyle}>No messages yet.</div>
                 : convs.map(c=>(
                   <button key={c.user_id} onClick={()=>setActiveConv(c.user_id)} style={convRow}>
-                    <div style={avatarSmall}>{(c.display_name||"?").charAt(0).toUpperCase()}</div>
+                    <div style={avatarSmall}>
+                      {c.avatar_url
+                        ? <img src={c.avatar_url} alt="" style={{ width:"100%", height:"100%", borderRadius:"50%", objectFit:"cover" }} />
+                        : (c.display_name||"?").charAt(0).toUpperCase()}
+                    </div>
                     <div style={{ flex:1, textAlign:"left" as const, minWidth:0, overflow:"hidden" }}>
                       <div style={{ fontWeight:700, fontSize:14, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.display_name||c.user_id.slice(0,8)}</div>
                       <div style={{ fontSize:12, opacity:0.5, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.last}</div>
@@ -513,9 +518,18 @@ export default function ProfilePageV2() {
                   return (
                     <div key={msg.id} style={{ display:"flex", flexDirection:"column", alignItems:isMine?"flex-end":"flex-start" }}>
                       {!isMine && (
-                        <div style={{ fontSize:11, fontWeight:700, opacity:0.45, marginBottom:2, paddingLeft:4 }}>{msg.sender_name || "?"}</div>
+                        <div style={{ fontSize:11, fontWeight:700, opacity:0.45, marginBottom:2, paddingLeft:44 }}>{msg.sender_name || "?"}</div>
                       )}
-                      <div style={{ display:"flex", alignItems:"center", gap:6, flexDirection:isMine?"row-reverse":"row" }}>
+                      <div style={{ display:"flex", alignItems:"flex-end", gap:6, flexDirection:isMine?"row-reverse":"row" }}>
+                        {/* Avatar mini */}
+                        <div style={{ width:32, height:32, borderRadius:"50%", flexShrink:0, overflow:"hidden",
+                          background:"rgba(255,255,255,0.08)", display:"flex", alignItems:"center", justifyContent:"center",
+                          fontSize:12, fontWeight:900 }}>
+                          {isMine
+                            ? (avatarUrl ? <img src={avatarUrl} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : (profile?.display_name||"?").charAt(0).toUpperCase())
+                            : (msg.sender_avatar ? <img src={msg.sender_avatar} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : (msg.sender_name||"?").charAt(0).toUpperCase())
+                          }
+                        </div>
                         <div style={{ maxWidth:"75%", minWidth:0, padding: msg.file_url && !msg.content ? "8px" : "10px 14px", fontSize:14, lineHeight:1.4,
                           borderRadius:isMine?"18px 18px 4px 18px":"18px 18px 18px 4px",
                           background:isMine?"rgba(255,255,255,0.14)":"rgba(255,255,255,0.10)",
