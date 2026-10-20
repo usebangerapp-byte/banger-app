@@ -1,7 +1,7 @@
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-04-10" });
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 export const dynamic = "force-dynamic";
 
@@ -54,7 +54,7 @@ export async function POST(req: Request) {
   // ── Paiement échoué ──
   if (event.type === "invoice.payment_failed") {
     const invoice = event.data.object as Stripe.Invoice;
-    const customerId = invoice.customer as string;
+    const customerId = typeof invoice.customer === "string" ? invoice.customer : (invoice.customer as any)?.id;
 
     // Retrouver le user via le customer ID
     const { data: profile } = await supabase
