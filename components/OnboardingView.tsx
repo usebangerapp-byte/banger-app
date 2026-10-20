@@ -25,9 +25,10 @@ const plans: {
     price: "Free",
     description: "Scan tracks, follow the underground, and never lose an ID again.",
     features: [
-      "Limited scans",
+      "Unlimited scans",
       "Live radar & trends",
-      "Top unreleased charts",
+      "Top 3 unreleased charts",
+      "Full released charts",
       "Events & DJs near you",
       "Your profile",
     ],
@@ -40,7 +41,7 @@ const plans: {
     description: "Upload and test your unreleased tracks, get seen at events, and see exactly how your music moves.",
     features: [
       "Everything in Public, plus:",
-      "Unlimited scans",
+      "Full unreleased charts",
       "Upload your unreleased tracks",
       "Share & test with the scene",
       "Get seen at events",
@@ -72,7 +73,7 @@ export default function OnboardingView() {
       // Free plan → just set role and go
       if (plan === "public") {
         await supabase.from("profiles").upsert(
-          { id: user.id, email: user.email || null, role: "public" },
+          { id: user.id, email: user.email || null, role: "public", plan_selected_at: new Date().toISOString() },
           { onConflict: "id" }
         );
         router.replace("/home");
