@@ -87,7 +87,7 @@ export default function RadarPage() {
       {toast && <div style={ui.toast}>{toast}</div>}
 
       <div style={ui.shell}>
-        <PageHeader title="Radar" sub="What the scene is scanning right now." code="This week" />
+        <PageHeader title="Radar" sub="What the scene is scanning right now." />
 
         {loading ? (
           <div style={ui.empty}>Loading…</div>
