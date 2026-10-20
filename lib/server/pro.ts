@@ -11,5 +11,5 @@ export const PROMO_BUCKET = "promos";
 /** Creates the private bucket for promo tracks the first time it's needed. */
 export async function ensurePromoBucket(sb: SupabaseClient) {
   const { data } = await sb.storage.getBucket(PROMO_BUCKET);
-  if (!data) await sb.storage.createBucket(PROMO_BUCKET, { public: false }).catch(() => {});
+  if (!data) await sb.storage.createBucket(PROMO_BUCKET, { public: false, fileSizeLimit: "50MB" }).catch(() => {});
 }

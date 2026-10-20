@@ -9,6 +9,9 @@ import { ui, C, glass } from "@/lib/ui";
 import PageHeader from "@/components/PageHeader";
 import MarqueeText from "@/components/MarqueeText";
 import { guessTrackName } from "@/lib/trackName";
+import { FFmpeg } from "@ffmpeg/ffmpeg";
+
+const MAX_BYTES = 48 * 1024 * 1024; // storage limit is 50 MB per file
 
 type Person = { id: string; display_name: string; avatar_url?: string | null };
 type Sent = {
@@ -36,7 +39,7 @@ export default function PromoPage() {
   const [results, setResults] = useState<Person[]>([]);
   const [picked, setPicked] = useState<Person[]>([]);
   const [busy, setBusy] = useState(false);
-  const [stage, setStage] = useState<"" | "prepare" | "upload" | "send">("");
+  const [stage, setStage] = useState<"" | "prepare" | "compress" | "upload" | "send">("");
   const [pct, setPct] = useState(0);
   const [sentBytes, setSentBytes] = useState(0);
   const [error, setError] = useState("");
@@ -89,7 +92,29 @@ export default function PromoPage() {
     if (!file || !title.trim() || picked.length === 0) return;
     setBusy(true); setError(""); setStage("prepare"); setPct(0); setSentBytes(0);
     try {
-      const ext = (file.name.split(".").pop() || "mp3").toLowerCase();
+      // Big / lossless files (WAV, AIFF, FLAC…) are turned into a 320 kbps MP3 on the phone first
+      let toSend: File = file;
+      const lossless = /\.(wav|aiff?|flac)$/i.test(file.name);
+      if (file.size > MAX_BYTES || lossless) {
+        setStage("compress"); setPct(0);
+        const ff = new FFmpeg();
+        ff.on("progress", ({ progress }) => setPct(Math.max(0, Math.min(100, Math.round(progress * 100)))));
+        await ff.load();
+        const inName = `in.${(file.name.split(".").pop() || "wav").toLowerCase()}`;
+        await ff.writeFile(inName, new Uint8Array(await file.arrayBuffer()));
+        for (const kbps of ["320k", "192k"]) {
+          setPct(0);
+          await ff.exec(["-i", inName, "-vn", "-codec:a", "libmp3lame", "-b:a", kbps, "out.mp3"]);
+          const data = await ff.readFile("out.mp3");
+          const buf = data instanceof Uint8Array ? data : new TextEncoder().encode(String(data));
+          toSend = new File([buf.buffer as ArrayBuffer], file.name.replace(/\.[^.]+$/, "") + ".mp3", { type: "audio/mpeg" });
+          try { await ff.deleteFile("out.mp3"); } catch {}
+          if (toSend.size <= MAX_BYTES) break;
+        }
+        try { ff.terminate(); } catch {}
+        if (toSend.size > MAX_BYTES) throw new Error("This track is too long to send (over 50 MB even compressed).");
+      }
+      const ext = (toSend.name.split(".").pop() || "mp3").toLowerCase();
       const r1 = await authFetch("/api/promo/upload-url", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ext }) });
       const u = await r1.json().catch(() => ({}));
       if (!r1.ok || !u.ok) throw new Error(u.error || "Upload not available");
@@ -107,7 +132,7 @@ export default function PromoPage() {
         xhr.onerror = () => reject(new Error("Network error during upload. Check your connection."));
         const fd = new FormData();
         fd.append("cacheControl", "3600");
-        fd.append("", file, file.name);
+        fd.append("", toSend, toSend.name);
         xhr.send(fd);
       });
       setStage("send");
@@ -199,14 +224,14 @@ export default function PromoPage() {
             <div style={{ display: "grid", gap: 8, padding: "4px 2px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
                 <span style={{ color: "#fff", fontWeight: 600 }}>
-                  {stage === "prepare" ? "Preparing…" : stage === "upload" ? "Uploading the track…" : `Sending to ${picked.length} DJ${picked.length > 1 ? "s" : ""}…`}
+                  {stage === "prepare" ? "Preparing…" : stage === "compress" ? "Compressing to MP3…" : stage === "upload" ? "Uploading the track…" : `Sending to ${picked.length} DJ${picked.length > 1 ? "s" : ""}…`}
                 </span>
                 <span style={{ color: C.text3, fontVariantNumeric: "tabular-nums" }}>
-                  {stage === "upload" && file ? `${(sentBytes / 1024 / 1024).toFixed(1)} / ${(file.size / 1024 / 1024).toFixed(1)} MB · ${pct}%` : ""}
+                  {stage === "upload" ? `${(sentBytes / 1024 / 1024).toFixed(1)} MB · ${pct}%` : stage === "compress" ? `${pct}%` : ""}
                 </span>
               </div>
               <div style={{ height: 6, borderRadius: 3, background: "rgba(255,255,255,0.10)", overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${stage === "send" ? 100 : stage === "upload" ? Math.max(2, pct) : 2}%`,
+                <div style={{ height: "100%", width: `${stage === "send" ? 100 : stage === "upload" || stage === "compress" ? Math.max(2, pct) : 2}%`,
                   background: C.goldGrad, transition: "width .3s ease" }} />
               </div>
             </div>
