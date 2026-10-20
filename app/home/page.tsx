@@ -118,7 +118,8 @@ function WooferSVG({ audioLevel, listening }: { audioLevel: number; listening: b
         <circle cx={C} cy={C} r={R-5} fill="none"
           stroke="rgba(0,0,0,0.9)" strokeWidth="2"/>
         {/* Bezel top highlight */}
-        <path d={`M ${C-60} ${C-72} A 90 90 0 0 1 ${C+60} ${C-72}`}
+        {/* arc drawn ON the bezel circle (r = R-2), from 10 o'clock to 2 o'clock */}
+        <path d={`M ${C + (R-2)*Math.cos(-130*Math.PI/180)} ${C + (R-2)*Math.sin(-130*Math.PI/180)} A ${R-2} ${R-2} 0 0 1 ${C + (R-2)*Math.cos(-50*Math.PI/180)} ${C + (R-2)*Math.sin(-50*Math.PI/180)}`}
           fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5"
           strokeLinecap="round"/>
 
