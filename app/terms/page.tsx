@@ -42,24 +42,26 @@ export default function TermsPage() {
 
           <h3 style={s.h3}>Free plan</h3>
           <p>
-            The free plan gives you access to core features of BANGER with the following limits:
+            The free plan gives you access to the core features of BANGER:
           </p>
           <ul style={s.ul}>
-            <li>Up to <strong>10 scans per month</strong></li>
-            <li>Access to live radar &amp; trending charts</li>
-            <li>Follow up to 10 tracks</li>
-            <li>Basic profile</li>
+            <li><strong>Unlimited scans</strong></li>
+            <li>Live radar &amp; trends</li>
+            <li>Full released charts</li>
+            <li>Top 3 of the unreleased chart</li>
+            <li>Follow tracks and get notified when they are released</li>
+            <li>Your profile, followers and messages</li>
           </ul>
 
           <h3 style={s.h3}>PRO plan — €9.99 / month</h3>
-          <p>The PRO plan unlocks the full BANGER experience:</p>
+          <p>The PRO plan includes everything in the free plan, plus:</p>
           <ul style={s.ul}>
-            <li>Unlimited scans</li>
-            <li>Upload unreleased tracks</li>
-            <li>Share &amp; test tracks with the scene</li>
-            <li>Full scan history &amp; analytics</li>
-            <li>Priority radar &amp; trend data</li>
-            <li>Release timing insights</li>
+            <li>The full unreleased chart</li>
+            <li>Upload your unreleased tracks so they can be identified</li>
+            <li>An optional 10-second public preview of your tracks</li>
+            <li>Release control (switch a track from unreleased to released)</li>
+            <li>Scan statistics on your own tracks</li>
+            <li>Priority for your tracks in the charts</li>
           </ul>
 
           <h3 style={s.h3}>Billing</h3>

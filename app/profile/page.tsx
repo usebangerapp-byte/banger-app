@@ -440,7 +440,7 @@ export default function ProfilePageV2() {
         <div style={{ ...identityCard, gap:14 }}>
           <div style={{ display:"flex", alignItems:"center", gap:14 }}>
             <Skeleton width={56} height={56} radius={999} />
-            <div style={{ flex:1, display:"grid", gap:8 }}>
+            <div style={{ flex:1, display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:8 }}>
               <Skeleton width="55%" height={18} />
               <Skeleton width="35%" height={12} />
             </div>
@@ -470,7 +470,7 @@ export default function ProfilePageV2() {
         {tab==="profile" && (<>
 
           {/* ── IDENTITY ── */}
-          <section style={{ ...glass, borderRadius:24, padding:18, display:"grid", gap:16, minWidth:0 }}>
+          <section style={{ ...glass, borderRadius:24, padding:18, display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:16, minWidth:0 }}>
 
             <div style={{ display:"flex", alignItems:"center", gap:16, minWidth:0 }}>
               {/* Avatar — tap to change the photo */}
@@ -486,7 +486,7 @@ export default function ProfilePageV2() {
                 )}
               </div>
 
-              <div style={{ flex:1, minWidth:0, display:"grid", gap:6 }}>
+              <div style={{ flex:1, minWidth:0, display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:6 }}>
                 <div style={{ fontSize:21, fontWeight:700, letterSpacing:"-0.02em", lineHeight:1.2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>
                   {name}
                 </div>
@@ -551,7 +551,7 @@ export default function ProfilePageV2() {
 
           {editing && (
             <Section title="Edit profile">
-              <div style={{ display:"grid", gap:10 }}>
+              <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:10 }}>
                 {[{label:"Display name",value:editName,set:setEditName,ph:"DJ Banger"},
                   {label:"Genre",value:editGenre,set:setEditGenre,ph:"Techno · House · Melodic"},
                   {label:"Instagram",value:editIG,set:setEditIG,ph:"@yourdj"},
@@ -612,7 +612,7 @@ export default function ProfilePageV2() {
           {/* ── SCANS LIST ── */}
           {scans.length > 0 && (
             <Section title="Recent scans">
-              <div style={{ display:"grid", gap:2 }}>
+              <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:2 }}>
                 {(showMoreScans ? scans : scans.slice(0,3)).map((s,i) => (
                   <div key={i} style={{ display:"flex", alignItems:"center", gap:12, padding:"13px 0", borderBottom:`1px solid ${C.lineSoft}`, width:"100%", overflow:"hidden" }}>
                     <div style={{ flex:1, minWidth:0, overflow:"hidden" }}>
@@ -636,7 +636,7 @@ export default function ProfilePageV2() {
           {/* ── FOLLOWS LIST ── */}
           {follows.length > 0 && (
             <Section title="Followed tracks">
-              <div style={{ display:"grid", gap:2 }}>
+              <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:2 }}>
                 {(showMoreFollows ? follows : follows.slice(0,3)).map((f,i) => (
                   <div key={i} style={{ display:"flex", alignItems:"center", gap:12, padding:"13px 0", borderBottom:`1px solid ${C.lineSoft}`, width:"100%", overflow:"hidden" }}>
                     <span style={{ ...ui.rowTitle, flex:1, minWidth:0 }}>{f.track_title || "Unknown"}</span>
@@ -657,7 +657,7 @@ export default function ProfilePageV2() {
           {/* ── MES TRACKS (en dernier) ── */}
           {tracks.length > 0 && (
             <Section title="My uploads">
-              <div style={{ display:"grid", gap:4 }}>
+              <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:4 }}>
                 {(showMoreTracks ? tracks : tracks.slice(0,3)).map((t) => (
                   <div key={t.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"16px 0", borderBottom:`1px solid ${C.lineSoft}` }}>
                     <div style={{ flex:1, minWidth:0, overflow:"hidden" }}>
@@ -693,7 +693,7 @@ export default function ProfilePageV2() {
         </>)}
 
         {tab==="messages" && (
-          <div style={{ ...glass, borderRadius:24, padding:"14px 16px 16px", display:"grid", gap:12, minWidth:0 }}>
+          <div style={{ ...glass, borderRadius:24, padding:"14px 16px 16px", display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:12, minWidth:0 }}>
             {!activeConv ? (<>
               <div style={{ ...sectionTitleStyle, padding:"0 0 10px" }}>Conversations</div>
               {convs.length===0
@@ -762,7 +762,7 @@ export default function ProfilePageV2() {
                   </button>
                 );
               })()}
-              <div style={{ display:"grid", gap:6, maxHeight:"50vh", overflowY:"auto" as const }}>
+              <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:6, maxHeight:"50vh", overflowY:"auto" as const }}>
                 {messages.map((msg, idx)=>{
                   const isMine = msg.sender_id===userId;
                   const lastMineIdx = (() => { for (let i = messages.length - 1; i >= 0; i--) if (messages[i].sender_id === userId) return i; return -1; })();
@@ -852,7 +852,7 @@ export default function ProfilePageV2() {
   );
 }
 
-const weekCard: React.CSSProperties = { ...glass, borderRadius:24, padding:"14px 16px 16px", display:"grid", gap:0 };
+const weekCard: React.CSSProperties = { ...glass, borderRadius:24, padding:"14px 16px 16px", display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:0 };
 const weekLine: React.CSSProperties = { display:"flex", alignItems:"center", gap:10, fontSize:14, color:C.text2, minWidth:0, borderTop:`1px solid ${C.lineSoft}`, paddingTop:14, marginTop:14 };
 
 function formatMsgTime(iso: string) {
@@ -870,7 +870,7 @@ const shellStyle: React.CSSProperties = { ...ui.shell, gap:16 };
 const sectionStyle: React.CSSProperties = { ...ui.section, paddingBottom:4 };
 const sectionTitleStyle: React.CSSProperties = { ...ui.label };
 // identity card replaces old headerStyle
-const identityCard: React.CSSProperties = { ...glass, borderRadius:24, padding:18, display:"grid", gap:12, boxSizing:"border-box", overflow:"hidden" };
+const identityCard: React.CSSProperties = { ...glass, borderRadius:24, padding:18, display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:12, boxSizing:"border-box", overflow:"hidden" };
 const statsRow: React.CSSProperties = { display:"flex", background:"rgba(255,255,255,0.03)", borderRadius:14, border:"1px solid rgba(255,255,255,0.07)", padding:"10px 0", overflow:"hidden", boxSizing:"border-box" };
 const avatarStyle: React.CSSProperties = { width:64, height:64, boxSizing:"border-box", borderRadius:"50%", background:"rgba(255,255,255,0.08)", border:`1px solid ${C.line}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, fontWeight:800, flexShrink:0 };
 const statsLine: React.CSSProperties = { display:"flex", alignItems:"center", gap:16, flexWrap:"wrap", fontSize:13, color:C.text3 };

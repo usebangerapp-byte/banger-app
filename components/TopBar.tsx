@@ -108,7 +108,6 @@ export default function TopBar() {
 
         {/* Logo center */}
         <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <img src="/B-logo-sm.png" alt="" width={15} height={22} style={{ height: 22, width: "auto", filter: "drop-shadow(0 0 6px rgba(245,207,104,0.55))" }} />
           <span style={{ fontSize: 15, fontWeight: 700, letterSpacing: "0.24em", color: "#fff" }}>BANGER</span>
         </span>
 

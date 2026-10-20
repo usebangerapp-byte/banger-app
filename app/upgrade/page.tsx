@@ -14,6 +14,7 @@ const PERKS = [
   { label: "The full unreleased chart", sub: "Every ID moving through the scene, not just the top 3." },
   { label: "Upload your IDs", sub: "Drop your unreleased tracks into BANGER." },
   { label: "Scan statistics", sub: "See where and how often your music is scanned." },
+  { label: "10-second preview", sub: "Let the crowd hear a teaser before the release." },
   { label: "Release control", sub: "Flip Unreleased → Released the day you drop." },
   { label: "Priority in the charts", sub: "Your tracks ranked first when they get scanned." },
 ];
@@ -88,7 +89,7 @@ export default function UpgradePage() {
             </button>
           )}
           <div style={footer}>Cancel anytime · Secure payment with Stripe</div>
-          <div style={freeNote}>Free stays free: unlimited scans, released charts and the top 3 unreleased.</div>
+          <div style={freeNote}>Free stays free: unlimited scans, radar, released charts and the top 3 unreleased.</div>
         </section>
       </div>
     </main>

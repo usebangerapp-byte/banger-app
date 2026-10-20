@@ -46,7 +46,7 @@ export const glass: CSSProperties = {
 
 export const ui: Record<string, CSSProperties> = {
   page: { minHeight: "100vh", background: "transparent", color: C.fg, padding: "18px 0 150px", overflowX: "hidden", fontFamily: SANS, position: "relative" },
-  shell: { position: "relative", maxWidth: 560, margin: "0 auto", padding: "0 18px", display: "grid", gap: 18, boxSizing: "border-box", width: "100%" },
+  shell: { position: "relative", maxWidth: 560, margin: "0 auto", padding: "0 18px", display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 18, boxSizing: "border-box", width: "100%" },
 
   // Legacy header pieces (PageHeader is preferred)
   catalogue: { display: "flex", justifyContent: "space-between", gap: 12, fontSize: 12, color: C.text3 },
@@ -55,7 +55,7 @@ export const ui: Record<string, CSSProperties> = {
 
   // Glass card section: label on top, rows inside
   card: { ...glass, borderRadius: 22, padding: 18, minWidth: 0 },
-  section: { ...glass, borderRadius: 22, padding: "2px 16px", display: "grid", gap: 0, minWidth: 0 },
+  section: { ...glass, borderRadius: 22, padding: "2px 16px", display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 0, minWidth: 0 },
   label: { fontSize: 13, fontWeight: 600, color: C.text3, padding: "14px 0 10px", borderBottom: `1px solid ${C.lineSoft}` },
 
   // List rows

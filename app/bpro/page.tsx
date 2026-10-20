@@ -35,6 +35,54 @@ function PrimaryBtn({ disabled, busy, label, busyLabel, onClick }:
   );
 }
 
+const PHRASES: Record<"cut" | "send" | "print", string[]> = {
+  cut:   ["Listening to every bar…", "Slicing the waveform…", "Reading the low end…", "Finding the drop…"],
+  send:  ["Sending the signal…", "Sealing it in the vault…"],
+  print: ["Fingerprinting the drop…", "Teaching BANGER your sound…", "Mapping every frequency…", "Locking the ID…", "Almost there…"],
+};
+
+function ForgeView({ progress, phase, tick }: { progress: number; phase: "cut" | "send" | "print"; tick: number }) {
+  const list = PHRASES[phase];
+  const phrase = list[tick % list.length];
+  const pct = Math.round(progress * 100);
+  const R = 74, CIRC = 2 * Math.PI * R;
+  return (
+    <section style={{ ...cardStyle, justifyItems: "center", textAlign: "center", padding: "34px 20px 28px", gap: 18 }}>
+      <style>{`
+        @keyframes forgeSpin { to { transform: rotate(360deg); } }
+        @keyframes forgeBreath { 0%,100% { opacity: .35; transform: scale(.94); } 50% { opacity: .8; transform: scale(1.04); } }
+        @keyframes forgeFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+      `}</style>
+      <div style={{ position: "relative", width: 180, height: 180 }}>
+        <div aria-hidden style={{ position: "absolute", inset: -10, borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(245,207,104,0.35), rgba(245,207,104,0) 65%)",
+          animation: "forgeBreath 2.4s ease-in-out infinite" }} />
+        <svg width="180" height="180" viewBox="0 0 180 180" aria-hidden="true" style={{ position: "absolute", inset: 0 }}>
+          <defs>
+            <linearGradient id="forgeG" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="#f8d77a" /><stop offset="100%" stopColor="#d9a227" />
+            </linearGradient>
+          </defs>
+          <circle cx="90" cy="90" r={R} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" />
+          <circle cx="90" cy="90" r={R} fill="none" stroke="url(#forgeG)" strokeWidth="6" strokeLinecap="round"
+            strokeDasharray={CIRC} strokeDashoffset={CIRC * (1 - progress)}
+            transform="rotate(-90 90 90)" style={{ transition: "stroke-dashoffset 0.8s ease", filter: "drop-shadow(0 0 6px rgba(245,207,104,0.7))" }} />
+        </svg>
+        <svg width="180" height="180" viewBox="0 0 180 180" aria-hidden="true"
+          style={{ position: "absolute", inset: 0, animation: "forgeSpin 3.2s linear infinite" }}>
+          <circle cx="90" cy="90" r="60" fill="none" stroke="rgba(245,207,104,0.35)" strokeWidth="1" strokeDasharray="2 9" />
+        </svg>
+        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 34, fontWeight: 700, letterSpacing: "-0.03em", fontVariantNumeric: "tabular-nums" }}>
+          {pct}<span style={{ fontSize: 16, color: C.text3, marginLeft: 2 }}>%</span>
+        </div>
+      </div>
+      <div key={phrase} style={{ fontSize: 17, fontWeight: 600, animation: "forgeFade 0.5s ease-out" }}>{phrase}</div>
+      <div style={{ fontSize: 13, color: C.text3 }}>Keep BANGER open while we work.</div>
+    </section>
+  );
+}
+
 export default function UploadPage() {
   const router   = useRouter();
   const supabase = useMemo(() => createSupabaseBrowser(), []);
@@ -78,6 +126,15 @@ export default function UploadPage() {
   const [done,       setDone]       = useState(false);
   const [segCount,   setSegCount]   = useState(0);
   const [segCurrent, setSegCurrent] = useState(0);
+  const [progress,   setProgress]   = useState(0);   // 0 → 1, drives the ring
+  const [phase,      setPhase]      = useState<"cut" | "send" | "print">("cut");
+  const [tick,       setTick]       = useState(0);   // rotates the phrases
+
+  useEffect(() => {
+    if (!busy) return;
+    const t = window.setInterval(() => setTick((v) => v + 1), 2600);
+    return () => window.clearInterval(t);
+  }, [busy]);
 
   const canSubmit = artist.trim() && trackTitle.trim() && agreeRights && audioFile && !busy;
 
@@ -144,6 +201,7 @@ export default function UploadPage() {
 
     for (let i = 0; i < starts.length; i++) {
       setSegCurrent(i + 1);
+      setProgress(0.04 + 0.34 * ((i + 1) / starts.length));
       const outName = `seg_${i}.mp3`;
       await ffmpeg.exec(["-ss", String(starts[i]), "-t", String(SEGMENT_DURATION),
         "-i", inName, "-vn", "-acodec", "libmp3lame", "-b:a", "192k", outName]);
@@ -158,13 +216,14 @@ export default function UploadPage() {
 
   async function submit() {
     if (!canSubmit || !audioFile) return;
-    setBusy(true); setError(""); setDone(false);
+    setBusy(true); setError(""); setDone(false); setProgress(0.02); setPhase("cut"); setTick(0);
     try {
       const total = durationSec ?? 0;
       setStep("Cutting track into segments…");
       const segments = total > SEGMENT_DURATION ? await buildSegments(audioFile, total) : [audioFile];
 
       setStep(`Uploading ${segments.length} segment(s)…`);
+      setPhase("send"); setProgress(0.42);
       const fd = new FormData();
       const previewIdx = segments.length >= 6 ? 5 : segments.length >= 3 ? Math.floor(segments.length / 2) : 0;
       fd.append("file_0", segments[previewIdx]);
@@ -184,6 +243,7 @@ export default function UploadPage() {
       const uploadJson = (await uploadRes.json().catch(() => null)) as UploadResult | null;
       if (!uploadRes.ok || !uploadJson?.ok) throw new Error(uploadJson?.error || "Upload failed.");
 
+      setPhase("print"); setProgress(0.48);
       for (let i = 0; i < segments.length; i++) {
         setStep(`Registering with ACR (${i + 1}/${segments.length})…`);
         const acrFd = new FormData();
@@ -193,7 +253,12 @@ export default function UploadPage() {
         const acrRes  = await fetch("/api/bpro/acr-upload", { method: "POST", body: acrFd });
         const acrJson = (await acrRes.json().catch(() => null)) as UploadResult | null;
         if (!acrRes.ok || !acrJson?.ok) throw new Error(acrJson?.error || `ACR failed (seg ${i + 1}).`);
+        setProgress(0.48 + 0.52 * ((i + 1) / segments.length));
       }
+      setProgress(1);
+      // Forget the uploaded track — the page only offers "Go Scan" now.
+      setArtist(""); setTrackTitle(""); setAudioFile(null); setAudioUrl(""); setDurationSec(null);
+      setReleaseDate(""); setAgreeRights(false); setSegCount(0); setSegCurrent(0);
       setDone(true); setStep("");
     } catch (err: any) {
       setError(err?.message || "Something went wrong.");
@@ -207,6 +272,21 @@ export default function UploadPage() {
       <div style={ui.shell}>
 
         <PageHeader title="Upload" sub="Register your track for scanning." />
+
+        {busy && <ForgeView progress={progress} phase={phase} tick={tick} />}
+
+        {done && !busy && (
+          <section style={{ ...cardStyle, justifyItems: "center", textAlign: "center", padding: "34px 22px", gap: 10 }}>
+            <div style={doneBadge}>
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke={C.goldInk} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em", marginTop: 8 }}>Your ID is live.</div>
+            <div style={{ fontSize: 14, color: C.text2, lineHeight: 1.5 }}>Every BANGER scan can now recognise it.</div>
+            <button type="button" onClick={() => router.push("/home")} style={{ ...ui.cta, marginTop: 14 }}>Go Scan</button>
+          </section>
+        )}
+
+        {!busy && !done && (<>
 
         <Card title="Track">
           <div style={{ display: "grid", gap: 10 }}>
@@ -282,31 +362,24 @@ export default function UploadPage() {
               <input type="checkbox" style={{ accentColor: "#e9b844", width: 18, height: 18, flexShrink: 0 }} checked={agreeRights} onChange={(e) => setAgreeRights(e.target.checked)} />
               <span>I own the rights or have permission to analyze this audio.</span>
             </label>
-            <PrimaryBtn disabled={!canSubmit} busy={busy} label="Submit for Scan"
-              busyLabel={segCount > 0 ? `${step} (${segCurrent}/${segCount})` : step || "Working…"}
-              onClick={submit} />
-            {step && !error && <div style={infoBox}>{step}</div>}
+            <PrimaryBtn disabled={!canSubmit} busy={busy} label="Submit for Scan" onClick={submit} />
             {error && <div style={errorBox}>{error}</div>}
-            {done && (
-              <div style={{ display: "grid", gap: 10 }}>
-                <div style={successBox}>
-                  ✓ Track submitted — {Math.min(MAX_SEGMENTS, segCount || 1)} segment(s) registered with ACR.
-                  Your track is now scannable.
-                </div>
-                <button type="button" onClick={() => router.push("/home")} style={ghostBtn}>Go Scan</button>
-              </div>
-            )}
           </div>
         </Card>
+        </>)}
 
       </div>
     </main>
   );
 }
 
-const cardStyle: React.CSSProperties = { ...glass, borderRadius: 22, padding: 18, display: "grid", gap: 12 };
+const cardStyle: React.CSSProperties = { ...glass, borderRadius: 22, padding: 18, display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 12, minWidth: 0 };
+const doneBadge: React.CSSProperties = {
+  width: 64, height: 64, borderRadius: "50%", background: C.goldGrad, display: "flex", alignItems: "center", justifyContent: "center",
+  boxShadow: "0 0 30px rgba(245,207,104,0.55)",
+};
 const cardTitleStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, color: C.text3 };
-const inputStyle: React.CSSProperties = { ...ui.input };
+const inputStyle: React.CSSProperties = { ...ui.input, minWidth: 0, maxWidth: "100%", minHeight: 46, WebkitAppearance: "none", appearance: "none" };
 const summaryBox: React.CSSProperties = { borderRadius: 16, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", padding: 12 };
 const infoBox: React.CSSProperties = { borderRadius: 14, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", padding: 12, fontSize: 13 };
 const errorBox: React.CSSProperties = { borderRadius: 14, background: "rgba(255,80,80,0.10)", border: "1px solid rgba(255,80,80,0.25)", padding: 12, fontSize: 13, color: "#ffb5b5" };
