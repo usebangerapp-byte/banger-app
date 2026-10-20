@@ -89,6 +89,15 @@ export async function POST(req: Request) {
     return Response.json({ ok: true });
   }
 
+  // Swipe-to-delete: removes the line (and every row grouped into it)
+  if (body.action === "delete") {
+    const ids = (Array.isArray(body.ids) ? body.ids : [body.id]).filter((x: any) => x !== undefined && x !== null).slice(0, 200);
+    if (!ids.length) return Response.json({ ok: false, error: "Missing id" }, { status: 400 });
+    const { error } = await sb.from("notifications").delete().eq("user_id", user.id).in("id", ids);
+    if (error) return Response.json({ ok: false, error: error.message }, { status: 500 });
+    return Response.json({ ok: true });
+  }
+
   if (body.action === "read") {
     let q = sb.from("notifications").update({ read: true }).eq("user_id", user.id).eq("read", false);
     if (body.id) q = q.eq("id", body.id);

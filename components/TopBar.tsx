@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import SettingsPanel from "@/components/SettingsPanel";
@@ -72,6 +72,12 @@ export default function TopBar() {
 
   async function markRead(id?: string) {
     await authedFetch("/api/notifications", { method: "POST", body: JSON.stringify({ action: "read", id }) }).catch(() => {});
+  }
+
+  async function deleteNotif(n: any) {
+    setNotifs((list) => list.filter((x) => x.id !== n.id));
+    if (!n.read) setNotifCount((c) => Math.max(0, c - 1));
+    await authedFetch("/api/notifications", { method: "POST", body: JSON.stringify({ action: "delete", ids: n.ids || [n.id] }) }).catch(() => {});
   }
 
   function openNotif(n: any) {
@@ -167,7 +173,8 @@ export default function TopBar() {
           ) : (<>
             <div style={{ display:"grid", gap:0 }}>
               {notifs.map(n => (
-                <div key={n.id} onClick={() => openNotif(n)} style={notifRow}>
+                <SwipeRow key={n.id} onOpen={() => openNotif(n)} onDelete={() => deleteNotif(n)}>
+                  <div style={notifRow}>
                   <div style={notifAvatar}>
                     {n.actor_avatar
                       ? <img src={n.actor_avatar} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
@@ -187,7 +194,8 @@ export default function TopBar() {
                     </div>
                   </div>
                   {!n.read && <span style={unreadDot} />}
-                </div>
+                  </div>
+                </SwipeRow>
               ))}
             </div>
           </>)}
@@ -199,6 +207,46 @@ export default function TopBar() {
         <div onClick={() => { setShowSettings(false); setShowNotifs(false); }} style={backdrop} />
       )}
     </>
+  );
+}
+
+/** Swipe a row to the left to delete it (a red "Delete" shows underneath). A tap still opens it. */
+function SwipeRow({ children, onOpen, onDelete }: { children: React.ReactNode; onOpen: () => void; onDelete: () => void }) {
+  const [dx, setDx] = useState(0);
+  const [leaving, setLeaving] = useState(false);
+  const start = useRef<{ x: number; y: number } | null>(null);
+  const moved = useRef(false);
+  const horizontal = useRef<boolean | null>(null);
+
+  function onTouchStart(e: React.TouchEvent) {
+    start.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    moved.current = false; horizontal.current = null;
+  }
+  function onTouchMove(e: React.TouchEvent) {
+    if (!start.current) return;
+    const ddx = e.touches[0].clientX - start.current.x, ddy = e.touches[0].clientY - start.current.y;
+    if (horizontal.current === null && (Math.abs(ddx) > 8 || Math.abs(ddy) > 8)) horizontal.current = Math.abs(ddx) > Math.abs(ddy);
+    if (!horizontal.current) return;
+    moved.current = true;
+    setDx(Math.min(0, ddx));
+  }
+  function onTouchEnd() {
+    start.current = null;
+    if (dx < -90) { setLeaving(true); setDx(-500); window.setTimeout(onDelete, 220); }
+    else setDx(0);
+  }
+
+  return (
+    <div style={{ position: "relative", overflow: "hidden", maxHeight: leaving ? 0 : 200, transition: leaving ? "max-height .25s ease .15s" : undefined }}>
+      <div aria-hidden style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "flex-end",
+        paddingRight: 18, background: "#e5484d", color: "#fff", fontSize: 14, fontWeight: 700, opacity: dx < 0 ? 1 : 0 }}>Delete</div>
+      <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+        onClick={() => { if (!moved.current) onOpen(); }}
+        style={{ position: "relative", transform: `translateX(${dx}px)`, transition: start.current ? "none" : "transform .22s ease",
+          background: "rgb(30,30,30)", touchAction: "pan-y" }}>
+        {children}
+      </div>
+    </div>
   );
 }
 
