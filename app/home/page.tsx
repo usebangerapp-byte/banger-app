@@ -34,8 +34,10 @@ const PAGE_BG =
 
 // Woofer inside the button — arc at the bottom
 // Woofer SVG — style KRK Rokit réaliste
-function WooferSVG({ audioLevel, listening }: { audioLevel: number; listening: boolean }) {
-  const pump = 1 + audioLevel * 0.032;
+function WooferSVG({ audioLevel, listening, kick = 0 }: { audioLevel: number; listening: boolean; kick?: number }) {
+  // Cone "breathes" with the overall level and punches forward on every bass hit
+  const pump = 1 + audioLevel * 0.035 + kick * 0.09;
+  const domePunch = 1 + kick * 0.07;
   const C = 95, R = 90;
 
   return (
@@ -140,7 +142,7 @@ function WooferSVG({ audioLevel, listening }: { audioLevel: number; listening: b
         <g style={{
           transform: `scale(${pump})`,
           transformOrigin: `${C}px ${C}px`,
-          transition: "transform 0.05s ease-out",
+          transition: "transform 0.06s cubic-bezier(0.2, 0.9, 0.3, 1)",
         }}>
           <circle cx={C} cy={C} r="62" fill="url(#coneG)"/>
           {/* Sheen highlight — no texture lines, no rings */}
@@ -152,13 +154,15 @@ function WooferSVG({ audioLevel, listening }: { audioLevel: number; listening: b
           <circle cx={C} cy={C} r="22" fill="none"
             stroke="rgba(255,255,255,0.04)" strokeWidth="1"/>
 
-          {/* ── Dome (dust cap) ── */}
+          {/* ── Dome (dust cap) — extra punch on kicks ── */}
+          <g style={{ transform: `scale(${domePunch})`, transformOrigin: `${C}px ${C}px`, transition: "transform 0.06s cubic-bezier(0.2, 0.9, 0.3, 1)" }}>
           <circle cx={C} cy={C} r="20" fill="url(#domeG)"
             stroke="rgba(80,80,80,0.3)" strokeWidth="0.8"
             filter="url(#dropS)"/>
           {/* Dome specular */}
           <ellipse cx={C-6} cy={C-7} rx="8" ry="5"
             fill="rgba(255,255,255,0.11)" style={{filter:"blur(1.5px)"}}/>
+          </g>
         </g>
 
         {/* ── Screws × 4 (outside cone, on baffle) ── */}
@@ -190,8 +194,8 @@ function WooferSVG({ audioLevel, listening }: { audioLevel: number; listening: b
         objectFit: "contain",
         filter: "brightness(0) invert(1)",
         opacity: 0.88,
-        transition: "transform 0.05s ease-out",
-        transform: `scale(${pump})`,
+        transition: "transform 0.06s cubic-bezier(0.2, 0.9, 0.3, 1)",
+        transform: `scale(${pump * domePunch})`,
       }}/>
     </div>
   );
@@ -217,6 +221,7 @@ export default function Home() {
   const [success, setSuccess] = useState(false);
   const [failPulse, setFailPulse] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
+  const [kick, setKick] = useState(0);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -350,11 +355,12 @@ export default function Home() {
     } catch {}
     meterStopRef.current = null;
     setAudioLevel(0);
+    setKick(0);
   }
 
   async function startMeters(stream: MediaStream) {
     stopMeters();
-    const meter = await startAudioMeter(stream, setAudioLevel);
+    const meter = await startAudioMeter(stream, setAudioLevel, setKick);
     meterStopRef.current = meter.stop;
   }
 
@@ -643,7 +649,7 @@ const region = await getRegion();
                 : failPulse
                 ? { opacity: 0.04, transform: "scale(0.94)", transition: "opacity 0.15s ease, transform 0.15s ease" }
                 : listening
-                ? { opacity: 0.32 + audioLevel * 0.68, transform: `scale(${1 + audioLevel * 0.1})`, transition: "opacity 0.08s linear, transform 0.08s linear" }
+                ? { opacity: Math.min(1, 0.30 + audioLevel * 0.5 + kick * 0.35), transform: `scale(${1 + audioLevel * 0.06 + kick * 0.08})`, transition: "opacity 0.06s linear, transform 0.06s linear" }
                 : recognizing
                 ? { animation: "haloThink 1.6s ease-in-out infinite" }
                 : { animation: "haloIdle 4s ease-in-out infinite" }),
@@ -666,7 +672,7 @@ const region = await getRegion();
               }}
             >
               {/* ── Woofer SVG ── */}
-              <WooferSVG audioLevel={audioLevel} listening={listening} />
+              <WooferSVG audioLevel={audioLevel} listening={listening} kick={kick} />
             </button>
           </div>
           </div>
