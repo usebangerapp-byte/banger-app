@@ -36,8 +36,6 @@ const PAGE_BG =
 // Woofer SVG — style KRK Rokit réaliste
 function WooferSVG({ audioLevel, listening }: { audioLevel: number; listening: boolean }) {
   const pump = 1 + audioLevel * 0.032;
-  const glowR = 80 + audioLevel * 50;
-  const glowA = 0.20 + audioLevel * 0.50;
   const C = 95, R = 90;
 
   return (
@@ -109,11 +107,6 @@ function WooferSVG({ audioLevel, listening }: { audioLevel: number; listening: b
             <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
           </filter>
         </defs>
-
-        {/* ── Ambient glow (reactive) ── */}
-        <circle cx={C} cy={C} r={glowR}
-          fill={`rgba(200,140,0,${glowA * 0.28})`}
-          style={{filter:"blur(18px)"}}/>
 
         {/* ── Baffle / cabinet background ── */}
         <circle cx={C} cy={C} r={R} fill="url(#baffleG)"/>
@@ -611,6 +604,14 @@ const region = await getRegion();
           15%  { opacity: 0.7; transform: scale(1.0); }
           100% { opacity: 0; transform: scale(1.4); }
         }
+        @keyframes haloIdle {
+          0%,100% { opacity: 0.16; transform: scale(0.97); }
+          50%     { opacity: 0.30; transform: scale(1.00); }
+        }
+        @keyframes haloThink {
+          0%,100% { opacity: 0.35; transform: scale(0.98); }
+          50%     { opacity: 0.75; transform: scale(1.05); }
+        }
         @keyframes idleBreath {
           0%,100% { opacity: 0.10; transform: scale(0.98); }
           50%     { opacity: 0.34; transform: scale(1.03); }
@@ -632,71 +633,20 @@ const region = await getRegion();
           <div style={{ ...scanStyles.haloWrap, position: "absolute", left: "50%", top: "50%",
             transform: `translate(-50%, -50%) scale(${btnScale})` }}>
 
-            {/* ── HALO AMBIANT (toujours présent, pas de position absolue + translate) ── */}
-            {/* Rendu via SVG pour zéro problème de centrage */}
-            <svg style={{ position:"absolute", inset:0, pointerEvents:"none", zIndex:0 }}
-              width="300" height="300" viewBox="0 0 300 300">
-              {/* Idle : anneau doré qui respire — invite à appuyer */}
-              {status === "idle" && !success && (
-                <circle cx="150" cy="150" r="112" fill="none" stroke="rgba(230,180,60,0.9)" strokeWidth="1.5"
-                  style={{ transformOrigin: "150px 150px", animation: "idleBreath 3.2s ease-in-out infinite" }}/>
-              )}
-              {/* Listening : ondes qui partent du haut-parleur */}
-              {listening && [0, 0.55, 1.1].map((d) => (
-                <circle key={d} cx="150" cy="150" r="146" fill="none"
-                  stroke={`rgba(255,200,60,${0.35 + audioLevel * 0.5})`} strokeWidth="1.5"
-                  style={{ transformOrigin: "150px 150px", animation: `ripple 1.65s ease-out ${d}s infinite` }}/>
-              ))}
-              {/* Listening : aura réactive (rendu via filter + opacité) */}
-              {listening && (<>
-                <defs>
-                  <radialGradient id="listenHalo" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stopColor={`rgba(255,200,50,${0.10 + audioLevel * 0.22})`}/>
-                    <stop offset="60%" stopColor={`rgba(255,160,0,${0.04 + audioLevel * 0.08})`}/>
-                    <stop offset="100%" stopColor="rgba(0,0,0,0)"/>
-                  </radialGradient>
-                </defs>
-                <circle cx="150" cy="150" r="148" fill="url(#listenHalo)"
-                  style={{ transition:"all 0.05s linear" }}/>
-              </>)}
-              {/* Recognizing : lumière blanche douce qui pulse lentement */}
-              {recognizing && (<>
-                <defs>
-                  <radialGradient id="recogHalo" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stopColor="rgba(230,240,255,0.22)"/>
-                    <stop offset="50%" stopColor="rgba(200,220,255,0.08)"/>
-                    <stop offset="100%" stopColor="rgba(0,0,0,0)"/>
-                  </radialGradient>
-                </defs>
-                <circle cx="150" cy="150" r="148" fill="url(#recogHalo)"
-                  style={{ animation:"identifyGlow 1.8s ease-in-out infinite" }}/>
-              </>)}
-              {/* Success : flash */}
-              {success && (
-                <circle cx="150" cy="150" r="145"
-                  fill={tag==="RELEASED" ? "rgba(29,185,84,0.22)" : "rgba(255,220,60,0.22)"}
-                  style={{ animation:"boomFlash 0.75s ease-out forwards" }}/>
-              )}
-            </svg>
-
-            {/* Pas de particules — lumière seule */}
-
-            {/* ── SUCCESS : double flash radial (SVG, pas de translate) ── */}
-            {success && (
-              <svg style={{ position:"absolute", inset:0, pointerEvents:"none", zIndex:2 }}
-                width="300" height="300" viewBox="0 0 300 300">
-                <circle cx="150" cy="150" r="100"
-                  fill="none"
-                  stroke={tag==="RELEASED" ? "rgba(29,185,84,0.9)" : "rgba(255,220,50,0.9)"}
-                  strokeWidth="2"
-                  style={{ animation:"boomFlash 0.65s ease-out forwards" }}/>
-                <circle cx="150" cy="150" r="100"
-                  fill="none"
-                  stroke={tag==="RELEASED" ? "rgba(29,185,84,0.5)" : "rgba(255,220,50,0.5)"}
-                  strokeWidth="1"
-                  style={{ animation:"boomFlash2 0.9s ease-out forwards", animationDelay:"0.07s" }}/>
-              </svg>
-            )}
+            {/* ── HALO — one soft glow, only its intensity changes with the phase ── */}
+            <div aria-hidden style={{
+              position: "absolute", inset: -40, borderRadius: "50%", pointerEvents: "none", zIndex: 0,
+              background: "radial-gradient(circle at 50% 50%, rgba(255,196,60,0.55) 0%, rgba(230,160,30,0.22) 38%, rgba(200,130,0,0.06) 56%, rgba(0,0,0,0) 70%)",
+              ...(success
+                ? { opacity: 1, transform: "scale(1.12)", transition: "opacity 0.9s ease-out, transform 0.9s ease-out" }
+                : failPulse
+                ? { opacity: 0.04, transform: "scale(0.94)", transition: "opacity 0.15s ease, transform 0.15s ease" }
+                : listening
+                ? { opacity: 0.32 + audioLevel * 0.68, transform: `scale(${1 + audioLevel * 0.1})`, transition: "opacity 0.08s linear, transform 0.08s linear" }
+                : recognizing
+                ? { animation: "haloThink 1.6s ease-in-out infinite" }
+                : { animation: "haloIdle 4s ease-in-out infinite" }),
+            }} />
 
             <button
               onClick={startListening}
@@ -709,42 +659,11 @@ const region = await getRegion();
                 ...scanStyles.button3D,
                 opacity: busy ? 0.92 : 1,
                 transform: pressed && !busy ? "scale(0.96)" : busy ? "translateY(1px)" : "translateY(0px)",
-                boxShadow: listening
-                  ? `0 0 ${40 + audioLevel * 60}px rgba(212,160,23,${0.25 + audioLevel * 0.45}), ` +
-                    "0 18px 60px rgba(0,0,0,0.85)"
-                  : success
-                  ? "0 0 90px rgba(255,220,60,0.70), " +
-                    "0 18px 60px rgba(0,0,0,0.85)"
-                  : "0 18px 60px rgba(0,0,0,0.75), " +
-                    "inset 0 1px 0 rgba(255,255,255,0.06)",
-                border: success
-                  ? "1px solid rgba(245,245,245,0.34)"
-                  : scanStyles.button3D.border,
-                transition: "all 0.22s ease",
+                boxShadow: "0 18px 60px rgba(0,0,0,0.75)",
+                border: scanStyles.button3D.border,
+                transition: "transform 0.15s ease, opacity 0.2s ease",
               }}
             >
-              {/* ── SUCCESS glow overlay ── */}
-              {success && (
-                <div style={{
-                  position: "absolute", inset: 0, borderRadius: "50%",
-                  background: tag === "RELEASED"
-                    ? "radial-gradient(circle at 50% 50%, rgba(29,185,84,0.50) 0%, rgba(29,185,84,0.18) 45%, transparent 70%)"
-                    : "radial-gradient(circle at 50% 50%, rgba(255,240,120,0.55) 0%, rgba(255,200,0,0.20) 42%, transparent 68%)",
-                  animation: "successGlow 0.85s cubic-bezier(0.1,0,0.35,1) forwards",
-                  pointerEvents: "none", zIndex: 6,
-                }} />
-              )}
-
-              {/* ── FAIL flash ── */}
-              {failPulse && (
-                <div style={{
-                  position: "absolute", inset: 0, borderRadius: "50%",
-                  background: "radial-gradient(circle, rgba(255,60,60,0.45) 0%, transparent 70%)",
-                  animation: "pop 0.4s ease-out forwards",
-                  pointerEvents: "none", zIndex: 6,
-                }} />
-              )}
-
               {/* ── Woofer SVG ── */}
               <WooferSVG audioLevel={audioLevel} listening={listening} />
             </button>
