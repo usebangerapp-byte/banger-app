@@ -148,9 +148,9 @@ const authBlock: React.CSSProperties = {
 const googleBtn: React.CSSProperties = {
   display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
   padding: "16px 18px", borderRadius: 999, width: "100%",
-  background: "linear-gradient(180deg, #f8d77a 0%, #d9a227 100%)", color: "#1a1000", fontWeight: 700, fontSize: 16,
+  background: "radial-gradient(130% 160% at 28% -10%, rgba(255,226,120,0.55) 0%, rgba(255,200,60,0.10) 42%, rgba(0,0,0,0) 60%), linear-gradient(180deg, #e2ad2e 0%, #c88c0f 55%, #9c6807 100%)", color: "#1a1000", fontWeight: 700, fontSize: 16,
   border: "none", cursor: "pointer", fontFamily: "inherit",
-  boxShadow: "0 10px 30px rgba(232,170,40,0.38), inset 0 1px 0 rgba(255,255,255,0.5)",
+  boxShadow: "0 8px 24px rgba(200,140,15,0.25), inset 0 1px 0 rgba(255,235,160,0.35)",
 };
 const appleBtn: React.CSSProperties = {
   display: "flex", alignItems: "center", justifyContent: "center", gap: 10,

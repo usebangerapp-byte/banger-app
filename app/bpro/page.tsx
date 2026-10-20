@@ -60,7 +60,7 @@ function ForgeView({ progress, phase, tick }: { progress: number; phase: "cut" |
         <svg width="180" height="180" viewBox="0 0 180 180" aria-hidden="true" style={{ position: "absolute", inset: 0 }}>
           <defs>
             <linearGradient id="forgeG" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#f8d77a" /><stop offset="100%" stopColor="#d9a227" />
+              <stop offset="0%" stopColor="#f0c040" /><stop offset="100%" stopColor="#b87a08" />
             </linearGradient>
           </defs>
           <circle cx="90" cy="90" r={R} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" />

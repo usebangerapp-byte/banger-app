@@ -16,6 +16,11 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [username, setUsername] = useState("");
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [nameMsg, setNameMsg] = useState("");
+  const [savingName, setSavingName] = useState(false);
 
   useEffect(() => {
     const sb = createSupabaseBrowser();
@@ -25,7 +30,9 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
       if (!user) return;
       setEmail(user.email || "");
       setUserId(user.id);
-      sb.from("profiles").select("role,notifs_enabled").eq("id", user.id).maybeSingle().then(({ data: p }) => {
+      sb.from("profiles").select("role,notifs_enabled,display_name").eq("id", user.id).maybeSingle().then(({ data: p }) => {
+        const dn = (p?.display_name || "").trim();
+        if (dn && dn !== user.email && !dn.includes("@")) setUsername(dn);
         setIsPro(p?.role === "pro" || p?.role === "dj" || p?.role === "label");
         if (p?.notifs_enabled === false) setNotifsEnabled(false);
       });
@@ -41,6 +48,26 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
     setNotifsEnabled(next);
     const sb = createSupabaseBrowser();
     if (sb && userId) await sb.from("profiles").update({ notifs_enabled: next }).eq("id", userId);
+  }
+
+  async function saveUsername() {
+    const v = nameDraft.trim().replace(/\s+/g, " ");
+    if (v.length < 2 || v.length > 24) { setNameMsg("2 to 24 characters."); return; }
+    if (v.includes("@")) { setNameMsg("No @ — that looks like an email."); return; }
+    setSavingName(true); setNameMsg("");
+    try {
+      const sb = createSupabaseBrowser();
+      if (sb) {
+        const { data: taken } = await sb.from("profiles").select("id").ilike("display_name", v).neq("id", userId).limit(1);
+        if (taken?.length) { setNameMsg("Already taken — try another one."); return; }
+      }
+      const res = await authFetch("/api/profile/update", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ display_name: v }),
+      });
+      if (!res.ok) throw new Error("failed");
+      setUsername(v); setEditingName(false);
+    } catch { setNameMsg("Couldn't save. Try again."); }
+    finally { setSavingName(false); }
   }
 
   async function openPortal() {
@@ -111,6 +138,32 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
         {/* Account */}
         <div style={groupLabel}>Account</div>
         <section style={group}>
+          {!editingName ? (
+            <button onClick={() => { setNameDraft(username); setNameMsg(""); setEditingName(true); }} style={linkRow}>
+              <span>Username</span>
+              <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                <span style={{ color: username ? C.text2 : C.gold, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {username || "Choose one"}
+                </span>
+                <span style={chev}>›</span>
+              </span>
+            </button>
+          ) : (
+            <div style={{ padding: "12px 0", borderBottom: `1px solid ${C.lineSoft}`, display: "grid", gap: 10 }}>
+              <input autoFocus value={nameDraft} maxLength={24} placeholder="Your username"
+                onChange={(e) => setNameDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveUsername()}
+                style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.06)", border: `1px solid ${C.glassBorder}`,
+                  borderRadius: 14, color: "#fff", fontSize: 16, padding: "12px 14px", outline: "none", fontFamily: "inherit" }} />
+              {nameMsg && <div style={{ fontSize: 13, color: C.danger }}>{nameMsg}</div>}
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => setEditingName(false)} style={cancelBtn}>Cancel</button>
+                <button onClick={saveUsername} disabled={savingName}
+                  style={{ ...cancelBtn, background: C.goldGrad, color: C.goldInk, border: "none", fontWeight: 700 }}>
+                  {savingName ? "Saving…" : "Save"}
+                </button>
+              </div>
+            </div>
+          )}
           <div style={row}>
             <span style={{ fontSize: 15, color: C.text2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {email || "—"}

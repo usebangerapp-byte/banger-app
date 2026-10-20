@@ -26,7 +26,8 @@ export const C = {
   glassBorder: "rgba(255,255,255,0.12)",
   gold: "#f5cf68",
   goldDeep: "#d9a227",
-  goldGrad: "linear-gradient(180deg, #f8d77a 0%, #d9a227 100%)",
+  // Same gold as the scan woofer cone, with its top-left sheen
+  goldGrad: "radial-gradient(130% 160% at 28% -10%, rgba(255,226,120,0.55) 0%, rgba(255,200,60,0.10) 42%, rgba(0,0,0,0) 60%), linear-gradient(180deg, #e2ad2e 0%, #c88c0f 55%, #9c6807 100%)",
   goldInk: "#1a1000",
   rel: "#5fe39a",
   unrel: "#f5cf68",
@@ -75,7 +76,7 @@ export const ui: Record<string, CSSProperties> = {
     display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
     padding: "9px 16px", borderRadius: 999, fontSize: 13, fontWeight: 700, lineHeight: 1,
     background: C.goldGrad, color: C.goldInk, border: "1px solid transparent",
-    boxShadow: "0 6px 18px rgba(232,170,40,0.30)",
+    boxShadow: "0 6px 16px rgba(200,140,15,0.22), inset 0 1px 0 rgba(255,235,160,0.35)",
     cursor: "pointer", whiteSpace: "nowrap", textDecoration: "none",
   },
   pillSmall: {
@@ -86,7 +87,7 @@ export const ui: Record<string, CSSProperties> = {
   cta: {
     width: "100%", padding: "16px", borderRadius: 999, border: "none", cursor: "pointer",
     background: C.goldGrad, color: C.goldInk, fontWeight: 700, fontSize: 16, fontFamily: SANS,
-    boxShadow: "0 10px 30px rgba(232,170,40,0.38), inset 0 1px 0 rgba(255,255,255,0.5)",
+    boxShadow: "0 8px 24px rgba(200,140,15,0.25), inset 0 1px 0 rgba(255,235,160,0.35)",
   },
   more: { justifySelf: "start", background: "none", border: "none", padding: "12px 0 14px", fontSize: 13, fontWeight: 600, color: C.gold, cursor: "pointer", fontFamily: SANS },
 
