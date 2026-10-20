@@ -694,7 +694,7 @@ export default function ProfilePageV2() {
           {tracks.length > 0 && (
             <Section title="MY UPLOADS">
               <div style={{ display:"grid", gap:4 }}>
-                {tracks.map((t) => (
+                {(showMoreTracks ? tracks : tracks.slice(0,3)).map((t) => (
                   <div key={t.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 0", borderBottom:"1px solid rgba(255,255,255,0.06)" }}>
                     <div style={{ flex:1, minWidth:0, overflow:"hidden" }}>
                       <div style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{t.title}</div>
@@ -717,6 +717,11 @@ export default function ProfilePageV2() {
                     </button>
                   </div>
                 ))}
+                {tracks.length > 3 && (
+                  <button onClick={()=>setShowMoreTracks(v=>!v)} style={showMoreBtn}>
+                    {showMoreTracks ? "Show less" : `+${tracks.length-3} more`}
+                  </button>
+                )}
               </div>
             </Section>
           )}
