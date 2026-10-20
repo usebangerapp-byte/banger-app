@@ -203,7 +203,7 @@ export default function SetModePage() {
         @keyframes setIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
       `}</style>
       <div style={ui.shell}>
-        <PageHeader title="Set mode" sub="BANGER builds your tracklist while you play." />
+        <PageHeader back title="Set mode" sub="BANGER builds your tracklist while you play." />
 
         {/* ── Idle ── */}
         {phase === "idle" && (

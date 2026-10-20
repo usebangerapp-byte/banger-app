@@ -39,7 +39,7 @@ export default function AdminPage() {
   return (
     <main style={ui.page}>
       <div style={ui.shell}>
-        <PageHeader title="Dashboard" sub="How BANGER is growing." />
+        <PageHeader back title="Dashboard" sub="How BANGER is growing." />
         {error && <div style={{ ...ui.card, color: C.text2 }}>{error}</div>}
         {!s && !error && <div style={ui.empty}>Loading…</div>}
         {s && (<>

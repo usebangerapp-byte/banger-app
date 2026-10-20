@@ -882,7 +882,10 @@ export default function ProfilePageV2() {
                             if (promoMatch) {
                               const path = promoMatch[2].replace(/^https?:\/\/[^/]+/, "");
                               return (
-                                <a href={path} style={{ display:"grid", gap:6, textDecoration:"none", color:"inherit", minWidth:180 }}>
+                                <a href={path}
+                                  // so "Back" on the track returns to this exact conversation
+                                  onClick={() => { try { window.history.replaceState(null, "", `/profile?tab=messages&with=${activeConv}`); } catch {} }}
+                                  style={{ display:"grid", gap:6, textDecoration:"none", color:"inherit", minWidth:180 }}>
                                   <span style={{ fontSize:11, fontWeight:700, letterSpacing:"0.08em", opacity:0.75 }}>🔒 PRIVATE TRACK</span>
                                   <span style={{ fontSize:15, fontWeight:700, lineHeight:1.3 }}>{promoMatch[1]}</span>
                                   {promoMatch[3] && <span style={{ fontSize:13, opacity:0.8 }}>{promoMatch[3]}</span>}

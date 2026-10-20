@@ -102,7 +102,7 @@ export default function TrackClient() {
   return (
     <main style={ui.page}>
       <div style={ui.shell}>
-        <PageHeader title="Track" />
+        <PageHeader back title="Track" />
         <Suspense fallback={<div style={ui.empty}>Loading…</div>}>
           <TrackView />
         </Suspense>

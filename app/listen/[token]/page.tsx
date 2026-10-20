@@ -75,7 +75,7 @@ export default function ListenPage() {
   return (
     <main style={ui.page}>
       <div style={ui.shell}>
-        <PageHeader title="Private track" sub="Sent to you only." />
+        <PageHeader back title="Private track" sub="Sent to you only." />
 
         {needsLogin && (
           <section style={{ ...ui.card, textAlign: "center", display: "grid", gap: 12 }}>

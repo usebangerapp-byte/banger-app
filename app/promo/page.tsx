@@ -156,7 +156,7 @@ export default function PromoPage() {
   return (
     <main style={ui.page}>
       <div style={ui.shell}>
-        <PageHeader title="Promo" sub="Send an unreleased track privately to DJs." />
+        <PageHeader back title="Promo" sub="Send an unreleased track privately to DJs." />
 
         {done > 0 && (
           <section style={{ ...ui.card, textAlign: "center", display: "grid", gap: 6 }}>

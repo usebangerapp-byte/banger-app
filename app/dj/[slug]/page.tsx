@@ -125,7 +125,9 @@ export default function DJProfilePage() {
       <SkeletonStyles />
       <div style={shellStyle}>
         <div style={ui.catalogue}>
-          <button onClick={() => router.back()} style={backStyle}>‹ Back</button>
+          <button onClick={() => (window.history.length > 1 ? router.back() : router.push("/home"))} aria-label="Back" style={backStyle}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+          </button>
           {profile?.role === "pro" ? <span style={tag("pro")}>PRO</span> : <span>Artist</span>}
         </div>
 
@@ -240,7 +242,7 @@ const pillGhost: React.CSSProperties = { ...ui.pill };
 
 const pageStyle: React.CSSProperties = { ...ui.page };
 const shellStyle: React.CSSProperties = { ...ui.shell };
-const backStyle: React.CSSProperties = { background:"none", border:"none", color:C.gold, fontSize:16, fontWeight:500, cursor:"pointer", padding:0, fontFamily:"inherit" };
+const backStyle: React.CSSProperties = { width:38, height:38, borderRadius:"50%", padding:0, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(255,255,255,0.08)", border:`1px solid ${C.glassBorder}`, color:"#fff" };
 const headerStyle: React.CSSProperties = { ...glass, borderRadius:24, padding:18, display:"grid", gap:16, minWidth:0 };
 const avatarStyle: React.CSSProperties = { width:64, height:64, borderRadius:"50%", flexShrink:0, overflow:"hidden", background:"rgba(255,255,255,0.08)", border:`1px solid ${C.line}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, fontWeight:800 };
 const statsLine: React.CSSProperties = { display:"flex", alignItems:"center", gap:16, flexWrap:"wrap", marginTop:8, fontSize:13, color:C.text3 };
