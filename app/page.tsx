@@ -67,11 +67,6 @@ export default function LandingPage() {
           </h1>
           <p style={sub}>Scan it. Follow it. Get it first.</p>
 
-          <div style={chips}>
-            {["Scan in 10s", "Unreleased IDs", "Drop alerts"].map((c) => (
-              <span key={c} style={chip}><span style={dot} />{c}</span>
-            ))}
-          </div>
         </div>
 
         {/* Auth */}
