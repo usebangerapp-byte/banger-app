@@ -28,20 +28,28 @@ export async function POST(req: Request) {
 
   if (error) return Response.json({ error: error.message }, { status: 500 });
 
-  // If marking as released → update existing scan_events for this track
-  if (is_released) {
-    const { data: track } = await supabase
-      .from("bpro_tracks")
-      .select("title")
-      .eq("id", track_id)
-      .maybeSingle();
+  // Sync scan_events result_type to match new release status
+  const { data: track } = await supabase
+    .from("bpro_tracks")
+    .select("title")
+    .eq("id", track_id)
+    .maybeSingle();
 
-    if (track?.title) {
+  if (track?.title) {
+    if (is_released) {
+      // Mark all past scans of this track as released
       await supabase
         .from("scan_events")
         .update({ result_type: "recognized_world" })
         .eq("track_title", track.title)
         .eq("result_type", "recognized_unreleased");
+    } else {
+      // Revert back to unreleased
+      await supabase
+        .from("scan_events")
+        .update({ result_type: "recognized_unreleased" })
+        .eq("track_title", track.title)
+        .eq("result_type", "recognized_world");
     }
   }
 
