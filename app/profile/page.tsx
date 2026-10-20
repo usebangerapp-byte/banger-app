@@ -171,6 +171,7 @@ export default function ProfilePageV2() {
   const [shared,   setShared]   = useState(false);
   const [tab,      setTab]      = useState<"profile"|"messages"|"settings">("profile");
   const [showMoreTracks, setShowMoreTracks] = useState(false);
+  const [confirmDel, setConfirmDel] = useState<string | null>(null);
   const [showMoreFollows, setShowMoreFollows] = useState(false);
   const [showMoreScans,  setShowMoreScans]  = useState(false);
   const [messages, setMessages] = useState<any[]>([]);
@@ -692,6 +693,21 @@ export default function ProfilePageV2() {
                     >
                       {t.is_released ? TAG_TEXT.rel : TAG_TEXT.unrel}
                     </button>
+                    {confirmDel === t.id ? (
+                      <button onClick={async () => {
+                        setConfirmDel(null);
+                        const res = await authFetch("/api/bpro/delete", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ track_id: t.id }) }).catch(() => null);
+                        if (res?.ok) setTracks((prev: any[]) => prev.filter((x: any) => x.id !== t.id));
+                        else alert("Couldn't delete this upload. Try again.");
+                      }} style={{ ...tag("neutral"), border:"none", cursor:"pointer", background:"#e5484d", color:"#fff" }}>Delete</button>
+                    ) : (
+                      <button onClick={() => setConfirmDel(t.id)} aria-label="Delete upload"
+                        style={{ background:"none", border:"none", padding:4, cursor:"pointer", color:C.text4, display:"flex", flexShrink:0 }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />
+                        </svg>
+                      </button>
+                    )}
                   </div>
                 ))}
                 {tracks.length > 3 && (

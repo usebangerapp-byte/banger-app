@@ -8,6 +8,7 @@ import { authFetch } from "@/lib/authFetch";
 import { ui, C, glass } from "@/lib/ui";
 import PageHeader from "@/components/PageHeader";
 import MarqueeText from "@/components/MarqueeText";
+import { guessTrackName } from "@/lib/trackName";
 
 type Person = { id: string; display_name: string; avatar_url?: string | null };
 type Sent = {
@@ -74,10 +75,7 @@ export default function PromoPage() {
   function pickFile(f: File | undefined) {
     if (!f) return;
     setFile(f); setDone(0); setError("");
-    const base = f.name.replace(/\.[^.]+$/, "").trim();
-    const sep = base.indexOf(" - ");
-    if (!title && !artist && sep > 0) { setArtist(base.slice(0, sep).trim()); setTitle(base.slice(sep + 3).trim()); }
-    else if (!title) setTitle(base);
+    guessTrackName(f).then((g) => { if (g.artist) setArtist(g.artist); if (g.title) setTitle(g.title); }).catch(() => {});
   }
 
   function togglePerson(p: Person) {

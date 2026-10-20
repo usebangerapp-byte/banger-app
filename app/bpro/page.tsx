@@ -6,6 +6,7 @@ import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { getBrowserRole } from "@/lib/auth/getBrowserRole";
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import PageHeader from "@/components/PageHeader";
+import { guessTrackName } from "@/lib/trackName";
 import { ui, C, glass } from "@/lib/ui";
 
 const SEGMENT_DURATION = 25;
@@ -159,10 +160,11 @@ export default function UploadPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     setAudioFile(file); setError(""); setDone(false); setStep("");
-    // Auto-fill artist & title from filename if fields are empty
-    const parsed = parseFilename(file.name);
-    if (!artist.trim() && parsed.artist) setArtist(parsed.artist);
-    if (!trackTitle.trim() && parsed.title) setTrackTitle(parsed.title);
+    // Fill artist & title from the file's tags / name (remix credits stay in the title)
+    guessTrackName(file).then((g) => {
+      if (g.artist) setArtist(g.artist);
+      if (g.title) setTrackTitle(g.title);
+    }).catch(() => {});
     const url = URL.createObjectURL(file);
     setAudioUrl(url);
     const audio = new Audio(url);
