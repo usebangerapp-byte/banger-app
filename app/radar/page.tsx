@@ -169,7 +169,7 @@ function TrackRow({ rank, title, subtitle, meta, snippet, followed, loading, onT
         <MarqueeText text={title} style={ui.rowTitle} />
         <div style={ui.rowSub}>{subtitle}{subtitle ? " · " : ""}{meta}</div>
       </div>
-      {snippet && <PreviewButton id={`radar-${rank}-${title}`} snippetPath={snippet} />}
+      {snippet && <PreviewButton compact id={`radar-${rank}-${title}`} snippetPath={snippet} />}
       <FollowBtn title={title} subtitle={subtitle} followed={followed} loading={loading} onToggle={onToggle} />
     </div>
   )

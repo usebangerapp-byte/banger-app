@@ -623,7 +623,7 @@ export default function ProfilePageV2() {
                       {s.track_subtitle && <div style={ui.rowSub}>{s.track_subtitle}</div>}
                     </div>
                     {previews.get(trackKey(s.track_title || "")) && (
-                      <PreviewButton id={`scan-${i}-${s.track_title}`} snippetPath={previews.get(trackKey(s.track_title || ""))!} />
+                      <PreviewButton compact id={`scan-${i}-${s.track_title}`} snippetPath={previews.get(trackKey(s.track_title || ""))!} />
                     )}
                     <span style={tag(s.result_type === "recognized_unreleased" ? "unrel" : "rel")}>
                       {s.result_type === "recognized_unreleased" ? TAG_TEXT.unrel : TAG_TEXT.rel}
@@ -647,7 +647,7 @@ export default function ProfilePageV2() {
                   <div key={i} style={{ display:"flex", alignItems:"center", gap:12, padding:"13px 0", borderBottom:`1px solid ${C.lineSoft}`, width:"100%", overflow:"hidden" }}>
                     <div style={{ flex:1, minWidth:0 }}><MarqueeText text={f.track_title || "Unknown"} style={ui.rowTitle} /></div>
                     {previews.get(trackKey(f.track_title || "")) && (
-                      <PreviewButton id={`follow-${i}-${f.track_title}`} snippetPath={previews.get(trackKey(f.track_title || ""))!} />
+                      <PreviewButton compact id={`follow-${i}-${f.track_title}`} snippetPath={previews.get(trackKey(f.track_title || ""))!} />
                     )}
                     <span style={tag(f.is_released ? "rel" : "neutral")}>
                       {f.is_released ? "Out now" : "Waiting"}

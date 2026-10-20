@@ -50,7 +50,7 @@ function publicUrl(path: string) {
 }
 
 /** Small "▶ Preview" capsule — shares the app's single audio player with the Charts. */
-export function PreviewButton({ id, snippetPath }: { id: string; snippetPath: string }) {
+export function PreviewButton({ id, snippetPath, compact }: { id: string; snippetPath: string; compact?: boolean }) {
   const [playing, setPlaying] = useState(false);
 
   useEffect(() => {
@@ -77,6 +77,19 @@ export function PreviewButton({ id, snippetPath }: { id: string; snippetPath: st
     if (audio.paused) audio.play().catch(() => {}); else audio.pause();
     fire();
   }
+
+  if (compact) return (
+    <button type="button" onClick={toggle} aria-label={playing ? "Stop preview" : "Play preview"}
+      style={{ width: 32, height: 32, borderRadius: "50%", flexShrink: 0, cursor: "pointer", padding: 0,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        border: playing ? "1px solid transparent" : "1px solid rgba(245,207,104,0.30)",
+        background: playing ? C.goldGrad : "rgba(245,207,104,0.12)", color: playing ? C.goldInk : C.gold,
+        boxShadow: playing ? "0 0 12px rgba(245,207,104,0.5)" : undefined }}>
+      {playing
+        ? <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
+        : <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ marginLeft: 2 }}><path d="M7 4.5v15l13-7.5z" /></svg>}
+    </button>
+  );
 
   return (
     <button type="button" onClick={toggle} aria-label={playing ? "Stop preview" : "Play preview"}
