@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { getBrowserRole } from "@/lib/auth/getBrowserRole";
+import PageHeader from "@/components/PageHeader";
 
 const MONO = "var(--font-geist-mono), ui-monospace, monospace";
 
@@ -69,10 +70,7 @@ export default function UpgradePage() {
       <div style={shell}>
 
         {/* ── Catalogue line ── */}
-        <div style={catalogue}>
-          <span>BNGR—PRO</span>
-          <span>CAT. 001</span>
-        </div>
+        <PageHeader title="Upgrade" sub="Go PRO and unlock the full scene." code="CAT. 001" />
 
         {/* ── Headline ── */}
         <header>

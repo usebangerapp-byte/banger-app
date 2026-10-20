@@ -456,10 +456,13 @@ export default function ProfilePageV2() {
     <main style={pageStyle}>
       <div style={shellStyle}>
 
-        <div style={tabBarStyle}>
+        <PageHeader title="Profile" sub="Your scans, follows and messages."
+          code={<span style={{ color: role==="pro" ? C.gold : undefined }}>{role==="pro" ? "✦ PRO" : "FREE"}</span>} />
+
+        <div style={{ ...tabBarStyle, marginTop:-20 }}>
           {(["profile","messages"] as const).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{ ...tabBtn, ...(tab===t?tabActive:{}) }}>
-              {t==="profile" ? "PROFILE" : t==="settings" ? "SETTINGS" : `CHAT${convs.reduce((a,c)=>a+c.unread,0)>0?` (${convs.reduce((a,c)=>a+c.unread,0)})`:""}`}
+              {t==="profile" ? "OVERVIEW" : t==="settings" ? "SETTINGS" : `CHAT${convs.reduce((a,c)=>a+c.unread,0)>0?` (${convs.reduce((a,c)=>a+c.unread,0)})`:""}`}
             </button>
           ))}
         </div>
@@ -468,10 +471,6 @@ export default function ProfilePageV2() {
 
           {/* ── IDENTITY ── */}
           <section style={{ display:"grid", gap:22 }}>
-            <div style={ui.catalogue}>
-              <span>BNGR — PROFILE</span>
-              <span style={{ color: role==="pro" ? C.gold : C.text3 }}>{role==="pro" ? "✦ PRO" : "FREE"}</span>
-            </div>
 
             <div style={{ display:"flex", alignItems:"center", gap:16, minWidth:0 }}>
               {/* Avatar — tap to change the photo */}

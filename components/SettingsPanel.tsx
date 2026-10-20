@@ -190,7 +190,7 @@ const textLink: React.CSSProperties = {
   background: "none", border: "none", padding: 0, cursor: "pointer",
   color: "rgba(255,255,255,0.7)", fontSize: 13, fontWeight: 700,
 };
-const eyebrow: React.CSSProperties = { fontFamily: MONO, fontSize: 12, fontWeight: 700, letterSpacing: "0.3em", color: "rgba(255,255,255,0.6)" };
+const eyebrow: React.CSSProperties = { fontSize: 15, fontWeight: 800, letterSpacing: "0.26em", color: "#fff" };
 const label: React.CSSProperties = {
   fontFamily: MONO, fontSize: 10, fontWeight: 700, letterSpacing: "0.24em", color: "rgba(255,255,255,0.3)",
   paddingBottom: 10, borderBottom: "1px solid rgba(255,255,255,0.08)",

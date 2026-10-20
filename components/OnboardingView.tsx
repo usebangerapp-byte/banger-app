@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { ui, C, MONO } from "@/lib/ui";
+import PageHeader from "@/components/PageHeader";
 
 type Plan = "public" | "pro";
 
@@ -116,11 +117,10 @@ export default function OnboardingView() {
     <main style={ui.page}>
       <div style={{ ...ui.shell, gap: 44 }}>
         <header>
-          <div style={ui.catalogue}><span>BNGR — PICK YOUR PLAN</span><span>STEP 01</span></div>
+          <PageHeader title="Pick your plan" sub="Find the IDs, follow the DJs, stay ahead of every drop." code="STEP 01" />
           <h1 style={{ ...ui.title, fontSize: "clamp(28px, 8vw, 40px)", fontWeight: 900, letterSpacing: "-0.04em", lineHeight: 0.98 }}>
             HOW DO YOU<br /><span style={{ color: "transparent", WebkitTextStroke: "1.5px rgba(255,255,255,0.85)" }}>WANT TO</span><br />PLAY.
           </h1>
-          <p style={ui.subtitle}>Find the IDs, follow the DJs, stay ahead of every drop. Upgrade whenever you&apos;re ready.</p>
         </header>
 
         {plans.map((plan) => (
