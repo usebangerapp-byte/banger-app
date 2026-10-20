@@ -10,13 +10,11 @@ export const runtime = "nodejs"
 
 const ytdlp = (ytdlpBase as any).create ? (ytdlpBase as any).create(path.join(process.cwd(), "node_modules/yt-dlp-exec/bin/yt-dlp")) : ytdlpBase
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 export async function POST(req: Request){
-
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
   try{
 
     const { url,title,artist,email } = await req.json()

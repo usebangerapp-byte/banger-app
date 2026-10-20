@@ -2,11 +2,6 @@ import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 function isPastDate(value?: string | null) {
   if (!value) return false;
   const d = new Date(value);
@@ -15,6 +10,10 @@ function isPastDate(value?: string | null) {
 }
 
 export async function GET() {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
   try {
     const { data, error } = await supabase
       .from("bpro_tracks")

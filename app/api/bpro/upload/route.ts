@@ -6,11 +6,6 @@ export const runtime = 'nodejs'
 export const maxDuration = 60
 export const dynamic = 'force-dynamic'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 type UploadedSnippet = {
   file: File
   objectPath: string
@@ -19,6 +14,10 @@ type UploadedSnippet = {
 }
 
 export async function POST(req: Request) {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
   try {
     const formData = await req.formData()
 
