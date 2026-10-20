@@ -188,6 +188,15 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
           </button>
         </section>
 
+        {/* Admin only */}
+        {["chokrymusic@gmail.com"].includes(email.toLowerCase()) && (
+          <section style={group}>
+            <button onClick={() => { onClose(); window.location.href = "/admin"; }} style={{ ...linkRow, borderBottom: "none", color: C.gold }}>
+              <span>Dashboard</span><span style={chev}>›</span>
+            </button>
+          </section>
+        )}
+
         {/* About & legal (required by the App Store) */}
         <div style={groupLabel}>About</div>
         <section style={group}>
