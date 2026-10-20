@@ -9,11 +9,6 @@ export default function LandingPage() {
   const [busy, setBusy] = useState<"" | "google" | "apple">("");
   const [error, setError] = useState("");
   const [checking, setChecking] = useState(true);
-  const [word, setWord] = useState(0);
-  useEffect(() => {
-    const t = window.setInterval(() => setWord((w) => (w + 1) % ROTATING.length), 2400);
-    return () => window.clearInterval(t);
-  }, []);
   const router = useRouter();
 
   // Already signed in → straight into the app (no need to log in again).
@@ -44,9 +39,7 @@ export default function LandingPage() {
   return (
     <main style={page}>
       <style>{`
-        @keyframes sonar { 0% { transform: scale(.55); opacity: .7; } 100% { transform: scale(1.6); opacity: 0; } }
-        @keyframes wordIn { from { opacity: 0; transform: translateY(10px); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
-        @keyframes bFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+        @keyframes bShine { 0% { background-position: 160% 0; } 28%, 100% { background-position: -60% 0; } }
       `}</style>
       <div style={shell}>
 
@@ -55,21 +48,24 @@ export default function LandingPage() {
 
         {/* Glowing B with a gold sonar — it "listens" */}
         <div style={logoBlock}>
-          <div style={{ position: "relative", width: 220, height: 220, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            {[0, 1, 2].map((i) => (
-              <span key={i} aria-hidden style={{
-                position: "absolute", inset: 0, borderRadius: "50%", border: "1px solid rgba(245,207,104,0.55)",
-                animation: `sonar 3.6s ease-out ${i * 1.2}s infinite`,
-              }} />
-            ))}
-            <img src="/B-glow.png" alt="BANGER" width={120} height={144} style={{ width: 120, height: "auto", position: "relative", animation: "bFloat 4s ease-in-out infinite" }} />
+          {/* Gold B — a glint of light sweeps across it now and then, like on polished metal */}
+          <div style={{ position: "relative", width: 150, margin: "10px 0 18px" }}>
+            <img src="/B-glow.png" alt="BANGER" width={150} height={180} style={{ width: 150, height: "auto", display: "block" }} />
+            <div aria-hidden style={{
+              position: "absolute", inset: 0, pointerEvents: "none", mixBlendMode: "screen",
+              background: "linear-gradient(105deg, transparent 38%, rgba(255,250,230,0.95) 50%, transparent 62%)",
+              backgroundSize: "250% 100%", backgroundRepeat: "no-repeat",
+              WebkitMaskImage: "url(/B-glow.png)", maskImage: "url(/B-glow.png)",
+              WebkitMaskSize: "100% 100%", maskSize: "100% 100%",
+              animation: "bShine 4.5s ease-in-out infinite",
+            }} />
           </div>
 
           <h1 style={tagline}>
-            Name any track.<br />
-            <span key={word} style={{ display: "inline-block", color: "#f5cf68", animation: "wordIn .5s ease-out" }}>{ROTATING[word]}</span>
+            Identify any track.<br />
+            <span style={{ color: "#f5cf68" }}>Even unreleased.</span>
           </h1>
-          <p style={sub}>Hold your phone up in the club. BANGER finds the ID and tells you the day it drops.</p>
+          <p style={sub}>Scan it. Follow it. Get it first.</p>
 
           <div style={chips}>
             {["Scan in 10s", "Unreleased IDs", "Drop alerts"].map((c) => (
@@ -99,7 +95,6 @@ export default function LandingPage() {
   );
 }
 
-const ROTATING = ["Even unreleased.", "Even the bootleg.", "Even the edit.", "Before it drops."];
 
 function GoogleIcon() {
   return (
@@ -136,7 +131,7 @@ const logoMark: React.CSSProperties = {
 };
 const tagline: React.CSSProperties = {
   margin: "6px 0 0", fontSize: "clamp(30px,9vw,38px)", fontWeight: 800,
-  letterSpacing: "-0.035em", lineHeight: 1.1, color: "#fff", minHeight: "2.2em",
+  letterSpacing: "-0.035em", lineHeight: 1.1, color: "#fff",
 };
 const sub: React.CSSProperties = {
   margin: "12px 0 0", maxWidth: 320, fontSize: 15, lineHeight: 1.5, color: "rgba(255,255,255,0.6)",
