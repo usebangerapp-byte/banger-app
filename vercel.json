@@ -1,5 +1,5 @@
 {
-  "installCommand": "npm install",
+  "installCommand": "npm install --prefer-online",
   "crons": [
     {
       "path": "/api/bpro/release-check",
