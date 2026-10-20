@@ -141,7 +141,7 @@ function Sparkline({ data }: { data: number[] }) {
 }
 
 // ── Settings Tab ──
-function SettingsTab({ role, router }: { role: "public"|"pro"; router: ReturnType<typeof useRouter> }) {
+function SettingsTab({ role, router }: { role: "public"|"pro"; router: { push: (path: string) => void } }) {
   const [portalLoading, setPortalLoading] = useState(false);
 
   const openPortal = async () => {
