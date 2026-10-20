@@ -134,42 +134,45 @@ function ScanCard({ scan, isUnreleased }: { scan: any; isUnreleased: boolean }) 
 
   useEffect(() => {
     if (!title || title === "Unknown") return;
-    // Pour les released → iTunes: cover HD + preview
-    // Pour les unreleased → chercher photo artiste via iTunes artist search
-    const q = encodeURIComponent(released ? `${artist} ${title}`.trim() : artist.trim() || title);
-    fetch(`https://itunes.apple.com/search?term=${q}&media=music&limit=5&entity=${released ? "song" : "musicArtist"}`)
+
+    if (!released && scan.track_id) {
+      // Unreleased → fetch snippet + cover from bpro_tracks
+      const sb = createSupabaseBrowser();
+      sb.from("bpro_tracks")
+        .select("snippet_path,allow_preview")
+        .eq("id", scan.track_id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data?.allow_preview && data?.snippet_path) {
+            setPreview(data.snippet_path);
+          }
+          // Artist photo via iTunes (best available source)
+          const q = encodeURIComponent(artist || title);
+          fetch(`https://itunes.apple.com/search?term=${q}&media=music&limit=3&entity=song`)
+            .then(r => r.json())
+            .then(d => {
+              const t = d.results?.[0];
+              if (t?.artworkUrl100) setCover(t.artworkUrl100.replace("100x100bb","300x300bb").replace("100x100","300x300"));
+            }).catch(() => {});
+        });
+      return;
+    }
+
+    // Released → iTunes: cover HD + preview 30s
+    const q = encodeURIComponent(`${artist} ${title}`.trim());
+    fetch(`https://itunes.apple.com/search?term=${q}&media=music&limit=5&entity=song`)
       .then(r => r.json())
       .then(d => {
-        if (released) {
-          // Pick the best match: prefer exact title match
-          const results = d.results || [];
-          const best = results.find((t: any) =>
-            (t.trackName || "").toLowerCase().includes(title.toLowerCase().split("(")[0].trim())
-          ) || results[0];
-          if (best) {
-            setCover(best.artworkUrl100?.replace("100x100bb", "300x300bb").replace("100x100", "300x300") || null);
-            setPreview(best.previewUrl || null);
-          }
-        } else {
-          // Unreleased → artist image
-          const artist0 = d.results?.[0];
-          if (artist0?.artistLinkUrl) {
-            // iTunes artist art (from artistLinkUrl we can't get img directly)
-            // Use artworkUrl100 if it's a musicArtist type
-            setCover(artist0.artworkUrl100?.replace("100x100bb","300x300bb") || null);
-          }
-          // Also try song search for artist image fallback
-          if (!d.results?.[0]?.artworkUrl100) {
-            fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(artist||title)}&media=music&limit=3&entity=song`)
-              .then(r2 => r2.json())
-              .then(d2 => {
-                const t = d2.results?.[0];
-                if (t?.artworkUrl100) setCover(t.artworkUrl100.replace("100x100bb","300x300bb").replace("100x100","300x300"));
-              }).catch(() => {});
-          }
+        const results = d.results || [];
+        const best = results.find((t: any) =>
+          (t.trackName || "").toLowerCase().includes(title.toLowerCase().split("(")[0].trim())
+        ) || results[0];
+        if (best) {
+          setCover(best.artworkUrl100?.replace("100x100bb","300x300bb").replace("100x100","300x300") || null);
+          setPreview(best.previewUrl || null);
         }
       }).catch(() => {});
-  }, [title, artist, released]);
+  }, [title, artist, released, scan.track_id]);
 
   // External pause listener
   useEffect(() => {
@@ -350,7 +353,7 @@ export default function ProfilePageV2() {
         }
 
         const { data: scanData } = await supabase
-          .from("scan_events").select("track_title,track_subtitle,created_at,result_type")
+          .from("scan_events").select("track_title,track_subtitle,created_at,result_type,track_id")
           .eq("user_id", uid)
           .neq("result_type", "not_found")
           .order("created_at", { ascending: false }).limit(50);
