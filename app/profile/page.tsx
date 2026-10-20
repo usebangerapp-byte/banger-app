@@ -594,40 +594,50 @@ export default function ProfilePageV2() {
             </Section>
           )}
 
-          {/* ── THIS WEEK ── */}
-          {(sparkData.some(v => v > 0) || topScan || proStats) && (
+          {/* ── YOUR ACTIVITY: my own scans ── */}
+          {(sparkData.some(v => v > 0) || topScan) && (
             <div style={weekCard}>
-              <div style={{ ...sectionTitleStyle, padding:"0 0 10px" }}>This week</div>
+              <div style={{ ...sectionTitleStyle, padding:"0 0 10px" }}>Your activity</div>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end", gap:12, paddingTop:14 }}>
-                <div>
+                <div style={{ display:"grid", gap:4 }}>
                   <div style={{ fontSize:26, fontWeight:700, letterSpacing:"-0.02em", lineHeight:1 }}>
-                    {sparkData.reduce((a, b) => a + b, 0)} <span style={{ fontSize:14, fontWeight:500, color:C.text3 }}>scans</span>
+                    {sparkData.reduce((a, b) => a + b, 0)} <span style={{ fontSize:14, fontWeight:500, color:C.text3 }}>scan{sparkData.reduce((a, b) => a + b, 0) === 1 ? "" : "s"}</span>
                   </div>
+                  <div style={{ fontSize:12, color:C.text4 }}>last 7 days</div>
                 </div>
-                {/* 7-day bars */}
                 <div style={{ display:"flex", alignItems:"flex-end", gap:5, height:40 }} aria-label="Scans over the last 7 days">
                   {sparkData.map((v, i) => {
                     const max = Math.max(1, ...sparkData);
                     return <div key={i} style={{ width:10, borderRadius:4, height: Math.max(4, (v / max) * 40),
-                      background: i === sparkData.length - 1 ? C.goldGrad : "rgba(255,255,255,0.16)",
-                      boxShadow: i === sparkData.length - 1 ? "0 0 12px rgba(232,170,40,0.45)" : undefined }} />;
+                      background: i === sparkData.length - 1 ? C.goldGrad : "rgba(255,255,255,0.16)" }} />;
                   })}
                 </div>
               </div>
               {topScan && (
                 <div style={weekLine}>
-                  <span style={{ color:C.text3 }}>Most scanned</span>
-                  <span style={{ fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const, minWidth:0 }}>{topScan.title}</span>
-                  <span style={{ color:"rgba(255,255,255,0.4)", flexShrink:0 }}>{topScan.n}×</span>
+                  <span style={{ color:C.text3, flexShrink:0 }}>Most scanned</span>
+                  <span style={{ flex:1, minWidth:0 }}><MarqueeText text={topScan.title} style={{ fontWeight:600 }} /></span>
+                  <span style={{ color:C.text3, flexShrink:0 }}>{topScan.n}×</span>
                 </div>
               )}
-              {proStats && (
+            </div>
+          )}
+
+          {/* ── YOUR TRACKS (Pro): how often others scanned my uploads ── */}
+          {proStats && (
+            <div style={weekCard}>
+              <div style={{ ...sectionTitleStyle, padding:"0 0 10px" }}>Your tracks</div>
+              <div style={{ display:"grid", gap:4, paddingTop:14 }}>
+                <div style={{ fontSize:26, fontWeight:700, letterSpacing:"-0.02em", lineHeight:1 }}>
+                  {proStats.uploadScans7d} <span style={{ fontSize:14, fontWeight:500, color:C.text3 }}>scan{proStats.uploadScans7d === 1 ? "" : "s"}</span>
+                </div>
+                <div style={{ fontSize:12, color:C.text4 }}>last 7 days</div>
+              </div>
+              {proStats.topUpload && (
                 <div style={weekLine}>
-                  <span style={{ color:C.gold, flexShrink:0 }}>✦</span>
-                  <span style={{ minWidth:0 }}>
-                    Your IDs were scanned <b>{proStats.uploadScans7d}</b> time{proStats.uploadScans7d === 1 ? "" : "s"}
-                    {proStats.topUpload ? <> · top: <b>{proStats.topUpload.title}</b></> : null}
-                  </span>
+                  <span style={{ color:C.gold, flexShrink:0 }}>Top</span>
+                  <span style={{ flex:1, minWidth:0 }}><MarqueeText text={proStats.topUpload.title} style={{ fontWeight:600 }} /></span>
+                  <span style={{ color:C.text3, flexShrink:0 }}>{proStats.topUpload.scans}×</span>
                 </div>
               )}
             </div>
