@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { findMusicLinks } from '@/lib/music/findLinks'
+import { userFromRequest } from '@/lib/server/notify'
+import { isPro } from '@/lib/server/pro'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -18,12 +20,16 @@ export async function POST(req: Request) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
+  // Only signed-in Pro accounts can upload, and always as themselves
+  const me = await userFromRequest(supabase, req)
+  if (!me) return NextResponse.json({ error: 'Not signed in' }, { status: 401 })
+  if (!(await isPro(supabase, me.id))) return NextResponse.json({ error: 'Pro only' }, { status: 403 })
   try {
     const formData = await req.formData()
 
     const title = String(formData.get('title') || '').trim()
     const artist = String(formData.get('artist') || formData.get('name') || '').trim()
-    const uploaderEmail = String(formData.get('uploader_email') || '').trim()
+    const uploaderEmail = String(me.email || '').trim()
     const releaseDateRaw = String(formData.get('release_date') || '').trim()
     const allowPreviewRaw = String(formData.get('allow_preview') || 'true').trim()
     const isReleasedRaw = String(formData.get('is_released') || 'false').trim()
@@ -103,6 +109,7 @@ export async function POST(req: Request) {
       .select('id, title, artist, snippet_path, allow_preview, is_released, release_date')
       .eq('title', title)
       .eq('artist', artist)
+      .eq('uploader_email', uploaderEmail)   // never overwrite someone else's upload
       .maybeSingle()
 
     if (existingError) {

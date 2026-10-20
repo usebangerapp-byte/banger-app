@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server'
+import { adminClient, userFromRequest } from '@/lib/server/notify'
+import { isPro } from '@/lib/server/pro'
 
 export const runtime = 'nodejs'
 
@@ -11,6 +13,10 @@ function safeJson(text: string) {
 }
 
 export async function POST(req: Request) {
+  const sb = adminClient()
+  const me = await userFromRequest(sb, req)
+  if (!me) return NextResponse.json({ ok: false, error: 'Not signed in' }, { status: 401 })
+  if (!(await isPro(sb, me.id))) return NextResponse.json({ ok: false, error: 'Pro only' }, { status: 403 })
   try {
     const token = process.env.ACR_CONSOLE_TOKEN
     const bucketId = process.env.ACR_BUCKET_ID

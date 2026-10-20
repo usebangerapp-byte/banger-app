@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { notifyTrackReleased } from "@/lib/server/notify";
+import { notifyTrackReleased, userFromRequest } from "@/lib/server/notify";
 
 export async function POST(req: Request) {
   const supabase = createClient(
@@ -7,8 +7,17 @@ export async function POST(req: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
+  const me = await userFromRequest(supabase, req);
+  if (!me) return Response.json({ error: "Not signed in" }, { status: 401 });
+
   const body = await req.json().catch(() => ({}));
   const { track_id, is_released } = body;
+
+  // Only the person who uploaded the track can change its status
+  const { data: owner } = await supabase.from("bpro_tracks").select("uploader_email").eq("id", track_id).maybeSingle();
+  if (!owner || String(owner.uploader_email || "").toLowerCase() !== String(me.email || "").toLowerCase()) {
+    return Response.json({ error: "Not your track" }, { status: 403 });
+  }
 
   if (!track_id || typeof is_released !== "boolean") {
     return Response.json({ error: "Missing track_id or is_released" }, { status: 400 });

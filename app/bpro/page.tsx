@@ -7,6 +7,7 @@ import { getBrowserRole } from "@/lib/auth/getBrowserRole";
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import PageHeader from "@/components/PageHeader";
 import { guessTrackName } from "@/lib/trackName";
+import { authFetch } from "@/lib/authFetch";
 import { ui, C, glass } from "@/lib/ui";
 
 const SEGMENT_DURATION = 25;
@@ -241,7 +242,7 @@ export default function UploadPage() {
       fd.append("has_rights",     "1");
       fd.append("delete_after",   "1");
 
-      const uploadRes  = await fetch("/api/bpro/upload", { method: "POST", body: fd });
+      const uploadRes  = await authFetch("/api/bpro/upload", { method: "POST", body: fd });
       const uploadJson = (await uploadRes.json().catch(() => null)) as UploadResult | null;
       if (!uploadRes.ok || !uploadJson?.ok) throw new Error(uploadJson?.error || "Upload failed.");
 
@@ -252,7 +253,7 @@ export default function UploadPage() {
         acrFd.append("file", segments[i]);
         acrFd.append("title", trackTitle.trim());
         acrFd.append("artist", artist.trim());
-        const acrRes  = await fetch("/api/bpro/acr-upload", { method: "POST", body: acrFd });
+        const acrRes  = await authFetch("/api/bpro/acr-upload", { method: "POST", body: acrFd });
         const acrJson = (await acrRes.json().catch(() => null)) as UploadResult | null;
         if (!acrRes.ok || !acrJson?.ok) throw new Error(acrJson?.error || `ACR failed (seg ${i + 1}).`);
         setProgress(0.48 + 0.52 * ((i + 1) / segments.length));

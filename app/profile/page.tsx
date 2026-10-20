@@ -723,7 +723,7 @@ export default function ProfilePageV2() {
                         const newVal = !t.is_released;
                         setTracks((prev: any[]) => prev.map((x: any) => x.id === t.id ? { ...x, is_released: newVal, release_status: newVal ? "released" : "unreleased" } : x));
                         try {
-                          const res = await fetch("/api/bpro/set-release", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ track_id: t.id, is_released: newVal }) });
+                          const res = await authFetch("/api/bpro/set-release", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ track_id: t.id, is_released: newVal }) });
                           if (!res.ok) throw new Error("failed");
                         } catch {
                           setTracks((prev: any[]) => prev.map((x: any) => x.id === t.id ? { ...x, is_released: !newVal, release_status: !newVal ? "released" : "unreleased" } : x));
