@@ -238,7 +238,7 @@ export default function ProfilePageV2() {
           setSparkData(days.map(day => scanData.filter((s:any) => s.created_at?.startsWith(day)).length));
         }
 
-        if (r === "pro" && email) {
+        if (email) {
           const { data: bpro } = await supabase.from("bpro_tracks")
             .select("id,title,artist,release_status,is_released")
             .eq("uploader_email", email).order("created_at", { ascending: false }).limit(20);
@@ -486,6 +486,37 @@ export default function ProfilePageV2() {
                   <textarea value={editBio} onChange={e=>setEditBio(e.target.value)} placeholder="Tell your story…" rows={3} style={{ ...inputStyle, resize:"none" as const }} />
                 </label>
                 <button onClick={saveProfile} disabled={saving} style={saveBtn}>{saving?"Saving…":"Save Profile"}</button>
+              </div>
+            </Section>
+          )}
+
+          {/* ── MES TRACKS ── */}
+          {tracks.length > 0 && (
+            <Section title="MES TRACKS">
+              <div style={{ display:"grid", gap:4 }}>
+                {tracks.map((t) => (
+                  <div key={t.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 0", borderBottom:"1px solid rgba(255,255,255,0.06)" }}>
+                    <div style={{ flex:1, minWidth:0, overflow:"hidden" }}>
+                      <div style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{t.title}</div>
+                      {t.artist && <div style={{ fontSize:11, color:"rgba(255,255,255,0.38)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const, marginTop:2 }}>{t.artist}</div>}
+                    </div>
+                    <button
+                      onClick={async () => {
+                        const newVal = !t.is_released;
+                        setTracks((prev: any[]) => prev.map((x: any) => x.id === t.id ? { ...x, is_released: newVal, release_status: newVal ? "released" : "unreleased" } : x));
+                        try {
+                          const res = await fetch("/api/bpro/set-release", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ track_id: t.id, is_released: newVal }) });
+                          if (!res.ok) throw new Error("failed");
+                        } catch {
+                          setTracks((prev: any[]) => prev.map((x: any) => x.id === t.id ? { ...x, is_released: !newVal, release_status: !newVal ? "released" : "unreleased" } : x));
+                        }
+                      }}
+                      style={{ fontSize:9, fontWeight:700, flexShrink:0, cursor:"pointer", border: t.is_released ? "1px solid rgba(29,185,84,0.7)" : "1px solid rgba(255,180,0,0.7)", color: t.is_released ? "rgba(29,185,84,1)" : "rgba(255,180,0,1)", background:"none", borderRadius:5, padding:"3px 8px", letterSpacing:"0.04em", whiteSpace:"nowrap" as const }}
+                    >
+                      {t.is_released ? "RELEASED" : "UNRELEASED"}
+                    </button>
+                  </div>
+                ))}
               </div>
             </Section>
           )}
