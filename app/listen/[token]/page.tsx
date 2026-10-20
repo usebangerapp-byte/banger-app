@@ -125,6 +125,19 @@ export default function ListenPage() {
             </div>
 
             {promo.isRecipient && (
+              <button onClick={async (e) => {
+                e.stopPropagation();
+                const r = await authFetch("/api/promo/listen", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, action: "download" }) }).catch(() => null);
+                const j = await r?.json().catch(() => null);
+                if (j?.url) window.location.href = j.url; else alert("Download not available right now.");
+              }} aria-label="Download"
+                style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 16px", borderRadius: 999, cursor: "pointer", fontFamily: "inherit",
+                  fontSize: 14, fontWeight: 600, border: `1px solid ${C.glassBorder}`, background: "rgba(255,255,255,0.06)", color: C.text2 }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg>
+                Download
+              </button>
+            )}
+            {promo.isRecipient && (
               <button onClick={(e) => { e.stopPropagation(); setLike(!liked); }} aria-label={liked ? "Unlike" : "Like"}
                 style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 16px", borderRadius: 999, cursor: "pointer", fontFamily: "inherit",
                   fontSize: 14, fontWeight: 600, border: liked ? "1px solid transparent" : `1px solid ${C.glassBorder}`,
@@ -136,7 +149,7 @@ export default function ListenPage() {
             {promo.note && <div style={{ fontSize: 14, color: C.text2, lineHeight: 1.5, whiteSpace: "pre-line" }}>“{promo.note}”</div>}
 
             {promo.url && (
-              <audio ref={audioRef} src={promo.url} preload="metadata" controlsList="nodownload"
+              <audio ref={audioRef} src={promo.url} preload="metadata" 
                 onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => setPlaying(false)}
                 onTimeUpdate={(e) => setPos(e.currentTarget.currentTime)} onLoadedMetadata={(e) => setDur(e.currentTarget.duration || 0)} />
             )}

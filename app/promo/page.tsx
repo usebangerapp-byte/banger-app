@@ -16,7 +16,7 @@ const MAX_BYTES = 48 * 1024 * 1024; // storage limit is 50 MB per file
 type Person = { id: string; display_name: string; avatar_url?: string | null };
 type Sent = {
   id: string; title: string; artist: string | null; created_at: string;
-  recipients: { id: string; name: string; avatar: string | null; listened_at: string | null; plays: number; liked?: boolean }[];
+  recipients: { id: string; name: string; avatar: string | null; listened_at: string | null; plays: number; liked?: boolean; downloaded?: boolean }[];
 };
 
 function Avatar({ name, url, size = 32 }: { name: string; url?: string | null; size?: number }) {
@@ -270,6 +270,7 @@ export default function PromoPage() {
                         <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           <Avatar name={r.name} url={r.avatar} size={28} />
                           <span style={{ flex: 1, minWidth: 0, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
+                          {r.downloaded && <span style={{ color: C.text2, fontSize: 13, flexShrink: 0 }} aria-label="Downloaded">⬇</span>}
                           {r.liked && <span style={{ color: C.gold, fontSize: 14, flexShrink: 0 }} aria-label="Liked">♥</span>}
                           <span style={{ fontSize: 12, color: r.listened_at ? C.rel : C.text4, flexShrink: 0 }}>
                             {r.listened_at ? `Listened${r.plays > 1 ? ` · ${r.plays}×` : ""}` : "Not yet"}

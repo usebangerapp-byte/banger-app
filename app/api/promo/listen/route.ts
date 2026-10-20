@@ -1,4 +1,4 @@
-import { adminClient, userFromRequest, notifyPromoListened, notifyPromoLiked } from "@/lib/server/notify";
+import { adminClient, userFromRequest, notifyPromoListened, notifyPromoLiked, notifyPromoDownloaded } from "@/lib/server/notify";
 import { PROMO_BUCKET } from "@/lib/server/pro";
 
 export const runtime = "nodejs";
@@ -43,6 +43,18 @@ export async function POST(req: Request) {
   const { token, action, like } = await req.json().catch(() => ({}));
   const found = await load(sb, String(token || ""));
   if (!found || found.rec.recipient_id !== user.id) return Response.json({ ok: true });
+
+  // Download: a short-lived link that saves the file, + tell the producer the first time
+  if (action === "download") {
+    const ext = (found.promo.file_path.split(".").pop() || "mp3").toLowerCase();
+    const name = `${found.promo.artist ? `${found.promo.artist} - ` : ""}${found.promo.title}`.replace(/[\\/:*?"<>|]+/g, " ").trim() + `.${ext}`;
+    const { data: signed, error } = await sb.storage.from(PROMO_BUCKET).createSignedUrl(found.promo.file_path, 600, { download: name });
+    if (error || !signed) return Response.json({ ok: false, error: error?.message || "No link" }, { status: 500 });
+    const rec: any = found.rec;
+    await sb.from("promo_recipients").update({ downloaded_at: rec.downloaded_at || new Date().toISOString(), downloads: (rec.downloads || 0) + 1 }).eq("id", rec.id);
+    if (!rec.downloaded_at) await notifyPromoDownloaded(sb, found.promo.sender_id, user.id, found.promo.title).catch(() => {});
+    return Response.json({ ok: true, url: signed.signedUrl });
+  }
 
   // Like / unlike (double-tap or heart)
   if (action === "like") {
