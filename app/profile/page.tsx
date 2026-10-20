@@ -432,7 +432,7 @@ export default function ProfilePageV2() {
                     {profile?.instagram && (
                       <a href={`https://instagram.com/${profile.instagram.replace("@","")}`} target="_blank" rel="noreferrer" style={socialLink}>
                         {/* Instagram logo SVG */}
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ verticalAlign:"middle", marginRight:5 }}>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" style={{ flexShrink:0 }}>
                           <rect x="2" y="2" width="20" height="20" rx="5" ry="5" stroke="currentColor" strokeWidth="2"/>
                           <circle cx="12" cy="12" r="4.5" stroke="currentColor" strokeWidth="2"/>
                           <circle cx="17.5" cy="6.5" r="1.2" fill="currentColor"/>
@@ -443,7 +443,7 @@ export default function ProfilePageV2() {
                     {profile?.soundcloud && (
                       <a href={`https://soundcloud.com/${profile.soundcloud.replace("@","")}`} target="_blank" rel="noreferrer" style={socialLink}>
                         {/* SoundCloud logo SVG */}
-                        <svg width="15" height="11" viewBox="0 0 30 20" fill="currentColor" style={{ verticalAlign:"middle", marginRight:5 }}>
+                        <svg width="13" height="9" viewBox="0 0 30 20" fill="currentColor" style={{ flexShrink:0 }}>
                           <path d="M0 13.5c0 2 1.6 3.5 3.5 3.5H22c2.8 0 5-2.2 5-5 0-2.6-2-4.8-4.5-5-.3-4-3.7-7-7.8-6.4C13.3.8 12 2.5 12 4.5v9H0v0z" opacity="0.9"/>
                           <rect x="2" y="10" width="1.5" height="6" rx="0.75"/>
                           <rect x="5" y="8" width="1.5" height="8" rx="0.75"/>
@@ -453,6 +453,14 @@ export default function ProfilePageV2() {
                       </a>
                     )}
                   </div>
+                )}
+              </div>
+
+              {/* Actions — far right, stacked, compact */}
+              <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:6, flexShrink:0, alignSelf:"flex-start" }}>
+                <button onClick={() => setEditing(v=>!v)} style={editBtn}>{editing ? "Cancel" : "Edit"}</button>
+                {!loading && role !== "pro" && (
+                  <button onClick={() => router.push("/upgrade")} style={upgradeBtn}>✦ Go PRO</button>
                 )}
               </div>
             </div>
@@ -476,13 +484,6 @@ export default function ProfilePageV2() {
             </div>
           </div>
 
-          {/* ── ACTION BUTTONS ── */}
-          <div style={{ display:"flex", gap:8, flexWrap:"wrap" as const }}>
-            <button onClick={() => setEditing(v=>!v)} style={editBtn}>{editing ? "Cancel" : "Edit profile"}</button>
-            {!loading && role !== "pro" && (
-              <button onClick={() => router.push("/upgrade")} style={upgradeBtn}>✦ Go PRO</button>
-            )}
-          </div>
 
           {/* ── FIND PEOPLE (discreet) ── */}
           <PeopleSearch selfId={userId} />
@@ -742,10 +743,10 @@ const statBtn: React.CSSProperties = { background:"none", border:"none", padding
 const statNum: React.CSSProperties = { color:"#fff", fontWeight:800 };
 const avatarSmall: React.CSSProperties = { width:40, height:40, borderRadius:"50%", background:"rgba(255,255,255,0.08)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:900, flexShrink:0 };
 const proBadge: React.CSSProperties = { fontSize:10, fontWeight:800, letterSpacing:"0.14em", border:"1px solid rgba(255,255,255,0.30)", borderRadius:999, padding:"3px 9px", color:"#fff" };
-const socialLink: React.CSSProperties = { fontSize:12, color:"rgba(255,255,255,0.55)", border:"1px solid rgba(255,255,255,0.10)", borderRadius:999, padding:"5px 12px", textDecoration:"none" };
+const socialLink: React.CSSProperties = { display:"inline-flex", alignItems:"center", gap:5, whiteSpace:"nowrap", fontSize:11, color:"rgba(255,255,255,0.55)", border:"1px solid rgba(255,255,255,0.10)", borderRadius:999, padding:"3px 9px", textDecoration:"none", maxWidth:"100%", overflow:"hidden", textOverflow:"ellipsis" };
 const shareBtn: React.CSSProperties = { background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:12, padding:"9px 14px", color:"rgba(255,255,255,0.40)", fontSize:12, cursor:"pointer", textAlign:"left" as const };
-const editBtn: React.CSSProperties = { padding:"7px 14px", borderRadius:999, background:"transparent", border:"1px solid rgba(255,255,255,0.16)", color:"rgba(255,255,255,0.8)", fontWeight:700, fontSize:12, cursor:"pointer" };
-const upgradeBtn: React.CSSProperties = { padding:"7px 14px", borderRadius:999, background:"rgba(255,255,255,0.92)", border:"1px solid transparent", color:"#000", fontWeight:800, fontSize:12, cursor:"pointer" };
+const editBtn: React.CSSProperties = { padding:"5px 12px", borderRadius:999, background:"transparent", border:"1px solid rgba(255,255,255,0.16)", color:"rgba(255,255,255,0.8)", fontWeight:700, fontSize:11, cursor:"pointer", whiteSpace:"nowrap" };
+const upgradeBtn: React.CSSProperties = { padding:"5px 12px", borderRadius:999, background:"rgba(255,255,255,0.92)", border:"1px solid transparent", color:"#000", fontWeight:800, fontSize:11, cursor:"pointer", whiteSpace:"nowrap" };
 const downgradeBtn: React.CSSProperties = { padding:"11px 16px", borderRadius:14, background:"transparent", border:"1px solid rgba(255,255,255,0.06)", color:"rgba(255,255,255,0.35)", fontWeight:600, fontSize:13, cursor:"pointer" };
 const inputStyle: React.CSSProperties = { display:"block", width:"100%", marginTop:6, padding:"10px 12px", borderRadius:12, background:"#0d0d0d", border:"1px solid rgba(255,255,255,0.10)", color:"#fff", fontSize:14, boxSizing:"border-box", minWidth:0 };
 const saveBtn: React.CSSProperties = { padding:"13px 16px", borderRadius:14, background:"#fff", color:"#000", fontWeight:800, fontSize:14, cursor:"pointer", border:"none" };
