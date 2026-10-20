@@ -1,12 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { startOAuth } from "@/lib/oauth";
 
 export default function LandingPage() {
   const [busy, setBusy] = useState<"" | "google" | "apple">("");
   const [error, setError] = useState("");
+  const [checking, setChecking] = useState(true);
+  const router = useRouter();
+
+  // Already signed in → straight into the app (no need to log in again).
+  useEffect(() => {
+    const sb = createSupabaseBrowser();
+    if (!sb) { setChecking(false); return; }
+    sb.auth.getSession().then(({ data }) => {
+      if (data?.session) router.replace("/home");
+      else setChecking(false);
+    }).catch(() => setChecking(false));
+  }, [router]);
 
   async function continueWith(provider: "google" | "apple") {
     const supabase = createSupabaseBrowser();
@@ -20,6 +33,8 @@ export default function LandingPage() {
       setBusy("");
     }
   }
+
+  if (checking) return <main style={{ ...page, minHeight: "100vh" }} />;
 
   return (
     <main style={page}>
@@ -69,7 +84,7 @@ function GoogleIcon() {
 }
 
 const page: React.CSSProperties = {
-  minHeight: "100vh", background: "radial-gradient(480px 480px at 50% 42%, rgba(232,170,40,0.30), rgba(232,170,40,0.07) 45%, transparent 70%)", color: "#fff",
+  minHeight: "100vh", background: "#000", color: "#fff",
   display: "flex", alignItems: "center", justifyContent: "center",
   padding: "0 24px", fontFamily: "var(--font-ui)",
 };
@@ -87,8 +102,8 @@ const logoInner: React.CSSProperties = {
 const logoMark: React.CSSProperties = {
   textAlign: "center", fontSize: 20, fontWeight: 700, letterSpacing: "0.42em",
   paddingLeft: "0.42em", // optically re-center the letter-spaced word
-  color: "#f8dc8a",
-  textShadow: "0 0 10px rgba(245,207,104,0.55), 0 0 28px rgba(232,170,40,0.35), 0 0 60px rgba(232,170,40,0.20)",
+  color: "#fff",
+  textShadow: "0 0 10px rgba(255,255,255,0.45), 0 0 28px rgba(255,255,255,0.18)",
 };
 const tagline: React.CSSProperties = {
   fontSize: "clamp(28px,8vw,36px)", fontWeight: 700,

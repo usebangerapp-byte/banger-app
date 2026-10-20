@@ -8,7 +8,6 @@ import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { isNativeApp, nativeHaptic } from "@/lib/native";
 import { startOAuth } from "@/lib/oauth";
 import { ui, C, glass, tag as tagStyle, TAG_TEXT } from "@/lib/ui";
-import PageHeader from "@/components/PageHeader";
 import { startAudioMeter } from "@/lib/scan/audioMeter";
 import { mapRecognizeResult } from "@/lib/scan/resultState";
 import { getRegion } from "@/lib/scan/getRegion";
@@ -240,7 +239,7 @@ export default function Home() {
   useEffect(() => {
     const fit = () => {
       const vh = window.visualViewport?.height || window.innerHeight;
-      const avail = vh - 56 - 104 - 60; // top bar, bottom nav, page header
+      const avail = vh - 56 - 104; // top bar, bottom nav
       const byWidth = (window.innerWidth - 40) / 240; // the visible speaker, the soft halo may bleed off-screen
       const byHeight = (avail - 215) / 235;
       setBtnScale(Math.max(0.9, Math.min(1.55, byWidth, byHeight)));
@@ -636,9 +635,6 @@ const region = await getRegion();
       `}</style>
 
       <div style={scanStyles.phone}>
-        <div style={{ padding: "18px 18px 0" }}>
-          <PageHeader title="Scan" sub="Identify any track, even unreleased." />
-        </div>
 
         <div style={scanStyles.center}>
           <div style={{ width: "100%", height: 235 * btnScale, position: "relative", flexShrink: 0 }}>

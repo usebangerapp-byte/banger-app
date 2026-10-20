@@ -13,6 +13,9 @@ export function createSupabaseBrowser() {
 
   if (!url || !key) return null;
 
-  browserClient = createClient(url, key);
+  // Stay signed in until the user taps "Sign out": session kept in storage and refreshed automatically.
+  browserClient = createClient(url, key, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+  });
   return browserClient;
 }
