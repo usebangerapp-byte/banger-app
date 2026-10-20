@@ -266,7 +266,7 @@ export default function ProfilePageV2() {
 
   useEffect(() => {
     if (!userId || tab !== "messages") return;
-    authFetch(`/api/messages/list?user_id=${userId}`)
+    const loadConvs = () => authFetch(`/api/messages/list`)
       .then(r => r.json())
       .then(j => {
         if (!j?.messages) return;
@@ -281,17 +281,33 @@ export default function ProfilePageV2() {
           const rawLast = msg.file_name ? `🎵 ${msg.file_name}` :
             msg.content?.startsWith("📎") ? "📎 Fichier audio" :
             msg.content || "";
-          map.set(other, { user_id: other, display_name, avatar_url, last: rawLast,
+          map.set(other, { user_id: other, display_name, avatar_url, last: rawLast, lastAt: msg.created_at,
             unread: msg.receiver_id === userId && !msg.read ? (map.get(other)?.unread||0)+1 : (map.get(other)?.unread||0) });
         }
-        setConvs(Array.from(map.values()));
+        // most recent conversation on top
+        setConvs(Array.from(map.values()).sort((a: any, b: any) => String(b.lastAt).localeCompare(String(a.lastAt))));
       }).catch(() => {});
+    loadConvs();
+    const t = window.setInterval(loadConvs, 10000);
+    return () => window.clearInterval(t);
   }, [userId, tab]);
 
   useEffect(() => {
     if (!activeConv || !userId) return;
-    authFetch(`/api/messages/list?user_id=${userId}&other_id=${activeConv}`)
-      .then(r => r.json()).then(j => { if (j?.messages) setMessages(j.messages); }).catch(() => {});
+    let alive = true;
+    const loadThread = () => authFetch(`/api/messages/list?other_id=${activeConv}`)
+      .then(r => r.json())
+      .then(j => {
+        if (!alive || !Array.isArray(j?.messages)) return;
+        const next = j.messages;
+        setMessages(prev => {
+          const sig = (l: any[]) => l.map(m => `${m.id}:${m.read ? 1 : 0}`).join(",");
+          return sig(prev) === sig(next) ? prev : next;
+        });
+      }).catch(() => {});
+    loadThread();
+    const t = window.setInterval(loadThread, 4000);
+    return () => { alive = false; window.clearInterval(t); };
   }, [activeConv, userId]);
 
   useEffect(() => { msgEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
@@ -647,13 +663,32 @@ export default function ProfilePageV2() {
               )}
             </>) : (<>
               <button onClick={()=>setActiveConv(null)} style={backBtn}>← Back</button>
-              {/* Conversation header */}
-              <div style={{ textAlign:"center", fontSize:13, fontWeight:700, opacity:0.55, paddingBottom:4 }}>
-                {convs.find(c=>c.user_id===activeConv)?.display_name || pendingName || activeConv?.slice(0,8)}
-              </div>
+              {/* Conversation header — tap to open their profile */}
+              {(() => {
+                const conv = convs.find(c => c.user_id === activeConv);
+                const other = messages.find(m => m.sender_id === activeConv);
+                const otherName = conv?.display_name || other?.sender_name || pendingName || activeConv?.slice(0,8) || "";
+                const otherAvatar = conv?.avatar_url || other?.sender_avatar || null;
+                return (
+                  <button onClick={() => router.push(`/dj/${activeConv}`)} style={chatHeader}>
+                    <div style={{ ...avatarSmall, width:30, height:30, fontSize:12 }}>
+                      {otherAvatar
+                        ? <img src={otherAvatar} alt="" style={{ width:"100%", height:"100%", borderRadius:"50%", objectFit:"cover" }} />
+                        : otherName.charAt(0).toUpperCase()}
+                    </div>
+                    <span style={{ fontSize:14, fontWeight:800, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{otherName}</span>
+                    <span style={{ color:"rgba(255,255,255,0.3)", fontSize:13 }}>›</span>
+                  </button>
+                );
+              })()}
               <div style={{ display:"grid", gap:6, maxHeight:"50vh", overflowY:"auto" as const }}>
-                {messages.map(msg=>{
+                {messages.map((msg, idx)=>{
                   const isMine = msg.sender_id===userId;
+                  const lastMineIdx = (() => { for (let i = messages.length - 1; i >= 0; i--) if (messages[i].sender_id === userId) return i; return -1; })();
+                  const next = messages[idx + 1];
+                  // show the time when the next message is from someone else or > 5 min later
+                  const showTime = !next || next.sender_id !== msg.sender_id ||
+                    (new Date(next.created_at).getTime() - new Date(msg.created_at).getTime()) > 5 * 60 * 1000;
                   return (
                     <div key={msg.id} style={{ display:"flex", flexDirection:"column", alignItems:isMine?"flex-end":"flex-start" }}>
                       {!isMine && (
@@ -697,11 +732,17 @@ export default function ProfilePageV2() {
                         </div>
                         {isMine && (
                           <button onClick={async()=>{
-                            await authFetch("/api/messages/delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message_id:msg.id,user_id:userId})});
+                            await authFetch("/api/messages/delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message_id:msg.id})});
                             setMessages(p=>p.filter(m=>m.id!==msg.id));
                           }} style={{ background:"none",border:"none",color:"rgba(255,80,80,0.5)",fontSize:14,cursor:"pointer",padding:"0 2px",flexShrink:0 }}>✕</button>
                         )}
                       </div>
+                      {(showTime || (isMine && idx === lastMineIdx)) && (
+                        <div style={{ fontSize:10, color:"rgba(255,255,255,0.3)", marginTop:3, padding: isMine ? "0 26px 0 0" : "0 0 0 40px" }}>
+                          {showTime ? formatMsgTime(msg.created_at) : ""}
+                          {isMine && idx === lastMineIdx && msg.read ? `${showTime ? " · " : ""}Seen` : ""}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -729,6 +770,16 @@ export default function ProfilePageV2() {
     </main>
   );
 }
+
+function formatMsgTime(iso: string) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const hm = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const today = new Date();
+  if (d.toDateString() === today.toDateString()) return hm;
+  return `${d.toLocaleDateString([], { day: "numeric", month: "short" })} ${hm}`;
+}
+const chatHeader: React.CSSProperties = { display:"flex", alignItems:"center", gap:10, justifyContent:"center", background:"none", border:"none", color:"#fff", cursor:"pointer", padding:"2px 0 8px", minWidth:0, maxWidth:"100%" };
 
 const pageStyle: React.CSSProperties = { minHeight:"100vh", background:"#000", color:"#fff", padding:"0 0 120px", overflowX:"hidden", boxSizing:"border-box" };
 const shellStyle: React.CSSProperties = { maxWidth:680, margin:"0 auto", padding:"16px 14px", display:"grid", gap:14, overflowX:"hidden", boxSizing:"border-box", width:"100%" };

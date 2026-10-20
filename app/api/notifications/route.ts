@@ -13,20 +13,32 @@ export async function GET(req: Request) {
   const welcomeError = await notifyOnce(sb, user.id, "welcome", WELCOME_MESSAGE, WELCOME_TITLE)
     .catch((e: any) => `welcome: ${e?.message || e}`);
 
+  // Recent history (read + unread) so the bell is never empty after opening it once
   let { data, error } = await sb.from("notifications")
     .select("id,type,message,track_title,actor_id,count,created_at,read")
-    .eq("user_id", user.id).eq("read", false)
+    .eq("user_id", user.id)
     .order("created_at", { ascending: false }).limit(30);
 
   if (error && /column/i.test(error.message)) {
     ({ data, error } = await sb.from("notifications")
       .select("id,type,message,track_title,created_at,read")
-      .eq("user_id", user.id).eq("read", false)
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false }).limit(30) as any);
   }
   if (error) return Response.json({ ok: false, error: error.message, notifications: [] }, { status: 500 });
+
+  // Attach the photo of the person behind each notification (messages, follows)
+  const rows = (data || []) as any[];
+  const actorIds = [...new Set(rows.map((n) => n.actor_id).filter(Boolean))];
+  if (actorIds.length) {
+    const { data: actors } = await sb.from("profiles").select("id,avatar_url").in("id", actorIds);
+    const byId = new Map((actors || []).map((a: any) => [a.id, a.avatar_url]));
+    rows.forEach((n) => { n.actor_avatar = n.actor_id ? byId.get(n.actor_id) || null : null; });
+  }
+  const unread = rows.filter((n) => !n.read).length;
+
   // `diag` is shown discreetly in the bell panel when something is wrong in the database
-  return Response.json({ ok: true, notifications: data || [], diag: welcomeError || null });
+  return Response.json({ ok: true, notifications: rows, unread, diag: welcomeError || null });
 }
 
 // POST { action: "read", id? }  → mark one (or all) as read

@@ -58,7 +58,7 @@ export default function TopBar() {
       if (!res.ok) { setNotifDiag(`HTTP ${res.status}${j?.error ? ` — ${j.error}` : ""}`); return; }
       const list = Array.isArray(j?.notifications) ? j.notifications : [];
       setNotifs(list);
-      setNotifCount(list.length);
+      setNotifCount(typeof j?.unread === "number" ? j.unread : list.filter((n: any) => !n.read).length);
       setNotifDiag(j?.diag || "");
     } catch (e: any) { setNotifDiag(e?.message || "network error"); }
   }, [authedFetch]);
@@ -74,9 +74,7 @@ export default function TopBar() {
   }
 
   function openNotif(n: any) {
-    markRead(n.id);
-    setNotifs(p => p.filter(x => x.id !== n.id));
-    setNotifCount(c => Math.max(0, c - 1));
+    if (!n.read) markRead(n.id);
     setShowNotifs(false);
     if (n.type === "message" && n.actor_id) window.location.href = `/profile?tab=messages&with=${n.actor_id}`;
     else if (n.type === "message") window.location.href = "/profile?tab=messages";
@@ -112,7 +110,15 @@ export default function TopBar() {
           textShadow: "0 0 18px rgba(255,255,255,0.25)" }}>BANGER</span>
 
         {/* Notifications — right */}
-        <button onClick={() => { setShowNotifs(v => !v); setShowSettings(false); }} style={{ ...iconBtn, position: "relative" }}>
+        <button onClick={() => {
+          const opening = !showNotifs;
+          setShowNotifs(opening); setShowSettings(false);
+          if (opening && notifCount > 0) {
+            setNotifCount(0);
+            markRead();
+            // keep the "new" dots visible while the panel is open, they disappear next time
+          }
+        }} style={{ ...iconBtn, position: "relative" }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
             <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
@@ -142,7 +148,7 @@ export default function TopBar() {
           </div>
           {notifs.length === 0 ? (
             <div style={{ display:"grid", gap:6, padding:"8px 0" }}>
-              <div style={{ fontSize:13, color:"rgba(255,255,255,0.35)", letterSpacing:"0.03em" }}>Nothing new.</div>
+              <div style={{ fontSize:13, color:"rgba(255,255,255,0.35)", letterSpacing:"0.03em" }}>No notifications yet.</div>
               {notifDiag && (
                 <div style={{ fontSize:10, color:"rgba(255,120,120,0.6)", fontFamily:"var(--font-geist-mono), monospace", overflowWrap:"anywhere" as const }}>
                   {notifDiag}
@@ -150,24 +156,31 @@ export default function TopBar() {
               )}
             </div>
           ) : (<>
-            <div style={{ display:"grid", gap:1 }}>
+            <div style={{ display:"grid", gap:0 }}>
               {notifs.map(n => (
-                <div key={n.id} onClick={() => openNotif(n)} style={{ padding:"12px 0", borderBottom:"1px solid rgba(255,255,255,0.05)", cursor:"pointer" }}>
-                  {n.track_title && (
-                    <div style={{ fontSize:14, fontWeight:800, letterSpacing:"-0.01em", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{n.track_title}</div>
-                  )}
-                  <div style={{ fontSize:12, color:"rgba(255,255,255,0.45)", marginTop:3, letterSpacing:"0.02em" }}>
-                    {n.message || (n.type==="track_released" ? "Released — available now" : "New notification")}
+                <div key={n.id} onClick={() => openNotif(n)} style={notifRow}>
+                  <div style={notifAvatar}>
+                    {n.actor_avatar
+                      ? <img src={n.actor_avatar} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                      : n.type === "message" || n.type === "follow"
+                      ? (n.track_title || "?").charAt(0).toUpperCase()
+                      : <img src="/icon-192.png" alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />}
                   </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ display:"flex", alignItems:"baseline", gap:8 }}>
+                      <span style={{ fontSize:14, fontWeight:800, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const, flex:1, minWidth:0 }}>
+                        {n.track_title || "BANGER"}
+                      </span>
+                      <span style={{ fontSize:10, color:"rgba(255,255,255,0.3)", flexShrink:0 }}>{timeAgo(n.created_at)}</span>
+                    </div>
+                    <div style={{ fontSize:12, color:"rgba(255,255,255,0.45)", marginTop:3, lineHeight:1.45 }}>
+                      {n.message || (n.type==="track_released" ? "Released — available now" : "New notification")}
+                    </div>
+                  </div>
+                  {!n.read && <span style={unreadDot} />}
                 </div>
               ))}
             </div>
-            <button onClick={async () => {
-              await markRead();
-              setNotifs([]); setNotifCount(0); setShowNotifs(false);
-            }} style={{ fontSize:11, color:"rgba(255,255,255,0.30)", background:"none", border:"none", cursor:"pointer", padding:"10px 0 2px", letterSpacing:"0.10em", fontWeight:700, textAlign:"left" as const }}>
-              MARK ALL READ
-            </button>
           </>)}
         </div>
       )}
@@ -179,6 +192,26 @@ export default function TopBar() {
     </>
   );
 }
+
+function timeAgo(iso?: string) {
+  if (!iso) return "";
+  const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 60) return "now";
+  if (s < 3600) return `${Math.floor(s / 60)} min`;
+  if (s < 86400) return `${Math.floor(s / 3600)} h`;
+  if (s < 7 * 86400) return `${Math.floor(s / 86400)} d`;
+  return new Date(iso).toLocaleDateString([], { day: "numeric", month: "short" });
+}
+const notifRow: React.CSSProperties = {
+  display: "flex", alignItems: "center", gap: 12, padding: "13px 0",
+  borderBottom: "1px solid rgba(255,255,255,0.05)", cursor: "pointer", minWidth: 0,
+};
+const notifAvatar: React.CSSProperties = {
+  width: 36, height: 36, borderRadius: "50%", overflow: "hidden", flexShrink: 0,
+  background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.08)",
+  display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 900,
+};
+const unreadDot: React.CSSProperties = { width: 7, height: 7, borderRadius: "50%", background: "#e8b84a", flexShrink: 0 };
 
 const iconBtn: React.CSSProperties = {
   background: "none", border: "none", color: "rgba(255,255,255,0.75)", cursor: "pointer",
