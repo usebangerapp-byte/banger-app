@@ -135,8 +135,10 @@ function ScanCard({ scan, isUnreleased }: { scan: any; isUnreleased: boolean }) 
   useEffect(() => {
     if (!title || title === "Unknown") return;
 
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+
     if (!released && scan.track_id) {
-      // Unreleased → fetch snippet + cover from bpro_tracks
+      // Unreleased → real snippet from bpro_tracks via Supabase Storage
       const sb = createSupabaseBrowser();
       sb.from("bpro_tracks")
         .select("snippet_path,allow_preview")
@@ -144,32 +146,29 @@ function ScanCard({ scan, isUnreleased }: { scan: any; isUnreleased: boolean }) 
         .maybeSingle()
         .then(({ data }) => {
           if (data?.allow_preview && data?.snippet_path) {
-            setPreview(data.snippet_path);
+            // Build full public URL from storage path
+            const fullUrl = data.snippet_path.startsWith("http")
+              ? data.snippet_path
+              : `${supabaseUrl}/storage/v1/object/public/bpro_uploads/${data.snippet_path}`;
+            setPreview(fullUrl);
           }
-          // Artist photo via iTunes (best available source)
-          const q = encodeURIComponent(artist || title);
-          fetch(`https://itunes.apple.com/search?term=${q}&media=music&limit=3&entity=song`)
-            .then(r => r.json())
-            .then(d => {
-              const t = d.results?.[0];
-              if (t?.artworkUrl100) setCover(t.artworkUrl100.replace("100x100bb","300x300bb").replace("100x100","300x300"));
-            }).catch(() => {});
         });
-      return;
     }
 
-    // Released → iTunes: cover HD + preview 30s
-    const q = encodeURIComponent(`${artist} ${title}`.trim());
-    fetch(`https://itunes.apple.com/search?term=${q}&media=music&limit=5&entity=song`)
+    // Cover: always search via server-side proxy (avoids CORS)
+    const q = released ? `${artist} ${title}`.trim() : (artist || title);
+    fetch(`/api/itunes-search?term=${encodeURIComponent(q)}&entity=song&limit=5`)
       .then(r => r.json())
       .then(d => {
         const results = d.results || [];
-        const best = results.find((t: any) =>
-          (t.trackName || "").toLowerCase().includes(title.toLowerCase().split("(")[0].trim())
-        ) || results[0];
+        const best = released
+          ? (results.find((t: any) =>
+              (t.trackName || "").toLowerCase().includes(title.toLowerCase().split("(")[0].trim())
+            ) || results[0])
+          : results[0]; // For unreleased: first result with artist name = photo from any track
         if (best) {
           setCover(best.artworkUrl100?.replace("100x100bb","300x300bb").replace("100x100","300x300") || null);
-          setPreview(best.previewUrl || null);
+          if (released) setPreview(best.previewUrl || null);
         }
       }).catch(() => {});
   }, [title, artist, released, scan.track_id]);
@@ -375,7 +374,7 @@ export default function ProfilePageV2() {
           setSparkData(days.map(day => scanData.filter((s:any) => s.created_at?.startsWith(day)).length));
         }
 
-        if (r === "pro" && email) {
+        if (email) {
           const { data: bpro } = await supabase.from("bpro_tracks")
             .select("id,title,artist,release_status,is_released")
             .eq("uploader_email", email).order("created_at", { ascending: false }).limit(20);
@@ -623,6 +622,42 @@ export default function ProfilePageV2() {
                   <textarea value={editBio} onChange={e=>setEditBio(e.target.value)} placeholder="Tell your story…" rows={3} style={{ ...inputStyle, resize:"none" as const }} />
                 </label>
                 <button onClick={saveProfile} disabled={saving} style={saveBtn}>{saving?"Saving…":"Save Profile"}</button>
+              </div>
+            </Section>
+          )}
+
+          {/* ── MES TRACKS UPLOADÉES ── */}
+          {tracks.length > 0 && (
+            <Section title="MES TRACKS">
+              <div style={{ display:"grid", gap:2 }}>
+                {(showMoreTracks ? tracks : tracks.slice(0,5)).map((t,i) => {
+                  const isRel = t.is_released === true || t.release_status === "released";
+                  const isPending = !isRel && (t.release_status === "pending" || t.release_status === "checking" || !t.release_status);
+                  const tagColor = isRel ? "rgba(29,185,84,0.85)" : isPending ? "rgba(255,180,0,0.85)" : "rgba(255,255,255,0.30)";
+                  const tagLabel = isRel ? "RELEASED" : isPending ? "PENDING" : "UNRELEASED";
+                  return (
+                    <div key={t.id||i} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 0", borderBottom:"1px solid rgba(255,255,255,0.06)", width:"100%", overflow:"hidden" }}>
+                      {/* Music note icon */}
+                      <div style={{ width:48, height:48, borderRadius:8, flexShrink:0, background:"rgba(255,255,255,0.07)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                        <svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                          <path d="M9 18V5l12-2v13" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          <circle cx="6" cy="18" r="3" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5"/>
+                          <circle cx="18" cy="16" r="3" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5"/>
+                        </svg>
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{t.title||"Unknown"}</div>
+                        <div style={{ fontSize:11, color:"rgba(255,255,255,0.42)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{t.artist||""}</div>
+                      </div>
+                      <span style={{ fontSize:9, color:tagColor, flexShrink:0, letterSpacing:"0.05em", whiteSpace:"nowrap" as const, fontWeight:700, border:`1px solid ${tagColor}`, borderRadius:5, padding:"2px 6px" }}>{tagLabel}</span>
+                    </div>
+                  );
+                })}
+                {tracks.length > 5 && (
+                  <button onClick={()=>setShowMoreTracks(v=>!v)} style={showMoreBtn}>
+                    {showMoreTracks ? "Show less" : `+${tracks.length-5} more`}
+                  </button>
+                )}
               </div>
             </Section>
           )}
