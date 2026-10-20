@@ -13,7 +13,7 @@ export async function startOAuth(supabase: SupabaseClient, provider: "google" | 
   if (isNativeApp() && hasPlugin("Browser")) {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: NATIVE_AUTH_REDIRECT, skipBrowserRedirect: true },
+      options: { redirectTo: NATIVE_AUTH_REDIRECT, skipBrowserRedirect: true, ...(provider === "google" ? { queryParams: { prompt: "select_account" } } : {}) },
     });
     if (error) throw error;
     if (data?.url && (await openNativeAuth(data.url))) return;
@@ -21,7 +21,8 @@ export async function startOAuth(supabase: SupabaseClient, provider: "google" | 
   const origin = typeof window !== "undefined" ? window.location.origin : "https://usebanger.com";
   const { error } = await supabase.auth.signInWithOAuth({
     provider,
-    options: { redirectTo: `${origin}/auth/callback` },
+    // Google always shows the account picker, so "Switch account" really lets you choose another one
+    options: { redirectTo: `${origin}/auth/callback`, ...(provider === "google" ? { queryParams: { prompt: "select_account" } } : {}) },
   });
   if (error) throw error;
 }

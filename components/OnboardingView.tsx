@@ -49,11 +49,8 @@ const plans: {
       "Release control",
       "Scan stats on your tracks",
       "Priority in the charts",
-      "City & event trends",
-      "Global scan data",
-      "Track-potential predictions",
-      "Early trend detection",
-      "Best release-timing insights",
+      "Send private tracks to DJs",
+      "Set tracklists",
     ],
     cta: "Go Pro",
   },
@@ -153,8 +150,7 @@ export default function OnboardingView() {
         <p style={{ margin: 0, fontSize: 12, lineHeight: 1.6, color: C.text4, textAlign: "center" }}>
           By continuing, you agree to our{" "}
           <a href="/terms" style={{ color: C.text3 }}>Terms</a> &amp;{" "}
-          <a href="/privacy" style={{ color: C.text3 }}>Privacy</a>, and to receive
-          event updates by email. Opt out anytime.
+          <a href="/privacy" style={{ color: C.text3 }}>Privacy</a>.
         </p>
       </div>
     </main>

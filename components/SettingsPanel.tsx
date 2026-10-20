@@ -196,8 +196,11 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
           <a href="/privacy" style={{ ...linkRow, borderBottom: "none" }}><span>Privacy Policy</span><span style={chev}>›</span></a>
         </section>
 
-        {/* Sign out */}
+        {/* Switch account / Sign out */}
         <section style={group}>
+          <button onClick={signOut} style={{ ...linkRow }}>
+            <span>Switch account</span><span style={chev}>›</span>
+          </button>
           <button onClick={signOut} style={{ ...linkRow, borderBottom: "none", color: C.danger, justifyContent: "center" }}>Sign out</button>
         </section>
 
