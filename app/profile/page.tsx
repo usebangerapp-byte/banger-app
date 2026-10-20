@@ -9,6 +9,7 @@ import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { getBrowserRole } from "@/lib/auth/getBrowserRole";
 import PageHeader from "@/components/PageHeader";
 import { PeopleSearch, PeopleSheet } from "@/components/People";
+import { Skeleton, SkeletonTrackRow, SkeletonStyles } from "@/components/Skeleton";
 
 // ── Custom inline audio player ──
 // Gestionnaire global : une seule lecture à la fois
@@ -161,6 +162,9 @@ export default function ProfilePageV2() {
   const [scans,    setScans]    = useState<any[]>([]);
   const [tracks,   setTracks]   = useState<any[]>([]);
   const [sparkData,setSparkData]= useState<number[]>([]);
+  const [topScan,  setTopScan]  = useState<{ title: string; subtitle?: string; n: number } | null>(null);
+  const [proStats, setProStats] = useState<{ uploadScans7d: number; topUpload: { title: string; scans: number } | null } | null>(null);
+  const [shared,   setShared]   = useState(false);
   const [tab,      setTab]      = useState<"profile"|"messages"|"settings">("profile");
   const [showMoreTracks, setShowMoreTracks] = useState(false);
   const [showMoreFollows, setShowMoreFollows] = useState(false);
@@ -180,6 +184,7 @@ export default function ProfilePageV2() {
       if (t === "messages") setTab(t);
       const w = sp.get("with");
       if (w) { setTab("messages"); setActiveConv(w); setPendingName(sp.get("name") || ""); }
+      if (sp.get("edit") === "1") setEditing(true);
     } catch {}
   }, []);
   const [msgInput, setMsgInput] = useState("");
@@ -251,6 +256,16 @@ export default function ProfilePageV2() {
           });
           // Use raw scanData (not deduplicated) for accurate daily counts
           setSparkData(days.map(day => scanData.filter((s:any) => s.created_at?.startsWith(day)).length));
+          // The track you scanned the most (recent history)
+          const tally = new Map<string, { title: string; subtitle?: string; n: number }>();
+          for (const s of scanData as any[]) {
+            const key = (s.track_title || "").toLowerCase().trim();
+            if (!key) continue;
+            const cur = tally.get(key) || { title: s.track_title, subtitle: s.track_subtitle, n: 0 };
+            cur.n += 1; tally.set(key, cur);
+          }
+          const best = Array.from(tally.values()).sort((a, b) => b.n - a.n)[0];
+          setTopScan(best && best.n > 1 ? best : null);
         }
 
         if (email) {
@@ -311,6 +326,23 @@ export default function ProfilePageV2() {
   }, [activeConv, userId]);
 
   useEffect(() => { msgEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+
+  // PRO: how your uploaded IDs were scanned this week
+  useEffect(() => {
+    if (role !== "pro" || !userId) return;
+    authFetch("/api/profile/stats").then(r => r.json())
+      .then(j => { if (j?.ok) setProStats({ uploadScans7d: j.uploadScans7d || 0, topUpload: j.topUpload || null }); })
+      .catch(() => {});
+  }, [role, userId]);
+
+  async function shareProfile() {
+    const url = `https://usebanger.com/dj/${userId}`;
+    try {
+      if (navigator.share) { await navigator.share({ title: `${name} on BANGER`, url }); return; }
+      await navigator.clipboard.writeText(url);
+      setShared(true); window.setTimeout(() => setShared(false), 1600);
+    } catch { /* user cancelled */ }
+  }
 
   async function deleteConversation(otherUserId: string) {
     if (!userId) return;
@@ -400,7 +432,24 @@ export default function ProfilePageV2() {
   const name     = profile?.display_name || profile?.email?.split("@")[0] || "You";
   const shareUrl = `https://usebanger.com/dj/${userId}`;
 
-  if (loading) return <main style={pageStyle}><div style={shellStyle}><div style={emptyStyle}>Loading…</div></div></main>;
+  if (loading) return (
+    <main style={pageStyle}>
+      <SkeletonStyles />
+      <div style={shellStyle}>
+        <div style={{ ...identityCard, gap:14 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+            <Skeleton width={56} height={56} radius={999} />
+            <div style={{ flex:1, display:"grid", gap:8 }}>
+              <Skeleton width="55%" height={18} />
+              <Skeleton width="35%" height={12} />
+            </div>
+          </div>
+          <Skeleton width="80%" height={12} />
+        </div>
+        <SkeletonTrackRow /><SkeletonTrackRow /><SkeletonTrackRow />
+      </div>
+    </main>
+  );
 
   return (
     <main style={pageStyle}>
@@ -475,6 +524,7 @@ export default function ProfilePageV2() {
               {/* Actions — far right, stacked, compact */}
               <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:6, flexShrink:0, alignSelf:"flex-start" }}>
                 <button onClick={() => setEditing(v=>!v)} style={editBtn}>{editing ? "Cancel" : "Edit"}</button>
+                <button onClick={shareProfile} style={editBtn}>{shared ? "Copied ✓" : "Share"}</button>
                 {!loading && role !== "pro" && (
                   <button onClick={() => router.push("/upgrade")} style={upgradeBtn}>✦ Go PRO</button>
                 )}
@@ -526,6 +576,44 @@ export default function ProfilePageV2() {
                 <button onClick={saveProfile} disabled={saving} style={saveBtn}>{saving?"Saving…":"Save Profile"}</button>
               </div>
             </Section>
+          )}
+
+          {/* ── THIS WEEK ── */}
+          {(sparkData.some(v => v > 0) || topScan || proStats) && (
+            <div style={weekCard}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end", gap:12 }}>
+                <div>
+                  <div style={sectionTitleStyle}>THIS WEEK</div>
+                  <div style={{ fontSize:20, fontWeight:900, marginTop:6 }}>
+                    {sparkData.reduce((a, b) => a + b, 0)} <span style={{ fontSize:12, fontWeight:600, color:"rgba(255,255,255,0.45)" }}>scans</span>
+                  </div>
+                </div>
+                {/* 7-day bars */}
+                <div style={{ display:"flex", alignItems:"flex-end", gap:4, height:34 }} aria-label="Scans over the last 7 days">
+                  {sparkData.map((v, i) => {
+                    const max = Math.max(1, ...sparkData);
+                    return <div key={i} style={{ width:8, borderRadius:3, height: Math.max(3, (v / max) * 34),
+                      background: i === sparkData.length - 1 ? "#e8b84a" : "rgba(255,255,255,0.22)" }} />;
+                  })}
+                </div>
+              </div>
+              {topScan && (
+                <div style={weekLine}>
+                  <span style={{ color:"rgba(255,255,255,0.4)" }}>Most scanned</span>
+                  <span style={{ fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const, minWidth:0 }}>{topScan.title}</span>
+                  <span style={{ color:"rgba(255,255,255,0.4)", flexShrink:0 }}>{topScan.n}×</span>
+                </div>
+              )}
+              {proStats && (
+                <div style={weekLine}>
+                  <span style={{ color:"#e8b84a", flexShrink:0 }}>✦</span>
+                  <span style={{ minWidth:0 }}>
+                    Your IDs were scanned <b>{proStats.uploadScans7d}</b> time{proStats.uploadScans7d === 1 ? "" : "s"}
+                    {proStats.topUpload ? <> · top: <b>{proStats.topUpload.title}</b></> : null}
+                  </span>
+                </div>
+              )}
+            </div>
           )}
 
           {/* ── SCANS LIST ── */}
@@ -770,6 +858,9 @@ export default function ProfilePageV2() {
     </main>
   );
 }
+
+const weekCard: React.CSSProperties = { border:"1px solid rgba(255,255,255,0.07)", borderRadius:18, padding:"14px 16px", display:"grid", gap:10, background:"rgba(255,255,255,0.015)" };
+const weekLine: React.CSSProperties = { display:"flex", alignItems:"center", gap:8, fontSize:12, color:"rgba(255,255,255,0.75)", minWidth:0, borderTop:"1px solid rgba(255,255,255,0.05)", paddingTop:10 };
 
 function formatMsgTime(iso: string) {
   const d = new Date(iso);
