@@ -119,35 +119,32 @@ function AudioPlayer({ src, name }: { src: string; name: string }) {
   );
 }
 
-// ── ScanCard : cover + artist photo + preview 30s ──
-function ScanCard({ scan, isUnreleased }: { scan: any; isUnreleased: boolean }) {
+// ── ScanCard : cover + preview 30s ──
+function ScanCard({ scan }: { scan: any; key?: React.Key }) {
   const [cover, setCover]        = useState<string|null>(null);
   const [previewUrl, setPreview] = useState<string|null>(null);
   const [playing, setPlaying]    = useState(false);
-  const [progress, setProgress]  = useState(false as boolean);
   const [prog, setProg]          = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  const title  = scan.track_title   || "Unknown";
-  const artist = scan.track_subtitle || "";
+  const title    = scan.track_title    || "Unknown";
+  const artist   = scan.track_subtitle || "";
   const released = scan.result_type !== "unreleased";
 
   useEffect(() => {
     if (!title || title === "Unknown") return;
-
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 
+    // Unreleased: fetch real snippet from bpro_tracks
     if (!released && scan.track_id) {
-      // Unreleased → real snippet from bpro_tracks via Supabase Storage
       const sb = createSupabaseBrowser();
       sb.from("bpro_tracks")
         .select("snippet_path,allow_preview")
         .eq("id", scan.track_id)
         .maybeSingle()
-        .then(({ data }) => {
+        .then(({ data }: { data: any }) => {
           if (data?.allow_preview && data?.snippet_path) {
-            // Build full public URL from storage path
-            const fullUrl = data.snippet_path.startsWith("http")
+            const fullUrl = String(data.snippet_path).startsWith("http")
               ? data.snippet_path
               : `${supabaseUrl}/storage/v1/object/public/bpro_uploads/${data.snippet_path}`;
             setPreview(fullUrl);
@@ -155,25 +152,24 @@ function ScanCard({ scan, isUnreleased }: { scan: any; isUnreleased: boolean }) 
         });
     }
 
-    // Cover: always search via server-side proxy (avoids CORS)
+    // Cover via server proxy (avoids CORS)
     const q = released ? `${artist} ${title}`.trim() : (artist || title);
     fetch(`/api/itunes-search?term=${encodeURIComponent(q)}&entity=song&limit=5`)
-      .then(r => r.json())
-      .then(d => {
-        const results = d.results || [];
+      .then((r: Response) => r.json())
+      .then((d: any) => {
+        const results: any[] = d.results || [];
         const best = released
           ? (results.find((t: any) =>
               (t.trackName || "").toLowerCase().includes(title.toLowerCase().split("(")[0].trim())
             ) || results[0])
-          : results[0]; // For unreleased: first result with artist name = photo from any track
-        if (best) {
-          setCover(best.artworkUrl100?.replace("100x100bb","300x300bb").replace("100x100","300x300") || null);
-          if (released) setPreview(best.previewUrl || null);
+          : results[0];
+        if (best?.artworkUrl100) {
+          setCover(best.artworkUrl100.replace("100x100bb", "300x300bb").replace("100x100", "300x300"));
         }
+        if (released && best?.previewUrl) setPreview(best.previewUrl);
       }).catch(() => {});
   }, [title, artist, released, scan.track_id]);
 
-  // External pause listener
   useEffect(() => {
     const el = audioRef.current;
     if (!el) return;
@@ -185,8 +181,10 @@ function ScanCard({ scan, isUnreleased }: { scan: any; isUnreleased: boolean }) 
   const toggle = () => {
     const el = audioRef.current;
     if (!el || !previewUrl) return;
-    if (playing) { el.pause(); setPlaying(false); }
-    else {
+    if (playing) {
+      el.pause();
+      setPlaying(false);
+    } else {
       if (activeAudioRef.current && activeAudioRef.current !== el) {
         activeAudioRef.current.dispatchEvent(new Event("externalpause"));
         activeAudioRef.current.pause();
@@ -198,27 +196,20 @@ function ScanCard({ scan, isUnreleased }: { scan: any; isUnreleased: boolean }) 
 
   const tagColor = released ? "rgba(29,185,84,0.85)" : "rgba(255,180,0,0.85)";
   const tagLabel = released ? "RELEASED" : "UNRELEASED";
+  const radius   = released ? 8 : 24;
 
   return (
     <div style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 0", borderBottom:"1px solid rgba(255,255,255,0.06)", width:"100%", overflow:"hidden" }}>
-      {/* Cover / artist photo */}
-      <div onClick={previewUrl ? toggle : undefined}
-        style={{ width:48, height:48, borderRadius:released?8:24, overflow:"hidden", flexShrink:0,
-          background:"rgba(255,255,255,0.08)", display:"flex", alignItems:"center", justifyContent:"center",
-          position:"relative", cursor: previewUrl ? "pointer" : "default",
-          boxShadow: playing ? "0 0 0 2px rgba(255,255,255,0.5)" : "none", transition:"box-shadow 0.2s" }}>
+      <div
+        onClick={previewUrl ? toggle : undefined}
+        style={{ width:48, height:48, borderRadius:radius, overflow:"hidden", flexShrink:0, background:"rgba(255,255,255,0.08)", display:"flex", alignItems:"center", justifyContent:"center", position:"relative", cursor: previewUrl ? "pointer" : "default", boxShadow: playing ? "0 0 0 2px rgba(255,255,255,0.5)" : "none", transition:"box-shadow 0.2s" }}
+      >
         {cover
           ? <img src={cover} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} onError={() => setCover(null)} />
-          : <svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5"/>
-              <path d="M9 8l8 4-8 4V8z" fill="rgba(255,255,255,0.28)"/>
-            </svg>
+          : <svg width={22} height={22} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5"/><path d="M9 8l8 4-8 4V8z" fill="rgba(255,255,255,0.28)"/></svg>
         }
-        {/* Play/pause overlay */}
         {previewUrl && (
-          <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center",
-            background: playing ? "rgba(0,0,0,0.5)" : cover ? "rgba(0,0,0,0)" : "transparent",
-            borderRadius: released?8:24, transition:"background 0.2s" }}>
+          <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", background: playing ? "rgba(0,0,0,0.5)" : "transparent", borderRadius:radius, transition:"background 0.2s" }}>
             {playing
               ? <svg width={15} height={15} viewBox="0 0 24 24" fill="white"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
               : <svg width={15} height={15} viewBox="0 0 24 24" fill="white" style={{ opacity: cover ? 0 : 0.6 }}><path d="M8 5v14l11-7z"/></svg>
@@ -226,30 +217,32 @@ function ScanCard({ scan, isUnreleased }: { scan: any; isUnreleased: boolean }) 
           </div>
         )}
       </div>
-
-      {/* Track info */}
       <div style={{ flex:1, minWidth:0, display:"flex", flexDirection:"column", gap:3 }}>
-        <span style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", color:"#fff" }}>{title}</span>
-        {artist && <span style={{ fontSize:11, color:"rgba(255,255,255,0.42)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{artist}</span>}
-        {/* Progress bar — visible only while playing */}
+        <span style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{title}</span>
+        {artist ? <span style={{ fontSize:11, color:"rgba(255,255,255,0.42)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{artist}</span> : null}
         {playing && (
-          <div style={{ height:2, background:"rgba(255,255,255,0.13)", borderRadius:1, cursor:"pointer", marginTop:1 }}
-            onClick={e => { e.stopPropagation(); const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); const ratio = (e.clientX - r.left) / r.width; if (audioRef.current) audioRef.current.currentTime = ratio * (audioRef.current.duration || 0); }}>
-            <div style={{ height:"100%", width:`${prog*100}%`, background:"rgba(255,255,255,0.75)", borderRadius:1, transition:"width 0.1s linear" }} />
+          <div
+            style={{ height:2, background:"rgba(255,255,255,0.13)", borderRadius:1, cursor:"pointer", marginTop:1 }}
+            onClick={(e: React.MouseEvent<HTMLDivElement>) => {
+              e.stopPropagation();
+              const rect = e.currentTarget.getBoundingClientRect();
+              if (audioRef.current) audioRef.current.currentTime = ((e.clientX - rect.left) / rect.width) * (audioRef.current.duration || 0);
+            }}
+          >
+            <div style={{ height:"100%", width:`${prog * 100}%`, background:"rgba(255,255,255,0.75)", borderRadius:1, transition:"width 0.1s linear" }} />
           </div>
         )}
       </div>
-
-      {/* Tag pill */}
-      <span style={{ fontSize:9, color:tagColor, flexShrink:0, letterSpacing:"0.05em", whiteSpace:"nowrap", fontWeight:700,
-        border:`1px solid ${tagColor}`, borderRadius:5, padding:"2px 6px", textTransform:"uppercase" }}>{tagLabel}</span>
-
-      {/* Audio element */}
+      <span style={{ fontSize:9, color:tagColor, flexShrink:0, letterSpacing:"0.05em", whiteSpace:"nowrap" as const, fontWeight:700, border:`1px solid ${tagColor}`, borderRadius:5, padding:"2px 6px" }}>{tagLabel}</span>
       {previewUrl && (
-        <audio ref={audioRef} src={previewUrl} preload="none"
+        <audio
+          ref={audioRef}
+          src={previewUrl}
+          preload="none"
           onTimeUpdate={() => { const a = audioRef.current; if (a?.duration) setProg(a.currentTime / a.duration); }}
           onEnded={() => { setPlaying(false); setProg(0); activeAudioRef.current = null; }}
-          style={{ display:"none" }} />
+          style={{ display:"none" }}
+        />
       )}
     </div>
   );
@@ -626,60 +619,33 @@ export default function ProfilePageV2() {
             </Section>
           )}
 
-          {/* ── MES TRACKS UPLOADÉES ── */}
+          {/* ── MES TRACKS ── */}
           {tracks.length > 0 && (
             <Section title="MES TRACKS">
-              <div style={{ display:"grid", gap:2 }}>
-                {(showMoreTracks ? tracks : tracks.slice(0,5)).map((t,i) => {
-                  const isRel = t.is_released === true || t.release_status === "released";
-                  const tagColor = isRel ? "rgba(29,185,84,0.85)" : "rgba(255,180,0,0.85)";
-                  const tagLabel = isRel ? "RELEASED" : "UNRELEASED";
-                  const toggleRelease = async () => {
-                    const next = !isRel;
-                    // Optimistic update
-                    setTracks(prev => prev.map(x => x.id === t.id
-                      ? { ...x, is_released: next, release_status: next ? "released" : "unreleased" }
-                      : x));
-                    try {
-                      await fetch("/api/bpro/set-release", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ track_id: t.id, is_released: next }),
-                      });
-                    } catch {
-                      // Revert on error
-                      setTracks(prev => prev.map(x => x.id === t.id ? t : x));
-                    }
-                  };
-                  return (
-                    <div key={t.id||i} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 0", borderBottom:"1px solid rgba(255,255,255,0.06)", width:"100%", overflow:"hidden" }}>
-                      {/* Music note icon */}
-                      <div style={{ width:48, height:48, borderRadius:8, flexShrink:0, background:"rgba(255,255,255,0.07)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                        <svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-                          <path d="M9 18V5l12-2v13" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                          <circle cx="6" cy="18" r="3" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5"/>
-                          <circle cx="18" cy="16" r="3" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5"/>
-                        </svg>
-                      </div>
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{t.title||"Unknown"}</div>
-                        <div style={{ fontSize:11, color:"rgba(255,255,255,0.42)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{t.artist||""}</div>
-                      </div>
-                      {/* Toggle released/unreleased */}
-                      <button onClick={toggleRelease} style={{
-                        fontSize:9, color:tagColor, flexShrink:0, letterSpacing:"0.05em",
-                        whiteSpace:"nowrap" as const, fontWeight:700,
-                        border:`1px solid ${tagColor}`, borderRadius:5, padding:"4px 8px",
-                        background:"transparent", cursor:"pointer", transition:"all 0.2s",
-                      }}>{tagLabel}</button>
+              <div style={{ display:"grid", gap:4 }}>
+                {tracks.map((t) => (
+                  <div key={t.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 0", borderBottom:"1px solid rgba(255,255,255,0.06)" }}>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{t.title}</div>
+                      {t.artist && <div style={{ fontSize:11, color:"rgba(255,255,255,0.4)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{t.artist}</div>}
                     </div>
-                  );
-                })}
-                {tracks.length > 5 && (
-                  <button onClick={()=>setShowMoreTracks(v=>!v)} style={showMoreBtn}>
-                    {showMoreTracks ? "Show less" : `+${tracks.length-5} more`}
-                  </button>
-                )}
+                    <button
+                      onClick={async () => {
+                        const newVal = !t.is_released;
+                        setTracks(prev => prev.map(x => x.id === t.id ? { ...x, is_released: newVal, release_status: newVal ? "released" : "unreleased" } : x));
+                        try {
+                          const res = await fetch("/api/bpro/set-release", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ track_id: t.id, is_released: newVal }) });
+                          if (!res.ok) throw new Error("failed");
+                        } catch {
+                          setTracks(prev => prev.map(x => x.id === t.id ? { ...x, is_released: !newVal, release_status: !newVal ? "released" : "unreleased" } : x));
+                        }
+                      }}
+                      style={{ fontSize:10, fontWeight:700, flexShrink:0, border:"none", borderRadius:6, padding:"5px 10px", cursor:"pointer", background: t.is_released ? "rgba(29,185,84,0.18)" : "rgba(255,180,0,0.15)", color: t.is_released ? "rgba(29,185,84,1)" : "rgba(255,180,0,1)", letterSpacing:"0.04em", transition:"all 0.2s" }}
+                    >
+                      {t.is_released ? "RELEASED" : "UNRELEASED"}
+                    </button>
+                  </div>
+                ))}
               </div>
             </Section>
           )}
@@ -689,7 +655,7 @@ export default function ProfilePageV2() {
             <Section title="RECENT SCANS">
               <div style={{ display:"grid", gap:2 }}>
                 {(showMoreScans ? scans : scans.slice(0,5)).map((s,i) => (
-                  <ScanCard key={i} scan={s} isUnreleased={s.result_type === "unreleased"} />
+                  <ScanCard key={i} scan={s} />
                 ))}
                 {scans.length > 5 && (
                   <button onClick={()=>setShowMoreScans(v=>!v)} style={showMoreBtn}>
