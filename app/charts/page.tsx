@@ -1,7 +1,7 @@
 "use client";
 
 import { authFetch } from "@/lib/authFetch";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import PageHeader from "@/components/PageHeader";
 import { ui, C, glass } from "@/lib/ui";
@@ -77,6 +77,7 @@ export default function ChartsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [playing, setPlaying] = useState<string | null>(null);
+  const [scrollingId, setScrollingId] = useState<string | null>(null); // title currently scrolling
   const [activeChart, setActiveChart] = useState<"unreleased" | "released">("unreleased");
   const [visibleCount, setVisibleCount] = useState(10);
   const [search, setSearch] = useState("");
@@ -273,11 +274,10 @@ export default function ChartsPage() {
           const titleText = String(track.title || "").trim();
           const lowerArtist = artistText.toLowerCase();
           const lowerTitle = titleText.toLowerCase();
-          // Title on its own line (full, wraps — remix included), artist underneath.
-          const mainTitle = (artistText && lowerTitle.startsWith(lowerArtist + " - "))
-            ? titleText.slice(artistText.length + 3).trim()
-            : (titleText || artistText || "Untitled");
-          const subLine = titleText ? artistText : "";
+          const displayLine =
+            artistText && titleText
+              ? (lowerTitle.startsWith(lowerArtist + " - ") ? titleText : `${artistText} - ${titleText}`)
+              : (titleText || artistText || "Untitled");
 
           return (
             <div key={track.id} style={rowStyle}>
@@ -285,9 +285,9 @@ export default function ChartsPage() {
                 <span style={{ ...ui.rank, paddingTop: 1 }}>{index + 1}</span>
 
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  {/* Full title (wraps, remix visible) + artist */}
-                  <div style={titleWrap}>{mainTitle}</div>
-                  {subLine && <div style={{ ...ui.rowSub, marginTop: 3 }}>{subLine}</div>}
+                  {/* One line — tap to scroll the full title, tap another to stop */}
+                  <MarqueeTitle text={displayLine} active={scrollingId === track.id}
+                    onTap={() => setScrollingId((cur) => (cur === track.id ? null : track.id))} />
 
                   {/* Meta line */}
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
@@ -362,10 +362,9 @@ export default function ChartsPage() {
       {toast && <div style={ui.toast}>{toast}</div>}
       <style>{`
         @keyframes banger-marquee {
-          0% { transform: translateX(0); }
-          10% { transform: translateX(0); }
-          90% { transform: translateX(calc(-100% + 220px)); }
-          100% { transform: translateX(0); }
+          0%, 12%  { transform: translateX(0); }
+          50%, 62% { transform: translateX(var(--marquee-dist, 0px)); }
+          100%     { transform: translateX(0); }
         }
       `}</style>
 
@@ -472,10 +471,38 @@ const cardStyle: React.CSSProperties = { display: "grid", gap: 12, minWidth: 0 }
 
 const listCard: React.CSSProperties = { minWidth: 0 };
 
-const titleWrap: React.CSSProperties = {
-  fontSize: 16, fontWeight: 600, letterSpacing: "-0.01em", lineHeight: 1.3,
-  whiteSpace: "normal", overflowWrap: "anywhere",
-};
+/** Single-line title. Tapped → glides to reveal the rest, pauses, glides back, loops until another title is tapped. */
+function MarqueeTitle({ text, active, onTap }: { text: string; active: boolean; onTap: () => void }) {
+  const boxRef = useRef<HTMLDivElement | null>(null);
+  const innerRef = useRef<HTMLSpanElement | null>(null);
+  const [dist, setDist] = useState(0);
+
+  useEffect(() => {
+    if (!active) { setDist(0); return; }
+    const box = boxRef.current, inner = innerRef.current;
+    if (box && inner) setDist(Math.max(0, inner.scrollWidth - box.clientWidth));
+  }, [active, text]);
+
+  const moving = active && dist > 0;
+  const duration = Math.max(4, dist / 28 + 2.5); // slow & subtle
+
+  return (
+    <div ref={boxRef} onClick={onTap} role="button" tabIndex={0} aria-label={text}
+      style={{
+        overflow: "hidden", whiteSpace: "nowrap", cursor: "pointer",
+        maskImage: moving ? "linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%)" : undefined,
+        WebkitMaskImage: moving ? "linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%)" : undefined,
+      }}>
+      <span ref={innerRef} style={{
+        display: moving ? "inline-block" : "block",
+        overflow: moving ? "visible" : "hidden", textOverflow: moving ? "clip" : "ellipsis",
+        fontSize: 16, fontWeight: 600, letterSpacing: "-0.01em",
+        ["--marquee-dist" as any]: `-${dist}px`,
+        animation: moving ? `banger-marquee ${duration}s ease-in-out infinite` : "none",
+      }}>{text}</span>
+    </div>
+  );
+}
 
 const segment: React.CSSProperties = {
   ...glass, display: "grid", gridTemplateColumns: "1fr 1fr", padding: 4, borderRadius: 999, marginBottom: 10,
