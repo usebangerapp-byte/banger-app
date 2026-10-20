@@ -56,3 +56,4 @@ next-env.d.ts
 *.bak2
 *.bak
 *.bak2
+package-lock.json
