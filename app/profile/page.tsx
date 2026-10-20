@@ -632,9 +632,25 @@ export default function ProfilePageV2() {
               <div style={{ display:"grid", gap:2 }}>
                 {(showMoreTracks ? tracks : tracks.slice(0,5)).map((t,i) => {
                   const isRel = t.is_released === true || t.release_status === "released";
-                  const isPending = !isRel && (t.release_status === "pending" || t.release_status === "checking" || !t.release_status);
-                  const tagColor = isRel ? "rgba(29,185,84,0.85)" : isPending ? "rgba(255,180,0,0.85)" : "rgba(255,255,255,0.30)";
-                  const tagLabel = isRel ? "RELEASED" : isPending ? "PENDING" : "UNRELEASED";
+                  const tagColor = isRel ? "rgba(29,185,84,0.85)" : "rgba(255,180,0,0.85)";
+                  const tagLabel = isRel ? "RELEASED" : "UNRELEASED";
+                  const toggleRelease = async () => {
+                    const next = !isRel;
+                    // Optimistic update
+                    setTracks(prev => prev.map(x => x.id === t.id
+                      ? { ...x, is_released: next, release_status: next ? "released" : "unreleased" }
+                      : x));
+                    try {
+                      await fetch("/api/bpro/set-release", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ track_id: t.id, is_released: next }),
+                      });
+                    } catch {
+                      // Revert on error
+                      setTracks(prev => prev.map(x => x.id === t.id ? t : x));
+                    }
+                  };
                   return (
                     <div key={t.id||i} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 0", borderBottom:"1px solid rgba(255,255,255,0.06)", width:"100%", overflow:"hidden" }}>
                       {/* Music note icon */}
@@ -649,7 +665,13 @@ export default function ProfilePageV2() {
                         <div style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{t.title||"Unknown"}</div>
                         <div style={{ fontSize:11, color:"rgba(255,255,255,0.42)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{t.artist||""}</div>
                       </div>
-                      <span style={{ fontSize:9, color:tagColor, flexShrink:0, letterSpacing:"0.05em", whiteSpace:"nowrap" as const, fontWeight:700, border:`1px solid ${tagColor}`, borderRadius:5, padding:"2px 6px" }}>{tagLabel}</span>
+                      {/* Toggle released/unreleased */}
+                      <button onClick={toggleRelease} style={{
+                        fontSize:9, color:tagColor, flexShrink:0, letterSpacing:"0.05em",
+                        whiteSpace:"nowrap" as const, fontWeight:700,
+                        border:`1px solid ${tagColor}`, borderRadius:5, padding:"4px 8px",
+                        background:"transparent", cursor:"pointer", transition:"all 0.2s",
+                      }}>{tagLabel}</button>
                     </div>
                   );
                 })}
