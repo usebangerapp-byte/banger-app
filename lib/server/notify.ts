@@ -31,7 +31,7 @@ type Row = { user_id: string; type: string; message: string; track_title?: strin
 function linkFor(row: Row) {
   if (row.type === "message") return row.actor_id ? `/profile?tab=messages&with=${row.actor_id}` : "/profile?tab=messages";
   if (row.type === "follow" && row.actor_id) return `/dj/${row.actor_id}`;
-  if (row.type === "promo_listened") return "/promo";
+  if (row.type === "promo_listened" || row.type === "promo_liked") return "/promo";
   if (row.type === "track_released" && row.track_title) return `/track?t=${encodeURIComponent(row.track_title)}`;
   if (row.type === "track_released") return "/charts";
   return "/home";
@@ -117,6 +117,16 @@ export async function notifyPromoListened(sb: SupabaseClient, senderId: string, 
   await insertNotification(sb, {
     user_id: senderId, type: "promo_listened", actor_id: listenerId, track_title: name,
     message: `Listened to "${trackTitle}"`,
+  });
+}
+
+/** A DJ liked a private promo → tell the producer. */
+export async function notifyPromoLiked(sb: SupabaseClient, senderId: string, likerId: string, trackTitle: string) {
+  if (senderId === likerId || !(await notificationsEnabled(sb, senderId))) return;
+  const name = await displayName(sb, likerId);
+  await insertNotification(sb, {
+    user_id: senderId, type: "promo_liked", actor_id: likerId, track_title: name,
+    message: `Liked "${trackTitle}" ♥`,
   });
 }
 

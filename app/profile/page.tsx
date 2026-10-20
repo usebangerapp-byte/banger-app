@@ -172,6 +172,20 @@ export default function ProfilePageV2() {
   const [tab,      setTab]      = useState<"profile"|"messages"|"settings">("profile");
   const [showMoreTracks, setShowMoreTracks] = useState(false);
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
+  const lastMsgTap = useRef<{ id: any; t: number }>({ id: null, t: 0 });
+
+  // Double-tap a message you received to like it (tap twice again to remove)
+  function tapMessage(msg: any) {
+    if (msg.sender_id === userId) return;
+    const now = Date.now();
+    const isDouble = lastMsgTap.current.id === msg.id && now - lastMsgTap.current.t < 320;
+    lastMsgTap.current = { id: msg.id, t: now };
+    if (!isDouble) return;
+    const like = !msg.liked_at;
+    setMessages((p: any[]) => p.map((m: any) => m.id === msg.id ? { ...m, liked_at: like ? new Date().toISOString() : null } : m));
+    try { navigator.vibrate?.(12); } catch {}
+    authFetch("/api/messages/like", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message_id: msg.id, like }) }).catch(() => {});
+  }
   const [showMoreFollows, setShowMoreFollows] = useState(false);
   const [showMoreScans,  setShowMoreScans]  = useState(false);
   const [messages, setMessages] = useState<any[]>([]);
@@ -840,7 +854,7 @@ export default function ProfilePageV2() {
                             : (msg.sender_avatar ? <img src={msg.sender_avatar} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : (msg.sender_name||"?").charAt(0).toUpperCase())
                           }
                         </div>
-                        <div style={{ maxWidth:"75%", minWidth:0, padding: msg.file_url && !msg.content ? "8px" : "10px 14px", fontSize:14, lineHeight:1.4,
+                        <div onClick={() => tapMessage(msg)} style={{ position:"relative", maxWidth:"75%", minWidth:0, marginBottom: msg.liked_at ? 10 : 0, padding: msg.file_url && !msg.content ? "8px" : "10px 14px", fontSize:14, lineHeight:1.4,
                           borderRadius:isMine?"18px 18px 4px 18px":"18px 18px 18px 4px",
                           background:isMine?C.goldGrad:"rgba(255,255,255,0.10)",
                           border:isMine?"none":"1px solid rgba(255,255,255,0.08)",
@@ -879,6 +893,10 @@ export default function ProfilePageV2() {
                             if (msg.content && !fallbackMatch) return <span>{msg.content}</span>;
                             return null;
                           })()}
+                          {msg.liked_at && (
+                            <span aria-label="Liked" style={{ position:"absolute", bottom:-11, [isMine ? "left" : "right"]: 8, fontSize:12, lineHeight:1,
+                              padding:"3px 5px", borderRadius:999, background:"rgb(30,30,30)", border:"1px solid rgba(255,255,255,0.14)", color:"#e9b844" } as any}>♥</span>
+                          )}
                         </div>
                         {isMine && (
                           <button onClick={async()=>{

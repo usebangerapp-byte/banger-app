@@ -1,4 +1,4 @@
-import { adminClient, userFromRequest, notifyPromoListened } from "@/lib/server/notify";
+import { adminClient, userFromRequest, notifyPromoListened, notifyPromoLiked } from "@/lib/server/notify";
 import { PROMO_BUCKET } from "@/lib/server/pro";
 
 export const runtime = "nodejs";
@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 async function load(sb: ReturnType<typeof adminClient>, token: string) {
   const { data: rec } = await sb.from("promo_recipients")
-    .select("id,promo_id,recipient_id,listened_at,plays").eq("token", token).maybeSingle();
+    .select("*").eq("token", token).maybeSingle();
   if (!rec) return null;
   const { data: promo } = await sb.from("promo_sends")
     .select("id,sender_id,title,artist,note,file_path").eq("id", rec.promo_id).maybeSingle();
@@ -31,6 +31,7 @@ export async function GET(req: Request) {
     ok: true, title: promo.title, artist: promo.artist, note: promo.note,
     sender: { id: promo.sender_id, name: sender?.display_name || "A producer", avatar: sender?.avatar_url || null },
     url: signed?.signedUrl || null,
+    liked: !!(rec as any).liked_at, isRecipient: user.id === rec.recipient_id,
   });
 }
 
@@ -39,9 +40,19 @@ export async function POST(req: Request) {
   const sb = adminClient();
   const user = await userFromRequest(sb, req);
   if (!user) return Response.json({ ok: false }, { status: 401 });
-  const { token } = await req.json().catch(() => ({}));
+  const { token, action, like } = await req.json().catch(() => ({}));
   const found = await load(sb, String(token || ""));
   if (!found || found.rec.recipient_id !== user.id) return Response.json({ ok: true });
+
+  // Like / unlike (double-tap or heart)
+  if (action === "like") {
+    const was = !!(found.rec as any).liked_at;
+    const { error } = await sb.from("promo_recipients").update({ liked_at: like === false ? null : new Date().toISOString() }).eq("id", found.rec.id);
+    if (error) return Response.json({ ok: false, error: error.message }, { status: 500 });
+    if (like !== false && !was) await notifyPromoLiked(sb, found.promo.sender_id, user.id, found.promo.title).catch(() => {});
+    return Response.json({ ok: true });
+  }
+
   await sb.from("promo_recipients").update({
     listened_at: found.rec.listened_at || new Date().toISOString(),
     plays: (found.rec.plays || 0) + 1,

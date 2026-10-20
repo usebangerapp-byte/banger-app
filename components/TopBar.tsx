@@ -86,7 +86,7 @@ export default function TopBar() {
     if (n.type === "message" && n.actor_id) window.location.href = `/profile?tab=messages&with=${n.actor_id}`;
     else if (n.type === "message") window.location.href = "/profile?tab=messages";
     else if (n.type === "follow" && n.actor_id) window.location.href = `/dj/${n.actor_id}`;
-    else if (n.type === "promo_listened") window.location.href = "/promo";
+    else if (n.type === "promo_listened" || n.type === "promo_liked") window.location.href = "/promo";
     else if (n.type === "track_released" || n.type === "new_track") {
       // Open the track itself (preview, Spotify, Beatport). Older rows wrote the title as  🔥 "TITLE" is out
       const raw = String(n.track_title || "");

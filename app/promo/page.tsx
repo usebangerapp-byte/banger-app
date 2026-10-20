@@ -16,7 +16,7 @@ const MAX_BYTES = 48 * 1024 * 1024; // storage limit is 50 MB per file
 type Person = { id: string; display_name: string; avatar_url?: string | null };
 type Sent = {
   id: string; title: string; artist: string | null; created_at: string;
-  recipients: { id: string; name: string; avatar: string | null; listened_at: string | null; plays: number }[];
+  recipients: { id: string; name: string; avatar: string | null; listened_at: string | null; plays: number; liked?: boolean }[];
 };
 
 function Avatar({ name, url, size = 32 }: { name: string; url?: string | null; size?: number }) {
@@ -261,7 +261,7 @@ export default function PromoPage() {
                       <div style={ui.rowSub}>{new Date(p.created_at).toLocaleDateString([], { day: "numeric", month: "short" })}</div>
                     </div>
                     <span style={{ fontSize: 13, fontWeight: 600, color: heard ? C.gold : C.text3, flexShrink: 0 }}>
-                      {heard}/{p.recipients.length} listened
+                      {heard}/{p.recipients.length} listened{p.recipients.some((r) => r.liked) ? ` · ♥ ${p.recipients.filter((r) => r.liked).length}` : ""}
                     </span>
                   </div>
                   {open && (
@@ -270,6 +270,7 @@ export default function PromoPage() {
                         <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           <Avatar name={r.name} url={r.avatar} size={28} />
                           <span style={{ flex: 1, minWidth: 0, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
+                          {r.liked && <span style={{ color: C.gold, fontSize: 14, flexShrink: 0 }} aria-label="Liked">♥</span>}
                           <span style={{ fontSize: 12, color: r.listened_at ? C.rel : C.text4, flexShrink: 0 }}>
                             {r.listened_at ? `Listened${r.plays > 1 ? ` · ${r.plays}×` : ""}` : "Not yet"}
                           </span>
