@@ -52,7 +52,7 @@ export default function UploadPage() {
         if (mounted) setUploaderEmail(data.user?.email || "");
         const role = await getBrowserRole();
         if (!mounted) return;
-        if (role === "public") { router.replace("/home"); return; }
+        if (role === "public") { router.replace("/upgrade"); return; }
         setRoleReady(true);
       } catch { if (mounted) setRoleReady(true); }
     })();

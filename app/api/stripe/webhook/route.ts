@@ -34,6 +34,7 @@ export async function POST(req: Request) {
       stripe_subscription_id:  sub.id,
       stripe_status:           sub.status,
       pro_since:               isActive ? new Date().toISOString() : null,
+      ...(isActive ? { plan_selected_at: new Date().toISOString() } : {}),
     }).eq("id", userId);
   }
 

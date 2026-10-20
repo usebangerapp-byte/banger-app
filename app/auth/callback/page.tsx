@@ -31,10 +31,11 @@ export default function AuthCallbackPage() {
 
         const userId = data.session.user.id;
         const { data: profile } = await supabase
-          .from("profiles").select("id,role").eq("id", userId).maybeSingle();
+          .from("profiles").select("id,plan_selected_at").eq("id", userId).maybeSingle();
         if (!alive) return;
 
-        if (profile?.role) {
+        // Every account must pick FREE or PRO once
+        if (profile?.plan_selected_at) {
           setMsg("Welcome back. Redirecting…");
           router.replace("/home");
         } else {

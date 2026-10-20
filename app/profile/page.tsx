@@ -143,7 +143,9 @@ function Sparkline({ data }: { data: number[] }) {
 // ── Settings Tab constants (must be before SettingsTab) ──
 const PLAN_FEATURES = [
   { label: "Scan tracks",       sub: "Recognize songs in real-time",       free: true,  pro: true  },
-  { label: "Unlimited scans",   sub: "No daily cap",                        free: false, pro: true  },
+  { label: "Unlimited scans",   sub: "No daily cap",                        free: true,  pro: true  },
+  { label: "Released charts",   sub: "Full released chart",                 free: true,  pro: true  },
+  { label: "Unreleased charts", sub: "Free: top 3 · PRO: full chart",       free: false, pro: true  },
   { label: "Scan history",      sub: "View your past recognitions",          free: true,  pro: true  },
   { label: "Follow tracks",     sub: "Get notified when a track releases",   free: true,  pro: true  },
   { label: "Upload your IDs",   sub: "Submit unreleased tracks",             free: false, pro: true  },
@@ -173,6 +175,7 @@ function SettingsTab({ role, router }: { role: "public"|"pro"; router: { push: (
       });
       const json = await res.json();
       if (json.url) window.location.href = json.url;
+      else if (res.status === 404) alert("No Stripe subscription is linked to this account yet.");
       else alert("Could not open billing portal. Try again.");
     } catch {
       alert("Something went wrong.");
@@ -200,7 +203,7 @@ function SettingsTab({ role, router }: { role: "public"|"pro"; router: { push: (
             <div style={{ fontSize:12, opacity:0.45, marginTop:3 }}>
               {role==="pro"
                 ? "€9.99/month · Unlimited scans · All features"
-                : "Limited scans · No uploads"}
+                : "Unlimited scans · Top 3 unreleased · No uploads"}
             </div>
           </div>
           {role==="pro" && (

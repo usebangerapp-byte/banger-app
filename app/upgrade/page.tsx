@@ -109,6 +109,7 @@ export default function UpgradePage() {
 }
 
 const FREE_ITEMS = [
+  "Full unreleased charts",
   "Upload unreleased tracks",
   "Priority in unreleased charts",
   "Track scan statistics",
@@ -117,7 +118,7 @@ const FREE_ITEMS = [
 ];
 
 const PRO_ITEMS = [
-  { label: "Unlimited scans", sub: "No daily cap" },
+  { label: "Full unreleased charts", sub: "See every ID charting, not just the top 3" },
   { label: "Upload your IDs", sub: "Submit unreleased tracks to the database" },
   { label: "Priority in unreleased charts", sub: "Your tracks ranked first" },
   { label: "Scan statistics", sub: "See how many times you've been scanned" },

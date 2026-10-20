@@ -3,6 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import PageHeader from "@/components/PageHeader";
+import Link from "next/link";
+import { getBrowserRole } from "@/lib/auth/getBrowserRole";
+
+// Free users only see the top N of the unreleased chart
+const FREE_UNRELEASED_LIMIT = 3;
 
 type TrackRow = {
   id: string;
@@ -76,6 +81,14 @@ export default function ChartsPage() {
   const [followedTitles, setFollowedTitles] = useState<Set<string>>(new Set());
   const [userId, setUserId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  // null = role still loading (treated as free until known)
+  const [isPro, setIsPro] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    getBrowserRole().then((r) => { if (alive) setIsPro(r === "pro"); });
+    return () => { alive = false; };
+  }, []);
 
   function showToast(msg: string) {
     setToast(msg);
@@ -226,7 +239,12 @@ export default function ChartsPage() {
     [rows]
   );
 
-  const activeBase = activeChart === "unreleased" ? unreleasedBase : releasedBase;
+  const unreleasedLocked = activeChart === "unreleased" && isPro !== true;
+  const lockedCount = unreleasedLocked ? Math.max(0, unreleasedBase.length - FREE_UNRELEASED_LIMIT) : 0;
+
+  const activeBase = activeChart === "unreleased"
+    ? (unreleasedLocked ? unreleasedBase.slice(0, FREE_UNRELEASED_LIMIT) : unreleasedBase)
+    : releasedBase;
   const suggestions = useMemo(() => buildSuggestions(activeBase), [activeBase]);
 
   const filteredRows = useMemo(
@@ -255,7 +273,6 @@ export default function ChartsPage() {
     return (
       <div style={{ display: "grid", gap: 10 }}>
         {list.map((track, index) => {
-          const scans = track.scan_count || 0;
           const canPreview =
             kind === "released"
               ? !!track.snippet_path
@@ -283,8 +300,6 @@ export default function ChartsPage() {
 
                   {/* Meta line */}
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 11, color: "rgba(255,255,255,0.40)", fontWeight: 600 }}>{scans} scans</span>
-
                     {canPreview && (
                       <button type="button" onClick={() => {
                         let audio = (window as any)._bangerAudio as HTMLAudioElement | undefined;
@@ -425,8 +440,21 @@ export default function ChartsPage() {
                 <>
                   {renderTrackList(visibleRows, activeChart)}
 
+                  {unreleasedLocked && lockedCount > 0 && (
+                    <div style={lockedBox}>
+                      <div style={{ fontSize: 22 }}>🔒</div>
+                      <div style={{ fontSize: 14, fontWeight: 800, letterSpacing: "-0.01em" }}>
+                        +{lockedCount} more unreleased ID{lockedCount > 1 ? "s" : ""} charting
+                      </div>
+                      <div style={{ fontSize: 12, opacity: 0.5 }}>
+                        Go PRO to unlock the full unreleased chart.
+                      </div>
+                      <Link href="/upgrade" style={unlockBtn}>✦ Upgrade to PRO</Link>
+                    </div>
+                  )}
+
                   <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                    {visibleCount < filteredRows.length && visibleCount < 100 ? (
+                    {!unreleasedLocked && visibleCount < filteredRows.length && visibleCount < 100 ? (
                       <button
                         type="button"
                         onClick={() => setVisibleCount((v) => Math.min(v + 10, 100, filteredRows.length))}
@@ -463,6 +491,29 @@ const cardStyle: React.CSSProperties = {
   padding: 14,
   boxShadow: "0 12px 30px rgba(0,0,0,0.32)",
   backdropFilter: "blur(10px)",
+};
+
+const lockedBox: React.CSSProperties = {
+  marginTop: 10,
+  border: "1px dashed rgba(255,255,255,0.14)",
+  background: "rgba(255,255,255,0.02)",
+  borderRadius: 16,
+  padding: "18px 14px",
+  display: "grid",
+  gap: 6,
+  justifyItems: "center",
+  textAlign: "center",
+};
+
+const unlockBtn: React.CSSProperties = {
+  marginTop: 6,
+  padding: "11px 18px",
+  borderRadius: 12,
+  background: "#fff",
+  color: "#000",
+  fontWeight: 900,
+  fontSize: 13,
+  textDecoration: "none",
 };
 
 const rowStyle: React.CSSProperties = {
