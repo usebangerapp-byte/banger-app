@@ -262,7 +262,11 @@ export default function ProfilePageV2() {
           const p = profileMap[other];
           const display_name = p?.display_name || p?.email?.split("@")[0] || other.slice(0,8);
           const avatar_url = p?.avatar_url || null;
-          map.set(other, { user_id: other, display_name, avatar_url, last: msg.content,
+          // Aperçu du dernier message : fichier audio ou texte court
+          const rawLast = msg.file_name ? `🎵 ${msg.file_name}` :
+            msg.content?.startsWith("📎") ? "📎 Fichier audio" :
+            msg.content || "";
+          map.set(other, { user_id: other, display_name, avatar_url, last: rawLast,
             unread: msg.receiver_id === userId && !msg.read ? (map.get(other)?.unread||0)+1 : (map.get(other)?.unread||0) });
         }
         setConvs(Array.from(map.values()));
@@ -371,8 +375,6 @@ export default function ProfilePageV2() {
   return (
     <main style={pageStyle}>
       <div style={shellStyle}>
-
-        <PageHeader title="PROFILE" />
 
         <div style={tabBarStyle}>
           {(["profile","messages"] as const).map(t => (
@@ -684,7 +686,7 @@ const upgradeBtn: React.CSSProperties = { padding:"13px 16px", borderRadius:14, 
 const downgradeBtn: React.CSSProperties = { padding:"11px 16px", borderRadius:14, background:"transparent", border:"1px solid rgba(255,255,255,0.06)", color:"rgba(255,255,255,0.35)", fontWeight:600, fontSize:13, cursor:"pointer" };
 const inputStyle: React.CSSProperties = { display:"block", width:"100%", marginTop:6, padding:"10px 12px", borderRadius:12, background:"#0d0d0d", border:"1px solid rgba(255,255,255,0.10)", color:"#fff", fontSize:14, boxSizing:"border-box", minWidth:0 };
 const saveBtn: React.CSSProperties = { padding:"13px 16px", borderRadius:14, background:"#fff", color:"#000", fontWeight:800, fontSize:14, cursor:"pointer", border:"none" };
-const tabBarStyle: React.CSSProperties = { display:"flex", borderBottom:"1px solid rgba(255,255,255,0.08)" };
+const tabBarStyle: React.CSSProperties = { display:"flex", width:"100%", borderBottom:"1px solid rgba(255,255,255,0.08)", marginBottom:16 };
 const tabBtn: React.CSSProperties = { flex:1, padding:"14px 0", background:"none", border:"none", color:"rgba(255,255,255,0.45)", fontWeight:700, fontSize:12, letterSpacing:"0.12em", cursor:"pointer" };
 const tabActive: React.CSSProperties = { color:"#fff", borderBottom:"2px solid #fff" };
 const convRow: React.CSSProperties = { display:"flex", gap:12, alignItems:"center", padding:"12px 0", background:"none", border:"none", color:"#fff", cursor:"pointer", borderBottom:"1px solid rgba(255,255,255,0.06)", width:"100%", minWidth:0, overflow:"hidden", boxSizing:"border-box" };
