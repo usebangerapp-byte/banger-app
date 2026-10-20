@@ -2,7 +2,7 @@
 # Before the first run, in Codemagic:
 #   1. Teams → Integrations → Developer Portal: connect your App Store Connect API key (name it "banger_asc").
 #   2. App → Code signing → iOS: let Codemagic manage the "App Store" profile for com.usebanger.app.
-# Each push to "main" then builds the app and sends it to TestFlight.
+# Start a build by hand with "Start new build" (the website deploys on its own; the app only needs a rebuild for native changes).
 workflows:
   ios-testflight:
     name: iOS → TestFlight
@@ -19,11 +19,6 @@ workflows:
       vars:
         XCODE_PROJECT: "ios/App/App.xcodeproj"
         XCODE_SCHEME: "App"
-    triggering:
-      events: [push]
-      branch_patterns:
-        - pattern: main
-          include: true
     scripts:
       - name: Install dependencies
         script: npm install
