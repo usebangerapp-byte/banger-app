@@ -80,7 +80,14 @@ export default function TopBar() {
     if (n.type === "message" && n.actor_id) window.location.href = `/profile?tab=messages&with=${n.actor_id}`;
     else if (n.type === "message") window.location.href = "/profile?tab=messages";
     else if (n.type === "follow" && n.actor_id) window.location.href = `/dj/${n.actor_id}`;
-    else if (n.type === "track_released" || n.type === "new_track") window.location.href = "/radar";
+    else if (n.type === "track_released" || n.type === "new_track") {
+      // Open the track itself (preview, Spotify, Beatport). Older rows wrote the title as  🔥 "TITLE" is out
+      const raw = String(n.track_title || "");
+      const quoted = raw.match(/[“"](.+?)[”"]/);
+      const title = (quoted ? quoted[1] : raw).trim();
+      const artist = String(n.message || "").split(/\s+[—-]\s+/)[0].replace(/^(out now|released).*$/i, "").trim();
+      window.location.href = title ? `/track?t=${encodeURIComponent(title)}${artist && artist !== n.message ? `&a=${encodeURIComponent(artist)}` : ""}` : "/charts";
+    }
   }
 
   if (HIDDEN_PATHS.includes(pathname)) return null;

@@ -31,6 +31,7 @@ type Row = { user_id: string; type: string; message: string; track_title?: strin
 function linkFor(row: Row) {
   if (row.type === "message") return row.actor_id ? `/profile?tab=messages&with=${row.actor_id}` : "/profile?tab=messages";
   if (row.type === "follow" && row.actor_id) return `/dj/${row.actor_id}`;
+  if (row.type === "track_released" && row.track_title) return `/track?t=${encodeURIComponent(row.track_title)}`;
   if (row.type === "track_released") return "/charts";
   return "/home";
 }
