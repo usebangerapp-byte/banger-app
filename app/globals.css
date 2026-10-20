@@ -32,8 +32,8 @@ body::before {
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(520px 520px at 20% 22%, rgba(232,170,40,0.26), rgba(232,170,40,0.07) 45%, transparent 70%),
-    radial-gradient(420px 420px at 95% 78%, rgba(255,140,60,0.12), transparent 65%);
+    radial-gradient(520px 520px at 20% 22%, rgba(232,170,40,0.11), rgba(232,170,40,0.03) 45%, transparent 70%),
+    radial-gradient(420px 420px at 95% 78%, rgba(255,140,60,0.05), transparent 65%);
 }
 
 ::selection { background: rgba(245,207,104,0.35); }

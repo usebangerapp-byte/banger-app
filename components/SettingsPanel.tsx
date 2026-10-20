@@ -231,7 +231,7 @@ const overlay: React.CSSProperties = {
 };
 const glow: React.CSSProperties = {
   position: "fixed", inset: 0, pointerEvents: "none",
-  background: "radial-gradient(520px 520px at 15% 10%, rgba(232,170,40,0.24), rgba(232,170,40,0.06) 45%, transparent 70%)",
+  background: "radial-gradient(520px 520px at 15% 10%, rgba(232,170,40,0.10), rgba(232,170,40,0.03) 45%, transparent 70%)",
 };
 const shell: React.CSSProperties = {
   position: "relative", maxWidth: 560, margin: "0 auto",
