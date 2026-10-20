@@ -119,6 +119,102 @@ function AudioPlayer({ src, name }: { src: string; name: string }) {
   );
 }
 
+// ── ScanCard : cover iTunes + preview 30s + artiste ──
+function ScanCard({ scan, isUnreleased }: { scan: any; isUnreleased: boolean }) {
+  const [cover, setCover]         = useState<string|null>(null);
+  const [previewUrl, setPreview]  = useState<string|null>(null);
+  const [loadedMeta, setLoaded]   = useState(false);
+  const [playing, setPlaying]     = useState(false);
+  const [progress, setProgress]   = useState(0);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  const title  = scan.track_title  || "Unknown";
+  const artist = scan.track_subtitle || "";
+
+  useEffect(() => {
+    if (isUnreleased || !title || title === "Unknown") return;
+    const q = encodeURIComponent(`${artist} ${title}`.trim());
+    fetch(`https://itunes.apple.com/search?term=${q}&media=music&limit=3`)
+      .then(r => r.json())
+      .then(d => {
+        const track = d.results?.[0];
+        if (!track) return;
+        setCover(track.artworkUrl100?.replace("100x100", "300x300") || null);
+        setPreview(track.previewUrl || null);
+        setLoaded(true);
+      }).catch(() => {});
+  }, [title, artist, isUnreleased]);
+
+  // external pause listener
+  useEffect(() => {
+    const el = audioRef.current;
+    if (!el) return;
+    const handler = () => { setPlaying(false); setProgress(0); };
+    el.addEventListener("externalpause", handler);
+    return () => el.removeEventListener("externalpause", handler);
+  }, []);
+
+  const toggle = () => {
+    const el = audioRef.current;
+    if (!el) return;
+    if (playing) { el.pause(); setPlaying(false); }
+    else {
+      if (activeAudioRef.current && activeAudioRef.current !== el) {
+        activeAudioRef.current.dispatchEvent(new Event("externalpause"));
+        activeAudioRef.current.pause();
+      }
+      activeAudioRef.current = el;
+      el.play().then(() => setPlaying(true)).catch(() => {});
+    }
+  };
+
+  const released = scan.result_type !== "unreleased";
+  const tagColor = released ? "rgba(29,185,84,0.85)" : "rgba(255,255,255,0.28)";
+  const tagLabel = released ? "RELEASED" : "UNRELEASED";
+
+  return (
+    <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 0", borderBottom:"1px solid rgba(255,255,255,0.06)", width:"100%", overflow:"hidden" }}>
+      {/* Cover or placeholder */}
+      <div style={{ width:44, height:44, borderRadius:8, overflow:"hidden", flexShrink:0, background:"rgba(255,255,255,0.07)", display:"flex", alignItems:"center", justifyContent:"center", position:"relative" }}>
+        {cover
+          ? <img src={cover} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+          : <svg width={20} height={20} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5"/><path d="M9 8l8 4-8 4V8z" fill="rgba(255,255,255,0.3)"/></svg>
+        }
+        {/* Play button overlay if preview available */}
+        {previewUrl && (
+          <button onClick={toggle} style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", background: playing ? "rgba(0,0,0,0.45)" : "rgba(0,0,0,0.25)", border:"none", cursor:"pointer", borderRadius:8 }}>
+            {playing
+              ? <svg width={14} height={14} viewBox="0 0 24 24" fill="white"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+              : <svg width={14} height={14} viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>
+            }
+          </button>
+        )}
+      </div>
+      {/* Info */}
+      <div style={{ flex:1, minWidth:0, display:"flex", flexDirection:"column", gap:2 }}>
+        <span style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{title}</span>
+        {artist && <span style={{ fontSize:11, color:"rgba(255,255,255,0.45)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{artist}</span>}
+        {/* Mini progress bar */}
+        {previewUrl && playing && (
+          <div style={{ height:2, background:"rgba(255,255,255,0.15)", borderRadius:1, marginTop:2, cursor:"pointer" }}
+            onClick={e => { const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect(); const ratio = (e.clientX - rect.left) / rect.width; if (audioRef.current) audioRef.current.currentTime = ratio * (audioRef.current.duration || 0); }}>
+            <div style={{ height:"100%", width:`${progress*100}%`, background:"rgba(255,255,255,0.7)", borderRadius:1, transition:"width 0.1s linear" }} />
+          </div>
+        )}
+      </div>
+      {/* Tag */}
+      <span style={{ fontSize:10, color:tagColor, flexShrink:0, letterSpacing:"0.04em", whiteSpace:"nowrap", fontWeight:600, border:`1px solid ${tagColor}`, borderRadius:4, padding:"2px 5px" }}>{tagLabel}</span>
+      {/* Hidden audio */}
+      {previewUrl && (
+        <audio ref={audioRef} src={previewUrl} preload="none"
+          onTimeUpdate={() => { const a = audioRef.current; if (a?.duration) setProgress(a.currentTime / a.duration); }}
+          onEnded={() => { setPlaying(false); setProgress(0); activeAudioRef.current = null; }}
+          style={{ display:"none" }} />
+      )}
+    </div>
+  );
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section style={sectionStyle}>
@@ -216,7 +312,7 @@ export default function ProfilePageV2() {
         }
 
         const { data: scanData } = await supabase
-          .from("scan_events").select("track_title,created_at,result_type")
+          .from("scan_events").select("track_title,track_subtitle,created_at,result_type")
           .eq("user_id", uid)
           .neq("result_type", "not_found")
           .order("created_at", { ascending: false }).limit(50);
@@ -495,12 +591,7 @@ export default function ProfilePageV2() {
             <Section title="RECENT SCANS">
               <div style={{ display:"grid", gap:2 }}>
                 {(showMoreScans ? scans : scans.slice(0,5)).map((s,i) => (
-                  <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 0", borderBottom:"1px solid rgba(255,255,255,0.05)", width:"100%", overflow:"hidden" }}>
-                    <span style={{ flex:1, fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const, minWidth:0 }}>{s.track_title || "Unknown"}</span>
-                    <span style={{ fontSize:11, color:"rgba(255,255,255,0.30)", flexShrink:0, letterSpacing:"0.02em", whiteSpace:"nowrap" as const }}>
-                      {s.result_type === "unreleased" ? "UNRELEASED" : "RELEASED"}
-                    </span>
-                  </div>
+                  <ScanCard key={i} scan={s} isUnreleased={s.result_type === "unreleased"} />
                 ))}
                 {scans.length > 5 && (
                   <button onClick={()=>setShowMoreScans(v=>!v)} style={showMoreBtn}>
