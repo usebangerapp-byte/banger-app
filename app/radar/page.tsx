@@ -5,6 +5,7 @@ import { useEffect, useState, useCallback } from "react"
 import { createSupabaseBrowser } from "@/lib/supabase/client"
 import PageHeader from "@/components/PageHeader"
 import MarqueeText from "@/components/MarqueeText"
+import SharedTrackRow from "@/components/TrackRow"
 import Link from "next/link"
 import { usePreviewIndex, PreviewButton, trackKey, trackHref } from "@/lib/preview"
 import { ui, C } from "@/lib/ui"
@@ -98,20 +99,8 @@ export default function RadarPage() {
           <section style={ui.section}>
             <div style={ui.label}>Hot right now</div>
             {data.hot ? (
-              <div style={{ padding: "16px 0 16px", display: "grid", gap: 6 }}>
-                <MarqueeText text={data.hot.track_title} style={{ fontSize: 21, fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.25 }} />
-                <div style={{ fontSize: 15, color: C.text2 }}>{data.hot.track_subtitle || "Unknown"}</div>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 6, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 13, color: C.text3 }}>
-                    {data.hot.scans} scans this week
-                  </span>
-                  <FollowBtn title={data.hot.track_title} subtitle={data.hot.track_subtitle || ""}
-                    followed={followed} loading={followLoading} onToggle={toggleFollow} />
-                  {previews.get(trackKey(data.hot.track_title)) && (
-                    <PreviewButton id={`radar-hot-${data.hot.track_title}`} snippetPath={previews.get(trackKey(data.hot.track_title))!} />
-                  )}
-                </div>
-              </div>
+              <SharedTrackRow rank={1} title={data.hot.track_title} artist={data.hot.track_subtitle || ""}
+                meta={`${data.hot.scans} scan${data.hot.scans === 1 ? "" : "s"} this week`} last />
             ) : (
               <div style={ui.empty}>Nothing scanned this week yet. Be first.</div>
             )}
@@ -124,8 +113,8 @@ export default function RadarPage() {
               <div style={ui.empty}>Nothing yet.</div>
             ) : (<>
               {(showMoreTrending ? data.trending : data.trending.slice(0, 3)).map((t, i) => (
-                <TrackRow key={i} rank={i + 2} title={t.track_title} subtitle={t.track_subtitle || ""}
-                  meta={`${t.scans} scans`} snippet={previews.get(trackKey(t.track_title))} followed={followed} loading={followLoading} onToggle={toggleFollow} />
+                <SharedTrackRow key={i} rank={i + 2} title={t.track_title} artist={t.track_subtitle || ""}
+                  meta={`${t.scans} scan${t.scans === 1 ? "" : "s"}`} last={!(data.trending.length > 3) && i === Math.min(3, data.trending.length) - 1} />
               ))}
               {data.trending.length > 3 && (
                 <button onClick={() => setShowMoreTrending(v => !v)} style={ui.more}>
@@ -142,8 +131,8 @@ export default function RadarPage() {
               <div style={ui.empty}>No followers yet — be the first to follow a track.</div>
             ) : (<>
               {(showMoreWanted ? data.mostWanted : data.mostWanted.slice(0, 3)).map((t, i) => (
-                <TrackRow key={i} rank={i + 1} title={t.track_title} subtitle={t.track_subtitle || ""}
-                  meta={`${t.followers} following`} snippet={previews.get(trackKey(t.track_title))} followed={followed} loading={followLoading} onToggle={toggleFollow} />
+                <SharedTrackRow key={i} rank={i + 1} title={t.track_title} artist={t.track_subtitle || ""}
+                  meta={`${t.followers} following`} last={!(data.mostWanted.length > 3) && i === Math.min(3, data.mostWanted.length) - 1} />
               ))}
               {data.mostWanted.length > 3 && (
                 <button onClick={() => setShowMoreWanted(v => !v)} style={ui.more}>
@@ -156,23 +145,6 @@ export default function RadarPage() {
         </>)}
       </div>
     </main>
-  )
-}
-
-function TrackRow({ rank, title, subtitle, meta, snippet, followed, loading, onToggle }: {
-  rank: number; title: string; subtitle: string; meta: string; snippet?: string
-  followed: Set<string>; loading: Set<string>; onToggle: (t: string, s: string) => void
-}) {
-  return (
-    <div style={ui.row}>
-      <span style={ui.rank}>{rank}</span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <MarqueeText text={title} style={ui.rowTitle} />
-        <Link href={trackHref(title, subtitle)} style={{ ...ui.rowSub, display: "block", textDecoration: "none" }}>{subtitle}{subtitle ? " · " : ""}{meta} <span style={{ color: C.gold }}>›</span></Link>
-      </div>
-      {snippet && <PreviewButton compact id={`radar-${rank}-${title}`} snippetPath={snippet} />}
-      <FollowBtn title={title} subtitle={subtitle} followed={followed} loading={loading} onToggle={onToggle} />
-    </div>
   )
 }
 

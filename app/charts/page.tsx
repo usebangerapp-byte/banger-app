@@ -3,6 +3,7 @@
 import { authFetch } from "@/lib/authFetch";
 import { useEffect, useMemo, useState } from "react";
 import MarqueeText from "@/components/MarqueeText";
+import SharedTrackRow from "@/components/TrackRow";
 import { trackHref } from "@/lib/preview";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import PageHeader from "@/components/PageHeader";
@@ -281,77 +282,11 @@ export default function ChartsPage() {
               ? (lowerTitle.startsWith(lowerArtist + " - ") ? titleText : `${artistText} - ${titleText}`)
               : (titleText || artistText || "Untitled");
 
+          // Same row as everywhere: ▶ · title/artist · Follow over Info
+          const cleanTitle = artistText && lowerTitle.startsWith(lowerArtist + " - ") ? titleText.slice(artistText.length + 3).trim() : (titleText || displayLine);
           return (
-            <div key={track.id} style={rowStyle}>
-              <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-                <span style={{ ...ui.rank, paddingTop: 1 }}>{index + 1}</span>
-
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  {/* One line — tap to scroll the full title, tap another to stop */}
-                  <MarqueeText text={displayLine} style={{ fontSize: 16, fontWeight: 600, letterSpacing: "-0.01em" }} />
-
-                  {/* Meta line */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-                    <Link href={trackHref(titleText || displayLine, artistText)} aria-label="Open track" style={{ order: 99, marginLeft: "auto", ...{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:30, height:30, borderRadius:"50%", flexShrink:0, background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.12)", color:"rgba(255,255,255,0.6)", textDecoration:"none", fontSize:16 } }}>›</Link>
-                    {canPreview && (
-                      <button type="button" onClick={() => {
-                        let audio = (window as any)._bangerAudio as HTMLAudioElement | undefined;
-                        if (!audio) { audio = new Audio(); audio.preload = "none"; (window as any)._bangerAudio = audio; }
-                        if (!audio) return;
-                        const nextSrc = previewUrl(track.snippet_path!);
-                        const currentTrackId = (window as any)._bangerAudioTrackId || null;
-                        if (currentTrackId !== track.id) {
-                          audio.pause(); audio.currentTime = 0; audio.src = nextSrc;
-                          (window as any)._bangerAudioTrackId = track.id;
-                          audio.onplay = () => setPlaying(track.id);
-                          audio.onpause = () => setPlaying((c) => c === track.id ? null : c);
-                          audio.onended = () => setPlaying((c) => c === track.id ? null : c);
-                        }
-                        if (audio.paused) { audio.play().then(() => setPlaying(track.id)).catch(() => {}); }
-                        else { audio.pause(); setPlaying(null); }
-                      }} style={previewInlineBtn}>
-                        {isPlaying ? "❚❚" : "▶"} {isPlaying ? "Stop" : "Preview"}
-                      </button>
-                    )}
-
-                    {kind === "released" && (() => {
-                      const q = encodeURIComponent(`${track.artist || ""} ${track.title || ""}`.trim());
-                      return <>
-                        <a href={track.spotify_url || `https://open.spotify.com/search/${q}`} target="_blank" rel="noreferrer" style={ui.pillSmall}>
-                          <SpotifyLogo /> Spotify
-                        </a>
-                        <a href={track.beatport_url || `https://www.beatport.com/search?q=${q}`} target="_blank" rel="noreferrer" style={ui.pillSmall}>
-                          <BeatportLogo /> Beatport
-                        </a>
-                      </>;
-                    })()}
-
-                    {kind === "unreleased" && (() => {
-                      const titleKey = trackKey(track.title || "");
-                      const isFollowing = followedTitles.has(titleKey);
-                      return (
-                        <button type="button" disabled={!userId}
-                          onClick={async () => {
-                            if (!userId) { showToast("Sign in to follow tracks"); return; }
-                            const action = isFollowing ? "unfollow" : "follow";
-                            const res = await authFetch("/api/follow-track", {
-                              method: "POST", headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ action, user_id: userId, track_title: track.title || "", track_subtitle: (track.artist || "").trim() || null }),
-                            });
-                            const json = await res.json().catch(() => null);
-                            if (json?.ok) {
-                              setFollowedTitles(prev => { const next = new Set(prev); if (action === "follow") next.add(titleKey); else next.delete(titleKey); return next; });
-                              if (action === "follow") showToast("Following! You'll be notified when it drops 🔔");
-                            }
-                          }}
-                          style={isFollowing ? { ...ui.pillSmall, color: C.text3 } : { ...ui.pillSmall, color: C.gold, background: "rgba(245,207,104,0.12)", borderColor: "rgba(245,207,104,0.30)" }}>
-                          {isFollowing ? "Following ✓" : "+ Follow"}
-                        </button>
-                      );
-                    })()}
-                  </div>
-                </div>
-              </div>
+            <div key={track.id} style={{ ...rowStyle, padding: "0 14px" }}>
+              <SharedTrackRow rank={index + 1} title={cleanTitle} artist={artistText} last />
             </div>
           );
         })}

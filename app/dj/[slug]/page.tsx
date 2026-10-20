@@ -8,6 +8,7 @@ import { SkeletonTrackRow, SkeletonStyles } from "@/components/Skeleton";
 import { PeopleSheet } from "@/components/People";
 import { ui, C, glass, tag, TAG_TEXT } from "@/lib/ui";
 import MarqueeText from "@/components/MarqueeText";
+import SharedTrackRow from "@/components/TrackRow";
 import Link from "next/link";
 import { trackHref } from "@/lib/preview";
 
@@ -209,13 +210,7 @@ export default function DJProfilePage() {
           <div style={{ ...ui.section, paddingBottom: 4 }}>
             <div style={secTitle}>Tracks</div>
             {(showAllTracks ? tracks : tracks.slice(0, 3)).map(t => (
-              <div key={t.id} style={trackRow}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <MarqueeText text={t.title || "Untitled"} style={ui.rowTitle} />
-                  <Link href={trackHref(t.title || "", t.artist)} style={{ ...ui.rowSub, display: "block", textDecoration: "none" }}>{t.artist || "Open"} <span style={{ color: C.gold }}>›</span></Link>
-                </div>
-                <span style={tag(t.is_released ? "rel" : "unrel")}>{t.is_released ? TAG_TEXT.rel : TAG_TEXT.unrel}</span>
-              </div>
+              <SharedTrackRow key={t.id} title={t.title || "Untitled"} artist={t.artist} meta={t.is_released ? TAG_TEXT.rel : TAG_TEXT.unrel} />
             ))}
             {tracks.length > 3 && (
               <button onClick={() => setShowAllTracks(v => !v)} style={moreBtn}>

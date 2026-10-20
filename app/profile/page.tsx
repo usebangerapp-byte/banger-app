@@ -11,6 +11,7 @@ import PageHeader from "@/components/PageHeader";
 import { PeopleSearch, PeopleSheet } from "@/components/People";
 import { ui, C, glass, tag, TAG_TEXT } from "@/lib/ui";
 import MarqueeText from "@/components/MarqueeText";
+import TrackRow from "@/components/TrackRow";
 import { usePreviewIndex, PreviewButton, trackKey, trackHref } from "@/lib/preview";
 import Link from "next/link";
 import { Skeleton, SkeletonTrackRow, SkeletonStyles } from "@/components/Skeleton";
@@ -663,18 +664,8 @@ export default function ProfilePageV2() {
             <Section title="Recent scans">
               <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:2 }}>
                 {(showMoreScans ? scans : scans.slice(0,3)).map((s,i) => (
-                  <div key={i} style={{ display:"flex", alignItems:"center", gap:12, padding:"13px 0", borderBottom:`1px solid ${C.lineSoft}`, width:"100%", overflow:"hidden" }}>
-                    <div style={{ flex:1, minWidth:0, overflow:"hidden" }}>
-                      <MarqueeText text={s.track_title || "Unknown"} style={ui.rowTitle} />
-                      <Link href={trackHref(s.track_title || "", s.track_subtitle)} style={{ ...ui.rowSub, display:"block", textDecoration:"none" }}>{s.track_subtitle || "Open"} <span style={{ color:C.gold }}>›</span></Link>
-                    </div>
-                    {previews.get(trackKey(s.track_title || "")) && (
-                      <PreviewButton compact id={`scan-${i}-${s.track_title}`} snippetPath={previews.get(trackKey(s.track_title || ""))!} />
-                    )}
-                    <span style={tag(s.result_type === "recognized_unreleased" ? "unrel" : "rel")}>
-                      {s.result_type === "recognized_unreleased" ? TAG_TEXT.unrel : TAG_TEXT.rel}
-                    </span>
-                  </div>
+                  <TrackRow key={i} title={s.track_title || "Unknown"} artist={s.track_subtitle}
+                    meta={s.result_type === "recognized_unreleased" ? TAG_TEXT.unrel : TAG_TEXT.rel} />
                 ))}
                 {scans.length > 3 && (
                   <button onClick={()=>setShowMoreScans(v=>!v)} style={showMoreBtn}>
@@ -690,16 +681,9 @@ export default function ProfilePageV2() {
             <Section title="Followed tracks">
               <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:2 }}>
                 {(showMoreFollows ? follows : follows.slice(0,3)).map((f,i) => (
-                  <div key={i} style={{ display:"flex", alignItems:"center", gap:12, padding:"13px 0", borderBottom:`1px solid ${C.lineSoft}`, width:"100%", overflow:"hidden" }}>
-                    <div style={{ flex:1, minWidth:0 }}><MarqueeText text={f.track_title || "Unknown"} style={ui.rowTitle} />
-                      <Link href={trackHref(f.track_title || "", f.track_subtitle)} style={{ ...ui.rowSub, display:"block", textDecoration:"none" }}>{f.track_subtitle || "Open"} <span style={{ color:C.gold }}>›</span></Link></div>
-                    {previews.get(trackKey(f.track_title || "")) && (
-                      <PreviewButton compact id={`follow-${i}-${f.track_title}`} snippetPath={previews.get(trackKey(f.track_title || ""))!} />
-                    )}
-                    <span style={tag(f.is_released ? "rel" : "neutral")}>
-                      {f.is_released ? "Out now" : "Waiting"}
-                    </span>
-                  </div>
+                  <TrackRow key={f.track_title || i} title={f.track_title || "Unknown"} artist={f.track_subtitle}
+                    meta={f.is_released ? "Out now" : "Waiting"}
+                    onFollowChange={(on) => { if (!on) setFollows((p: any[]) => p.filter((x: any) => x.track_title !== f.track_title)); }} />
                 ))}
                 {follows.length > 3 && (
                   <button onClick={()=>setShowMoreFollows(v=>!v)} style={showMoreBtn}>
