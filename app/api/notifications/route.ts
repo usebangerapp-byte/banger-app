@@ -10,7 +10,8 @@ export async function GET(req: Request) {
   if (!user) return Response.json({ ok: false, notifications: [] }, { status: 401 });
 
   // Every account gets its welcome notification once, whatever path it signed up through
-  await notifyOnce(sb, user.id, "welcome", WELCOME_MESSAGE, WELCOME_TITLE).catch(() => {});
+  const welcomeError = await notifyOnce(sb, user.id, "welcome", WELCOME_MESSAGE, WELCOME_TITLE)
+    .catch((e: any) => `welcome: ${e?.message || e}`);
 
   let { data, error } = await sb.from("notifications")
     .select("id,type,message,track_title,actor_id,count,created_at,read")
@@ -24,7 +25,8 @@ export async function GET(req: Request) {
       .order("created_at", { ascending: false }).limit(30) as any);
   }
   if (error) return Response.json({ ok: false, error: error.message, notifications: [] }, { status: 500 });
-  return Response.json({ ok: true, notifications: data || [] });
+  // `diag` is shown discreetly in the bell panel when something is wrong in the database
+  return Response.json({ ok: true, notifications: data || [], diag: welcomeError || null });
 }
 
 // POST { action: "read", id? }  → mark one (or all) as read

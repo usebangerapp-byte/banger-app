@@ -13,6 +13,7 @@ export default function TopBar() {
   const [showNotifs,     setShowNotifs]     = useState(false);
   const [notifCount,     setNotifCount]     = useState(0);
   const [notifs,         setNotifs]         = useState<any[]>([]);
+  const [notifDiag,      setNotifDiag]      = useState<string>("");
   const [plan,           setPlan]           = useState<string>("Free");
   const [email,          setEmail]          = useState<string>("");
   const [userId,         setUserId]         = useState<string>("");
@@ -52,12 +53,14 @@ export default function TopBar() {
   const loadNotifs = useCallback(async () => {
     try {
       const res = await authedFetch("/api/notifications", { cache: "no-store" });
-      if (!res || !res.ok) return;
-      const j = await res.json();
+      if (!res) { setNotifDiag("no session"); return; }
+      const j = await res.json().catch(() => null);
+      if (!res.ok) { setNotifDiag(`HTTP ${res.status}${j?.error ? ` — ${j.error}` : ""}`); return; }
       const list = Array.isArray(j?.notifications) ? j.notifications : [];
       setNotifs(list);
       setNotifCount(list.length);
-    } catch {}
+      setNotifDiag(j?.diag || "");
+    } catch (e: any) { setNotifDiag(e?.message || "network error"); }
   }, [authedFetch]);
 
   useEffect(() => { loadNotifs(); }, [pathname, loadNotifs]);
@@ -138,7 +141,14 @@ export default function TopBar() {
             <button onClick={() => setShowNotifs(false)} style={closeBtn}>✕</button>
           </div>
           {notifs.length === 0 ? (
-            <div style={{ fontSize:13, color:"rgba(255,255,255,0.35)", padding:"8px 0", letterSpacing:"0.03em" }}>Nothing new.</div>
+            <div style={{ display:"grid", gap:6, padding:"8px 0" }}>
+              <div style={{ fontSize:13, color:"rgba(255,255,255,0.35)", letterSpacing:"0.03em" }}>Nothing new.</div>
+              {notifDiag && (
+                <div style={{ fontSize:10, color:"rgba(255,120,120,0.6)", fontFamily:"var(--font-geist-mono), monospace", overflowWrap:"anywhere" as const }}>
+                  {notifDiag}
+                </div>
+              )}
+            </div>
           ) : (<>
             <div style={{ display:"grid", gap:1 }}>
               {notifs.map(n => (

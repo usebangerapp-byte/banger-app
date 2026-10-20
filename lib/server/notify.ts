@@ -45,21 +45,28 @@ async function push(sb: SupabaseClient, row: Row) {
 }
 
 /** Insert a notification. If the optional actor_id/count columns are missing, retries without them. */
-async function insertNotification(sb: SupabaseClient, row: Row) {
+async function insertNotification(sb: SupabaseClient, row: Row): Promise<string | null> {
   const full = { ...row, read: false, count: 1 };
-  const { error } = await sb.from("notifications").insert([full]);
+  let { error } = await sb.from("notifications").insert([full]);
   if (error && /column/i.test(error.message)) {
     const { actor_id, ...basic } = row;
-    await sb.from("notifications").insert([{ ...basic, read: false }]);
+    ({ error } = await sb.from("notifications").insert([{ ...basic, read: false }]));
+  }
+  if (error) {
+    console.error("[notify] insert failed:", error.message);
+    return error.message;
   }
   await push(sb, row);
+  return null;
 }
 
 /** One-time notification per user and type (e.g. welcome). */
-export async function notifyOnce(sb: SupabaseClient, userId: string, type: string, message: string, title?: string) {
-  const { data } = await sb.from("notifications").select("id").eq("user_id", userId).eq("type", type).limit(1);
-  if (data?.length) return;
-  await insertNotification(sb, { user_id: userId, type, message, track_title: title || null });
+export async function notifyOnce(sb: SupabaseClient, userId: string, type: string, message: string, title?: string): Promise<string | null> {
+  const { data, error } = await sb.from("notifications").select("id").eq("user_id", userId).eq("type", type).limit(1);
+  if (error) return `read: ${error.message}`;
+  if (data?.length) return null;
+  const err = await insertNotification(sb, { user_id: userId, type, message, track_title: title || null });
+  return err ? `insert: ${err}` : null;
 }
 
 /** New message: one unread notification per sender, with a running count. */

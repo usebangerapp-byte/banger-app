@@ -5,18 +5,6 @@ import { createSupabaseBrowser } from "@/lib/supabase/client";
 
 const MONO = "var(--font-geist-mono), ui-monospace, monospace";
 
-const PLAN_FEATURES = [
-  { label: "Scan tracks",        sub: "Recognize songs in real time",          free: true,  pro: true },
-  { label: "Unlimited scans",    sub: "No daily cap",                          free: true,  pro: true },
-  { label: "Released charts",    sub: "The full released chart",               free: true,  pro: true },
-  { label: "Follow tracks",      sub: "Get notified the day an ID drops",      free: true,  pro: true },
-  { label: "Unreleased charts",  sub: "Free: top 3 — PRO: the full chart",     free: false, pro: true },
-  { label: "Upload your IDs",    sub: "Submit your unreleased tracks",         free: false, pro: true },
-  { label: "Priority in charts", sub: "Your tracks ranked first",              free: false, pro: true },
-  { label: "Scan statistics",    sub: "See how often you've been scanned",     free: false, pro: true },
-  { label: "Release control",    sub: "Flip UNREL → REL when you drop",        free: false, pro: true },
-  { label: "Audio snippet",      sub: "10s teaser before the release",         free: false, pro: true },
-];
 
 export default function SettingsPanel({ onClose }: { onClose: () => void }) {
   const [email, setEmail] = useState("");
@@ -82,76 +70,12 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
           <button onClick={onClose} aria-label="Close" style={closeBtn}>✕</button>
         </div>
 
-        {/* Account */}
+        {/* Notifications — first */}
         <section style={section}>
-          <div style={label}>ACCOUNT</div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-            <span style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {email || "—"}
-            </span>
-            <span style={isPro ? badgePro : badgeFree}>{isPro ? "✦ PRO" : "FREE"}</span>
-          </div>
-        </section>
-
-        {/* Plan */}
-        <section style={section}>
-          <div style={label}>CURRENT PLAN</div>
-          <div>
-            <div style={{ fontSize: 34, fontWeight: 900, letterSpacing: "-0.03em", lineHeight: 1 }}>
-              {isPro ? "✦ BANGER PRO" : "FREE"}
-            </div>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", marginTop: 10, lineHeight: 1.6 }}>
-              {isPro ? "€9.99 / month · every feature unlocked" : "Unlimited scans · top 3 unreleased · no uploads"}
-            </div>
-          </div>
-          {isPro ? (
-            <div style={{ display: "grid", gap: 10 }}>
-              <button onClick={openPortal} disabled={portalLoading} style={{ ...btnGhost, opacity: portalLoading ? 0.6 : 1 }}>
-                {portalLoading ? "Opening…" : "Manage subscription"}
-              </button>
-              <div style={hint}>Payment method, invoices, cancellation.</div>
-            </div>
-          ) : (
-            <div style={{ display: "grid", gap: 10 }}>
-              <button onClick={() => { onClose(); window.location.href = "/upgrade"; }} style={btnSolid}>
-                ✦ Upgrade to PRO — €9.99/mo
-              </button>
-              <div style={hint}>Full unreleased charts · upload your IDs · priority in charts</div>
-            </div>
-          )}
-        </section>
-
-        {/* What's included */}
-        <section style={section}>
-          <div style={label}>WHAT&apos;S INCLUDED</div>
-          <div>
-            {PLAN_FEATURES.map((f, i) => {
-              const active = isPro ? f.pro : f.free;
-              return (
-                <div key={f.label} style={{ ...featureRow, borderTop: i === 0 ? "none" : featureRow.borderTop }}>
-                  <span style={{ fontFamily: MONO, fontSize: 10, color: "rgba(255,255,255,0.25)", width: 22 }}>
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <div style={{ flex: 1, minWidth: 0, opacity: active ? 1 : 0.35 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700 }}>{f.label}</div>
-                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginTop: 3 }}>{f.sub}</div>
-                  </div>
-                  {active
-                    ? <span style={{ color: "rgba(29,185,84,0.9)", fontWeight: 900, fontSize: 12 }}>✓</span>
-                    : <span style={proTag}>PRO</span>}
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* Preferences */}
-        <section style={section}>
-          <div style={label}>PREFERENCES</div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={row}>
             <div>
-              <div style={{ fontSize: 14, fontWeight: 700 }}>Notifications</div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 3 }}>Messages, followers, releases</div>
+              <div style={rowTitle}>Notifications</div>
+              <div style={rowSub}>Messages, followers, releases</div>
             </div>
             <button onClick={toggleNotifs} aria-label="Toggle notifications" style={{
               width: 46, height: 26, borderRadius: 13, border: "none", cursor: "pointer", flexShrink: 0,
@@ -162,6 +86,28 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
                 transition: "left 0.2s", background: notifsEnabled ? "#000" : "rgba(255,255,255,0.55)",
               }} />
             </button>
+          </div>
+        </section>
+
+        {/* Account */}
+        <section style={section}>
+          <div style={label}>ACCOUNT</div>
+          <div style={row}>
+            <span style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {email || "—"}
+            </span>
+          </div>
+          <div style={row}>
+            <span style={isPro ? badgePro : badgeFree}>{isPro ? "✦ PRO" : "FREE"}</span>
+            {isPro ? (
+              <button onClick={openPortal} disabled={portalLoading} style={textLink}>
+                {portalLoading ? "Opening…" : "Manage subscription →"}
+              </button>
+            ) : (
+              <button onClick={() => { onClose(); window.location.href = "/upgrade"; }} style={textLink}>
+                Upgrade →
+              </button>
+            )}
           </div>
         </section>
 
@@ -181,7 +127,14 @@ const shell: React.CSSProperties = {
   padding: "calc(20px + env(safe-area-inset-top)) 22px calc(60px + env(safe-area-inset-bottom))",
   display: "grid", gap: 40,
 };
-const section: React.CSSProperties = { display: "grid", gap: 18 };
+const section: React.CSSProperties = { display: "grid", gap: 14 };
+const row: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, minWidth: 0 };
+const rowTitle: React.CSSProperties = { fontSize: 15, fontWeight: 700 };
+const rowSub: React.CSSProperties = { fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 3 };
+const textLink: React.CSSProperties = {
+  background: "none", border: "none", padding: 0, cursor: "pointer",
+  color: "rgba(255,255,255,0.7)", fontSize: 13, fontWeight: 700,
+};
 const eyebrow: React.CSSProperties = { fontFamily: MONO, fontSize: 12, fontWeight: 700, letterSpacing: "0.3em", color: "rgba(255,255,255,0.6)" };
 const label: React.CSSProperties = {
   fontFamily: MONO, fontSize: 10, fontWeight: 700, letterSpacing: "0.24em", color: "rgba(255,255,255,0.3)",
