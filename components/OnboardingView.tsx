@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 type Plan = "public" | "pro";
 
 // --- À ajuster facilement ---
-const CONTACT_EMAIL = "contact@usebangerapp.com";
+const CONTACT_EMAIL = "contact@usebanger.com";
 const PRO_PRICE = "€9.99 / mo"; // placeholder
 // ----------------------------
 

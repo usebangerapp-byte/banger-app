@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { notifyTrackReleased } from "@/lib/server/notify";
 export const runtime = "nodejs";
-const MB_UA = "BangerApp/1.0 (contact@usebangerapp.com)";
+const MB_UA = "BangerApp/1.0 (contact@usebanger.com)";
 
 function norm(s: string): string {
   return (s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim();

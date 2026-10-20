@@ -1,5 +1,5 @@
 import Link from "next/link";
-const CONTACT_EMAIL = "contact@usebangerapp.com";
+const CONTACT_EMAIL = "contact@usebanger.com";
 export default function ContactPage() {
   return (
     <main style={{ minHeight: "100vh", background: "#000", color: "#fff", padding: 24 }}>

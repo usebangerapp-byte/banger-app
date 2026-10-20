@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-const CONTACT_EMAIL = "contact@usebangerapp.com";
+const CONTACT_EMAIL = "contact@usebanger.com";
 const UPDATED = "October 20, 2026";
 
 export default function PrivacyPage() {
@@ -80,6 +80,14 @@ export default function PrivacyPage() {
           <p>
             We may collect anonymous usage data (features used, scan counts, session duration) to
             improve the product. This data is not linked to your identity.
+          </p>
+
+          <h3 style={s.h3}>Notifications</h3>
+          <p>
+            We store in-app notifications (new messages, new followers, releases of tracks you follow).
+            If you use the BANGER iOS app and allow push notifications, we also store your device&apos;s
+            push token, sent to Apple Push Notification service only to deliver these notifications.
+            You can turn notifications off in Settings or in your iPhone settings at any time.
           </p>
         </section>
 

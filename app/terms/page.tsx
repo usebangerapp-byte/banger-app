@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-const CONTACT_EMAIL = "contact@usebangerapp.com";
+const CONTACT_EMAIL = "contact@usebanger.com";
 const UPDATED = "October 20, 2026";
 
 export default function TermsPage() {
@@ -75,7 +75,7 @@ export default function TermsPage() {
 
           <h3 style={s.h3}>Cancellation &amp; refunds</h3>
           <p>
-            You may cancel your PRO subscription at any time from your profile settings. Cancellation
+            You may cancel your PRO subscription at any time from Settings (⚙ icon, top left). Cancellation
             takes effect at the end of the current billing period — you retain PRO access until then.
             We do not offer partial refunds for unused time, except where required by applicable law
             (including the 14-day withdrawal right under EU consumer law for digital services, if
