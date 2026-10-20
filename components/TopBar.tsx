@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
+import SettingsPanel from "@/components/SettingsPanel";
 
 const HIDDEN_PATHS = ["/", "/login", "/unlock", "/onboarding", "/auth/callback", "/privacy", "/terms", "/contact"];
 
@@ -126,44 +127,8 @@ export default function TopBar() {
       {/* Spacer so content doesn't hide under TopBar */}
       <div style={{ height: 52 }} />
 
-      {/* Settings panel — 3 lignes */}
-      {showSettings && (
-        <div style={panelStyle}>
-          <button onClick={() => setShowSettings(false)} style={closeBtn}>✕</button>
-
-          {/* Ligne 1: email + plan */}
-          <div style={settingsRow}>
-            <span style={{ fontSize:13, color:"rgba(255,255,255,0.55)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const, maxWidth:"65%" }}>{email || "—"}</span>
-            <span style={{ fontSize:12, fontWeight:800, color: plan==="PRO" ? "#fff" : "rgba(255,255,255,0.40)",
-              border: plan==="PRO" ? "1px solid rgba(255,255,255,0.30)" : "1px solid rgba(255,255,255,0.12)",
-              borderRadius:999, padding:"3px 10px", flexShrink:0 }}>
-              {plan==="PRO" ? "✦ PRO" : "Free"}
-            </span>
-          </div>
-
-          {/* Ligne 2: Notifications toggle */}
-          <div style={settingsRow}>
-            <span style={{ fontSize:13, color:"rgba(255,255,255,0.55)" }}>Notifications</span>
-            <button onClick={async () => {
-              const next = !notifsEnabled; setNotifsEnabled(next);
-              const sb = createSupabaseBrowser();
-              if (sb && userId) await sb.from("profiles").update({ notifs_enabled: next }).eq("id", userId);
-            }} style={{ width:46, height:26, borderRadius:13, border:"none", cursor:"pointer", flexShrink:0,
-              background: notifsEnabled ? "#fff" : "rgba(255,255,255,0.15)",
-              position:"relative" as const, transition:"background 0.2s" }}>
-              <span style={{ position:"absolute" as const, top:3, left: notifsEnabled ? 23 : 3,
-                width:20, height:20, borderRadius:"50%", transition:"left 0.2s",
-                background: notifsEnabled ? "#000" : "rgba(255,255,255,0.55)" }}/>
-            </button>
-          </div>
-
-          {/* Ligne 3: Sign out */}
-          <button onClick={async () => { const sb = createSupabaseBrowser(); if (sb) await sb.auth.signOut(); window.location.href = "/"; }}
-            style={{ fontSize:14, fontWeight:700, color:"rgba(255,70,70,0.80)", background:"none", border:"none", cursor:"pointer", padding:"12px 0 2px", textAlign:"left" as const }}>
-            Sign out
-          </button>
-        </div>
-      )}
+      {/* Settings — full-screen panel */}
+      {showSettings && <SettingsPanel onClose={() => setShowSettings(false)} />}
 
       {/* Notifications panel */}
       {showNotifs && (
@@ -198,7 +163,7 @@ export default function TopBar() {
       )}
 
       {/* Backdrop */}
-      {(showSettings || showNotifs) && (
+      {showNotifs && (
         <div onClick={() => { setShowSettings(false); setShowNotifs(false); }} style={backdrop} />
       )}
     </>
