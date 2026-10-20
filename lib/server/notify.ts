@@ -46,8 +46,12 @@ async function push(sb: SupabaseClient, row: Row) {
 
 /** Insert a notification. If the optional actor_id/count columns are missing, retries without them. */
 async function insertNotification(sb: SupabaseClient, row: Row): Promise<string | null> {
-  const full = { ...row, read: false, count: 1 };
+  // Also fill the older "title"/"body" columns (title is NOT NULL in the live table).
+  const full = { ...row, title: row.track_title || "BANGER", body: row.message, read: false, count: 1 };
   let { error } = await sb.from("notifications").insert([full]);
+  if (error && /column/i.test(error.message)) {
+    ({ error } = await sb.from("notifications").insert([{ ...row, read: false, count: 1 }]));
+  }
   if (error && /column/i.test(error.message)) {
     const { actor_id, ...basic } = row;
     ({ error } = await sb.from("notifications").insert([{ ...basic, read: false }]));
