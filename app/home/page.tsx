@@ -8,6 +8,7 @@ import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { isNativeApp, nativeHaptic } from "@/lib/native";
 import { startOAuth } from "@/lib/oauth";
 import { ui, C, glass, tag as tagStyle, TAG_TEXT } from "@/lib/ui";
+import MarqueeText from "@/components/MarqueeText";
 import { startAudioMeter } from "@/lib/scan/audioMeter";
 import { mapRecognizeResult } from "@/lib/scan/resultState";
 import { getRegion } from "@/lib/scan/getRegion";
@@ -687,7 +688,7 @@ const region = await getRegion();
           {/* ── RESULT ── */}
           {title !== "—" && status === "idle" && (
             <div style={scanStyles.resultBlock}>
-              <div style={scanStyles.resultTitle}>{title}</div>
+              <MarqueeText text={title} style={scanStyles.resultTitle} />
               {subtitle ? <div style={scanStyles.resultSub}>{subtitle}</div> : null}
               <div style={{ display: "flex", justifyContent: "center", marginTop: 12 }}>
                 <span style={tagStyle(tag === "UNRELEASED" ? "unrel" : tag === "RELEASED" ? "rel" : "neutral")}>

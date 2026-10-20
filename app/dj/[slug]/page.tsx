@@ -7,6 +7,7 @@ import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { SkeletonTrackRow, SkeletonStyles } from "@/components/Skeleton";
 import { PeopleSheet } from "@/components/People";
 import { ui, C, glass, tag, TAG_TEXT } from "@/lib/ui";
+import MarqueeText from "@/components/MarqueeText";
 
 type Profile = {
   id: string; email: string; display_name: string | null;
@@ -206,7 +207,7 @@ export default function DJProfilePage() {
             {(showAllTracks ? tracks : tracks.slice(0, 3)).map(t => (
               <div key={t.id} style={trackRow}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={ui.rowTitle}>{t.title || "Untitled"}</div>
+                  <MarqueeText text={t.title || "Untitled"} style={ui.rowTitle} />
                   {t.artist && <div style={ui.rowSub}>{t.artist}</div>}
                 </div>
                 <span style={tag(t.is_released ? "rel" : "unrel")}>{t.is_released ? TAG_TEXT.rel : TAG_TEXT.unrel}</span>

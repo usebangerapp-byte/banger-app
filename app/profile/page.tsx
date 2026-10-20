@@ -10,6 +10,8 @@ import { getBrowserRole } from "@/lib/auth/getBrowserRole";
 import PageHeader from "@/components/PageHeader";
 import { PeopleSearch, PeopleSheet } from "@/components/People";
 import { ui, C, glass, tag, TAG_TEXT } from "@/lib/ui";
+import MarqueeText from "@/components/MarqueeText";
+import { usePreviewIndex, PreviewButton, trackKey } from "@/lib/preview";
 import { Skeleton, SkeletonTrackRow, SkeletonStyles } from "@/components/Skeleton";
 
 // ── Custom inline audio player ──
@@ -161,6 +163,7 @@ export default function ProfilePageV2() {
   const [saving,   setSaving]   = useState(false);
   const [follows,  setFollows]  = useState<any[]>([]);
   const [scans,    setScans]    = useState<any[]>([]);
+  const previews = usePreviewIndex();
   const [tracks,   setTracks]   = useState<any[]>([]);
   const [sparkData,setSparkData]= useState<number[]>([]);
   const [topScan,  setTopScan]  = useState<{ title: string; subtitle?: string; n: number } | null>(null);
@@ -616,9 +619,12 @@ export default function ProfilePageV2() {
                 {(showMoreScans ? scans : scans.slice(0,3)).map((s,i) => (
                   <div key={i} style={{ display:"flex", alignItems:"center", gap:12, padding:"13px 0", borderBottom:`1px solid ${C.lineSoft}`, width:"100%", overflow:"hidden" }}>
                     <div style={{ flex:1, minWidth:0, overflow:"hidden" }}>
-                      <div style={ui.rowTitle}>{s.track_title || "Unknown"}</div>
+                      <MarqueeText text={s.track_title || "Unknown"} style={ui.rowTitle} />
                       {s.track_subtitle && <div style={ui.rowSub}>{s.track_subtitle}</div>}
                     </div>
+                    {previews.get(trackKey(s.track_title || "")) && (
+                      <PreviewButton id={`scan-${i}-${s.track_title}`} snippetPath={previews.get(trackKey(s.track_title || ""))!} />
+                    )}
                     <span style={tag(s.result_type === "recognized_unreleased" ? "unrel" : "rel")}>
                       {s.result_type === "recognized_unreleased" ? TAG_TEXT.unrel : TAG_TEXT.rel}
                     </span>
@@ -639,7 +645,10 @@ export default function ProfilePageV2() {
               <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:2 }}>
                 {(showMoreFollows ? follows : follows.slice(0,3)).map((f,i) => (
                   <div key={i} style={{ display:"flex", alignItems:"center", gap:12, padding:"13px 0", borderBottom:`1px solid ${C.lineSoft}`, width:"100%", overflow:"hidden" }}>
-                    <span style={{ ...ui.rowTitle, flex:1, minWidth:0 }}>{f.track_title || "Unknown"}</span>
+                    <div style={{ flex:1, minWidth:0 }}><MarqueeText text={f.track_title || "Unknown"} style={ui.rowTitle} /></div>
+                    {previews.get(trackKey(f.track_title || "")) && (
+                      <PreviewButton id={`follow-${i}-${f.track_title}`} snippetPath={previews.get(trackKey(f.track_title || ""))!} />
+                    )}
                     <span style={tag(f.is_released ? "rel" : "neutral")}>
                       {f.is_released ? "Out now" : "Waiting"}
                     </span>
@@ -661,7 +670,7 @@ export default function ProfilePageV2() {
                 {(showMoreTracks ? tracks : tracks.slice(0,3)).map((t) => (
                   <div key={t.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"16px 0", borderBottom:`1px solid ${C.lineSoft}` }}>
                     <div style={{ flex:1, minWidth:0, overflow:"hidden" }}>
-                      <div style={ui.rowTitle}>{t.title}</div>
+                      <MarqueeText text={t.title || "Untitled"} style={ui.rowTitle} />
                       {t.artist && <div style={ui.rowSub}>{t.artist}</div>}
                     </div>
                     <button

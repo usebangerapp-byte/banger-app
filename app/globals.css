@@ -41,3 +41,10 @@ body::before {
 .show-more-toggle .show-less-label { display: none; }
 .show-more-toggle[open] .show-more-label { display: none; }
 .show-more-toggle[open] .show-less-label { display: inline; }
+
+/* Tap-to-read titles (components/MarqueeText) */
+@keyframes banger-marquee {
+  0%, 12%  { transform: translateX(0); }
+  50%, 62% { transform: translateX(var(--marquee-dist, 0px)); }
+  100%     { transform: translateX(0); }
+}
