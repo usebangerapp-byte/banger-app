@@ -232,6 +232,27 @@ export default function Home() {
   const meterStopRef = useRef<(() => void) | null>(null);
 
   const busy = status !== "idle";
+
+  // Size the scan button from the space actually left between the top bar (52px)
+  // and the bottom nav (96px), keeping room for the status line and the result.
+  const [btnScale, setBtnScale] = useState(1.3);
+  useEffect(() => {
+    const fit = () => {
+      const vh = window.visualViewport?.height || window.innerHeight;
+      const avail = vh - 52 - 96;
+      const byWidth = (window.innerWidth - 40) / 240; // the visible speaker, the soft halo may bleed off-screen
+      const byHeight = (avail - 170) / 235;
+      setBtnScale(Math.max(0.9, Math.min(1.55, byWidth, byHeight)));
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    window.visualViewport?.addEventListener("resize", fit);
+    return () => {
+      window.removeEventListener("resize", fit);
+      window.visualViewport?.removeEventListener("resize", fit);
+    };
+  }, []);
+  const [pressed, setPressed] = useState(false);
   const listening = status === "listening";
   const recognizing = status === "recognizing";
 
@@ -590,6 +611,14 @@ const region = await getRegion();
           15%  { opacity: 0.7; transform: scale(1.0); }
           100% { opacity: 0; transform: scale(1.4); }
         }
+        @keyframes idleBreath {
+          0%,100% { opacity: 0.10; transform: scale(0.98); }
+          50%     { opacity: 0.34; transform: scale(1.03); }
+        }
+        @keyframes ripple {
+          0%   { opacity: 0.55; transform: scale(0.66); }
+          100% { opacity: 0;    transform: scale(1.0); }
+        }
         @keyframes fadeUp {
           0%   { opacity: 0; transform: translateY(10px); }
           100% { opacity: 1; transform: translateY(0); }
@@ -599,13 +628,25 @@ const region = await getRegion();
       <div style={scanStyles.phone}>
 
         <div style={scanStyles.center}>
-          <div style={{ ...scanStyles.haloWrap }}>
+          <div style={{ width: "100%", height: 235 * btnScale, position: "relative", flexShrink: 0 }}>
+          <div style={{ ...scanStyles.haloWrap, position: "absolute", left: "50%", top: "50%",
+            transform: `translate(-50%, -50%) scale(${btnScale})` }}>
 
             {/* ── HALO AMBIANT (toujours présent, pas de position absolue + translate) ── */}
             {/* Rendu via SVG pour zéro problème de centrage */}
             <svg style={{ position:"absolute", inset:0, pointerEvents:"none", zIndex:0 }}
               width="300" height="300" viewBox="0 0 300 300">
-              {/* Idle : rien — woofer seul */}
+              {/* Idle : anneau doré qui respire — invite à appuyer */}
+              {status === "idle" && !success && (
+                <circle cx="150" cy="150" r="112" fill="none" stroke="rgba(230,180,60,0.9)" strokeWidth="1.5"
+                  style={{ transformOrigin: "150px 150px", animation: "idleBreath 3.2s ease-in-out infinite" }}/>
+              )}
+              {/* Listening : ondes qui partent du haut-parleur */}
+              {listening && [0, 0.55, 1.1].map((d) => (
+                <circle key={d} cx="150" cy="150" r="146" fill="none"
+                  stroke={`rgba(255,200,60,${0.35 + audioLevel * 0.5})`} strokeWidth="1.5"
+                  style={{ transformOrigin: "150px 150px", animation: `ripple 1.65s ease-out ${d}s infinite` }}/>
+              ))}
               {/* Listening : aura réactive (rendu via filter + opacité) */}
               {listening && (<>
                 <defs>
@@ -660,10 +701,14 @@ const region = await getRegion();
             <button
               onClick={startListening}
               disabled={busy}
+              onPointerDown={() => setPressed(true)}
+              onPointerUp={() => setPressed(false)}
+              onPointerLeave={() => setPressed(false)}
+              aria-label="Scan the music playing around you"
               style={{
                 ...scanStyles.button3D,
                 opacity: busy ? 0.92 : 1,
-                transform: busy ? "translateY(1px)" : success ? "translateY(0px)" : "translateY(0px)",
+                transform: pressed && !busy ? "scale(0.96)" : busy ? "translateY(1px)" : "translateY(0px)",
                 boxShadow: listening
                   ? `0 0 ${40 + audioLevel * 60}px rgba(212,160,23,${0.25 + audioLevel * 0.45}), ` +
                     "0 18px 60px rgba(0,0,0,0.85)"
@@ -704,6 +749,7 @@ const region = await getRegion();
               <WooferSVG audioLevel={audioLevel} listening={listening} />
             </button>
           </div>
+          </div>
 
           <div style={scanStyles.status}>
             {status === "idle" ? "DROP IT" : null}
@@ -737,6 +783,12 @@ const region = await getRegion();
               }}>
                 {tag}
               </div>
+              {(spotifyUrl || beatportUrl) && (
+                <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 10 }}>
+                  {spotifyUrl && <a href={spotifyUrl} target="_blank" rel="noreferrer" style={scanStyles.resultLink}>Spotify</a>}
+                  {beatportUrl && <a href={beatportUrl} target="_blank" rel="noreferrer" style={{ ...scanStyles.resultLink, color: "rgba(0,229,255,0.85)" }}>Beatport</a>}
+                </div>
+              )}
             </div>
           )}
         </div>{/* end center */}
@@ -748,7 +800,8 @@ const region = await getRegion();
 
 const scanStyles: Record<string, CSSProperties> = {
   page: {
-    height: "100vh",
+    height: "calc(100dvh - 148px)", // 52px top bar + 96px bottom nav
+    minHeight: 420,
     overflow: "hidden",
     touchAction: "none",
     overscrollBehavior: "none",
@@ -787,7 +840,7 @@ const scanStyles: Record<string, CSSProperties> = {
     gap: 14,
     paddingLeft: 20,
     paddingRight: 20,
-    paddingBottom: 80, /* BottomNav height */
+    paddingBottom: 0,
     overflow: "hidden",
   },
   haloWrap: {
@@ -1118,10 +1171,14 @@ const scanStyles: Record<string, CSSProperties> = {
     letterSpacing: 0.4,
     textAlign: "center" as const,
   },
+  resultLink: {
+    fontSize: 11, fontWeight: 700, color: "rgba(29,185,84,0.9)", textDecoration: "none",
+    border: "1px solid rgba(255,255,255,0.12)", borderRadius: 999, padding: "4px 10px",
+  },
   resultBlock: {
     textAlign: "center" as const,
-    paddingTop: 4,
-    maxWidth: 280,
+    paddingTop: 0,
+    maxWidth: 300,
     animation: "fadeUp 0.35s ease-out",
   },
   resultTitle: {

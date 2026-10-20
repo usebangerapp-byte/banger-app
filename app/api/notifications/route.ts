@@ -9,6 +9,9 @@ export async function GET(req: Request) {
   const user = await userFromRequest(sb, req);
   if (!user) return Response.json({ ok: false, notifications: [] }, { status: 401 });
 
+  // Every account gets its welcome notification once, whatever path it signed up through
+  await notifyOnce(sb, user.id, "welcome", WELCOME_MESSAGE, WELCOME_TITLE).catch(() => {});
+
   let { data, error } = await sb.from("notifications")
     .select("id,type,message,track_title,actor_id,count,created_at,read")
     .eq("user_id", user.id).eq("read", false)
