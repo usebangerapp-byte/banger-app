@@ -6,9 +6,10 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const slug    = searchParams.get("slug")    || "";
   const user_id = searchParams.get("user_id") || "";
-  const query = slug
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug);
+  const query = slug && !isUuid
     ? sb.from("profiles").select("id,email,display_name,bio,genre,instagram,soundcloud,role,avatar_url").ilike("display_name", slug).limit(1)
-    : sb.from("profiles").select("id,email,display_name,bio,genre,instagram,soundcloud,role,avatar_url").eq("id", user_id).limit(1);
+    : sb.from("profiles").select("id,email,display_name,bio,genre,instagram,soundcloud,role,avatar_url").eq("id", isUuid ? slug : user_id).limit(1);
   const { data, error } = await query.maybeSingle();
   if (error || !data) return Response.json({ ok: false, error: "Profile not found" }, { status: 404 });
   const profileId = data.id;

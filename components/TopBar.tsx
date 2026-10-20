@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 
@@ -8,7 +8,6 @@ const HIDDEN_PATHS = ["/", "/login", "/unlock", "/onboarding", "/auth/callback",
 
 export default function TopBar() {
   const pathname = usePathname();
-  if (HIDDEN_PATHS.includes(pathname)) return null;
   const [showSettings,   setShowSettings]   = useState(false);
   const [showNotifs,     setShowNotifs]     = useState(false);
   const [notifCount,     setNotifCount]     = useState(0);
@@ -36,15 +35,52 @@ export default function TopBar() {
           if (p?.genre) setGenre(p.genre);
           if (p?.notifs_enabled === false) setNotifsEnabled(false);
         });
-      // fetch unread notifications with content
-      sb.from("notifications").select("id,message,type,track_title,created_at,read")
-        .eq("user_id", user.id).eq("read", false)
-        .order("created_at", { ascending: false }).limit(20)
-        .then(({ data: n }) => {
-          if (n) { setNotifs(n); setNotifCount(n.length); }
-        });
     });
   }, []);
+
+  // ── Notifications: loaded through the API, refreshed on every page change + every 30s ──
+  const authedFetch = useCallback(async (url: string, init?: RequestInit) => {
+    const sb = createSupabaseBrowser();
+    if (!sb) return null;
+    const { data } = await sb.auth.getSession();
+    const token = data?.session?.access_token;
+    if (!token) return null;
+    return fetch(url, { ...init, headers: { ...(init?.headers || {}), "Content-Type": "application/json", Authorization: `Bearer ${token}` } });
+  }, []);
+
+  const loadNotifs = useCallback(async () => {
+    try {
+      const res = await authedFetch("/api/notifications", { cache: "no-store" });
+      if (!res || !res.ok) return;
+      const j = await res.json();
+      const list = Array.isArray(j?.notifications) ? j.notifications : [];
+      setNotifs(list);
+      setNotifCount(list.length);
+    } catch {}
+  }, [authedFetch]);
+
+  useEffect(() => { loadNotifs(); }, [pathname, loadNotifs]);
+  useEffect(() => {
+    const t = window.setInterval(loadNotifs, 30000);
+    return () => window.clearInterval(t);
+  }, [loadNotifs]);
+
+  async function markRead(id?: string) {
+    await authedFetch("/api/notifications", { method: "POST", body: JSON.stringify({ action: "read", id }) }).catch(() => {});
+  }
+
+  function openNotif(n: any) {
+    markRead(n.id);
+    setNotifs(p => p.filter(x => x.id !== n.id));
+    setNotifCount(c => Math.max(0, c - 1));
+    setShowNotifs(false);
+    if (n.type === "message" && n.actor_id) window.location.href = `/profile?tab=messages&with=${n.actor_id}`;
+    else if (n.type === "message") window.location.href = "/profile?tab=messages";
+    else if (n.type === "follow" && n.actor_id) window.location.href = `/dj/${n.actor_id}`;
+    else if (n.type === "track_released" || n.type === "new_track") window.location.href = "/radar";
+  }
+
+  if (HIDDEN_PATHS.includes(pathname)) return null;
 
   return (
     <>
@@ -141,13 +177,7 @@ export default function TopBar() {
           ) : (<>
             <div style={{ display:"grid", gap:1 }}>
               {notifs.map(n => (
-                <div key={n.id} onClick={async () => {
-                  const sb = createSupabaseBrowser();
-                  if (sb) await sb.from("notifications").update({ read:true }).eq("id", n.id);
-                  setNotifs(p => p.filter(x => x.id !== n.id));
-                  setNotifCount(c => Math.max(0, c-1));
-                  if (n.type === "track_released" || n.type === "new_track") window.location.href = "/radar";
-                }} style={{ padding:"12px 0", borderBottom:"1px solid rgba(255,255,255,0.05)", cursor:"pointer" }}>
+                <div key={n.id} onClick={() => openNotif(n)} style={{ padding:"12px 0", borderBottom:"1px solid rgba(255,255,255,0.05)", cursor:"pointer" }}>
                   {n.track_title && (
                     <div style={{ fontSize:14, fontWeight:800, letterSpacing:"-0.01em", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{n.track_title}</div>
                   )}
@@ -158,8 +188,7 @@ export default function TopBar() {
               ))}
             </div>
             <button onClick={async () => {
-              const sb = createSupabaseBrowser();
-              if (sb && userId) await sb.from("notifications").update({read:true}).eq("user_id",userId).eq("read",false);
+              await markRead();
               setNotifs([]); setNotifCount(0); setShowNotifs(false);
             }} style={{ fontSize:11, color:"rgba(255,255,255,0.30)", background:"none", border:"none", cursor:"pointer", padding:"10px 0 2px", letterSpacing:"0.10em", fontWeight:700, textAlign:"left" as const }}>
               MARK ALL READ

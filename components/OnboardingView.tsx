@@ -76,6 +76,15 @@ export default function OnboardingView() {
           { id: user.id, email: user.email || null, role: "public", plan_selected_at: new Date().toISOString() },
           { onConflict: "id" }
         );
+        // One-time welcome notification (server side)
+        const { data: s } = await supabase.auth.getSession();
+        if (s?.session?.access_token) {
+          await fetch("/api/notifications", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${s.session.access_token}` },
+            body: JSON.stringify({ action: "welcome" }),
+          }).catch(() => {});
+        }
         router.replace("/home");
         return;
       }

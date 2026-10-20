@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { getBrowserRole } from "@/lib/auth/getBrowserRole";
 import PageHeader from "@/components/PageHeader";
+import { PeopleSearch, PeopleSheet } from "@/components/People";
 
 // ── Custom inline audio player ──
 // Gestionnaire global : une seule lecture à la fois
@@ -300,6 +301,19 @@ export default function ProfilePageV2() {
   const [convs,    setConvs]    = useState<any[]>([]);
   const [activeConv,setActiveConv]=useState<string|null>(null);
   const [convToDelete, setConvToDelete] = useState<string|null>(null);
+  const [pendingName, setPendingName] = useState<string>("");
+  const [peopleList, setPeopleList] = useState<"followers"|"following"|null>(null);
+
+  // Deep links: /profile?tab=messages&with=<userId>&name=<displayName>
+  useEffect(() => {
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      const t = sp.get("tab");
+      if (t === "messages" || t === "settings") setTab(t);
+      const w = sp.get("with");
+      if (w) { setTab("messages"); setActiveConv(w); setPendingName(sp.get("name") || ""); }
+    } catch {}
+  }, []);
   const [msgInput, setMsgInput] = useState("");
   const [uploading, setUploading] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -501,7 +515,7 @@ export default function ProfilePageV2() {
   }
 
   const name     = profile?.display_name || profile?.email?.split("@")[0] || "You";
-  const shareUrl = `https://usebanger.com/dj/${encodeURIComponent((profile?.display_name||"").toLowerCase().replace(/\s+/g,"-"))}`;
+  const shareUrl = `https://usebanger.com/dj/${userId}`;
 
   if (loading) return <main style={pageStyle}><div style={shellStyle}><div style={emptyStyle}>Loading…</div></div></main>;
 
@@ -586,13 +600,21 @@ export default function ProfilePageV2() {
             {/* Stats row — compact */}
             <div style={statsRow}>
               {[{l:"SCANS",v:scans.length},{l:"FOLLOWERS",v:profile?.follower_count||0},{l:"FOLLOWING",v:profile?.following_count||0},{l:"FOLLOWS",v:follows.length}].map(({l,v},i)=>(
-                <div key={l} style={{ textAlign:"center" as const, flex:1, minWidth:0, boxSizing:"border-box" as const, ...(i<3?{borderRight:"1px solid rgba(255,255,255,0.07)"}:{}) }}>
+                <div key={l}
+                  onClick={l==="FOLLOWERS" ? () => setPeopleList("followers") : l==="FOLLOWING" ? () => setPeopleList("following") : undefined}
+                  style={{ textAlign:"center" as const, flex:1, minWidth:0, boxSizing:"border-box" as const, cursor:(l==="FOLLOWERS"||l==="FOLLOWING")?"pointer":"default", ...(i<3?{borderRight:"1px solid rgba(255,255,255,0.07)"}:{}) }}>
                   <div style={{ fontSize:17, fontWeight:900, lineHeight:1 }}>{v}</div>
                   <div style={{ fontSize:7, color:"rgba(255,255,255,0.35)", letterSpacing:"0.06em", marginTop:3 }}>{l}</div>
                 </div>
               ))}
             </div>
           </div>
+
+          {/* ── FIND PEOPLE (discreet) ── */}
+          <PeopleSearch selfId={userId} />
+          {peopleList && userId && (
+            <PeopleSheet userId={userId} list={peopleList} onClose={() => setPeopleList(null)} />
+          )}
 
           {/* ── ACTION BUTTONS ── */}
           <div style={{ display:"grid", gap:10 }}>
@@ -755,7 +777,7 @@ export default function ProfilePageV2() {
               <button onClick={()=>setActiveConv(null)} style={backBtn}>← Back</button>
               {/* Conversation header */}
               <div style={{ textAlign:"center", fontSize:13, fontWeight:700, opacity:0.55, paddingBottom:4 }}>
-                {convs.find(c=>c.user_id===activeConv)?.display_name || activeConv?.slice(0,8)}
+                {convs.find(c=>c.user_id===activeConv)?.display_name || pendingName || activeConv?.slice(0,8)}
               </div>
               <div style={{ display:"grid", gap:6, maxHeight:"50vh", overflowY:"auto" as const }}>
                 {messages.map(msg=>{

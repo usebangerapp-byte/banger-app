@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
+import { notifyOnce, WELCOME_TITLE, WELCOME_MESSAGE } from "@/lib/server/notify";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,13 @@ export async function POST(req: Request) {
       pro_since:               isActive ? new Date().toISOString() : null,
       ...(isActive ? { plan_selected_at: new Date().toISOString() } : {}),
     }).eq("id", userId);
+
+    if (isActive) {
+      await notifyOnce(supabase, userId, "welcome", WELCOME_MESSAGE, WELCOME_TITLE).catch(() => {});
+      await notifyOnce(supabase, userId, "pro_welcome",
+        "Upload your IDs, unlock the full unreleased chart and see how your tracks move.",
+        "You're now BANGER PRO ✦").catch(() => {});
+    }
   }
 
   // ── Subscription annulée / expirée ──

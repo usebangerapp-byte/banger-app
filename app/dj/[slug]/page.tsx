@@ -140,10 +140,17 @@ export default function DJProfilePage() {
               </div>
             ))}
           </div>
-          {!isOwnProfile && myUserId && (
-            <button onClick={toggleFollow} disabled={followBusy} style={{ ...followBtnBase, background: following ? "rgba(255,255,255,0.08)" : "#fff", color: following ? "#fff" : "#000", border: following ? "1px solid rgba(255,255,255,0.2)" : "none" }}>
-              {followBusy ? "…" : following ? "Following ✓" : `Follow ${displayName}`}
-            </button>
+          {!isOwnProfile && myUserId && profile && (
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={toggleFollow} disabled={followBusy} style={following ? pillGhost : pillSolid}>
+                {followBusy ? "…" : following ? "Following ✓" : "+ Follow"}
+              </button>
+              <button
+                onClick={() => router.push(`/profile?tab=messages&with=${profile.id}&name=${encodeURIComponent(displayName)}`)}
+                style={pillGhost}>
+                ✉︎ Message
+              </button>
+            </div>
           )}
           {isOwnProfile && (
             <button onClick={() => router.push("/profile")} style={{ background:"none", border:"1px solid rgba(255,255,255,0.10)", borderRadius:14, padding:"11px 16px", color:"rgba(255,255,255,0.6)", fontSize:13, cursor:"pointer" }}>
@@ -173,28 +180,17 @@ export default function DJProfilePage() {
             ))}
           </div>
         )}
-
-        {!isOwnProfile && myUserId && (
-          <div style={sectionStyle}>
-            <div style={secTitle}>SEND A MESSAGE</div>
-            {msgSent ? (
-              <div style={{ fontSize:14, color:"#1db954" }}>Message sent ✓</div>
-            ) : (
-              <div style={{ display:"grid", gap:10 }}>
-                <textarea value={msgText} onChange={e => setMsgText(e.target.value)} placeholder={`Message ${displayName}…`} rows={3}
-                  style={{ width:"100%", padding:"12px", borderRadius:14, background:"#0d0d0d", border:"1px solid rgba(255,255,255,0.10)", color:"#fff", fontSize:14, resize:"none" as const }} />
-                <button onClick={sendMessage} disabled={!msgText.trim()||msgBusy}
-                  style={{ padding:"13px 16px", borderRadius:14, background:"#fff", color:"#000", fontWeight:800, fontSize:15, border:"none", cursor:"pointer" }}>
-                  {msgBusy ? "Sending…" : "Send"}
-                </button>
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </main>
   );
 }
+
+const pillBase: React.CSSProperties = {
+  padding: "7px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700,
+  letterSpacing: "0.02em", cursor: "pointer",
+};
+const pillSolid: React.CSSProperties = { ...pillBase, background: "rgba(255,255,255,0.92)", color: "#000", border: "1px solid transparent" };
+const pillGhost: React.CSSProperties = { ...pillBase, background: "transparent", color: "rgba(255,255,255,0.75)", border: "1px solid rgba(255,255,255,0.16)" };
 
 const pageStyle: React.CSSProperties = { minHeight:"100vh", background:"#000", color:"#fff", padding:"0 0 120px" };
 const shellStyle: React.CSSProperties = { maxWidth:680, margin:"0 auto", padding:"20px 18px", display:"grid", gap:16 };

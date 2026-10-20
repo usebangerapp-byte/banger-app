@@ -4,6 +4,7 @@ import "./globals.css";
 import BottomNav from "@/components/BottomNav";
 import TopBar from "@/components/TopBar";
 import PlanGate from "@/components/PlanGate";
+import RouteAudioStop from "@/components/RouteAudioStop";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,6 +33,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <PlanGate />
+        <RouteAudioStop />
         <TopBar />
         {children}
         <BottomNav />

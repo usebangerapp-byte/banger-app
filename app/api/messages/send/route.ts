@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { notifyMessage } from "@/lib/server/notify";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -45,10 +46,12 @@ export async function POST(req: Request) {
       const fallback: any = { sender_id, receiver_id, content: `📎 ${file_name || "file"} — ${file_url}` };
       const { error: e2 } = await sb.from("messages").insert([fallback]);
       if (e2) return Response.json({ ok: false, error: "DB fallback: " + e2.message }, { status: 500 });
+      await notifyMessage(sb, receiver_id, sender_id).catch(() => {});
       return Response.json({ ok: true, fallback: true });
     }
     return Response.json({ ok: false, error: "DB: " + error.message }, { status: 500 });
   }
 
+  await notifyMessage(sb, receiver_id, sender_id).catch(() => {});
   return Response.json({ ok: true });
 }
