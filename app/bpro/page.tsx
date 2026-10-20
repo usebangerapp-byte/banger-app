@@ -6,6 +6,7 @@ import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { getBrowserRole } from "@/lib/auth/getBrowserRole";
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import PageHeader from "@/components/PageHeader";
+import { ui, C, glass } from "@/lib/ui";
 
 const SEGMENT_DURATION = 25;
 const MAX_SEGMENTS     = 20;
@@ -26,11 +27,9 @@ function PrimaryBtn({ disabled, busy, label, busyLabel, onClick }:
   { disabled?: boolean; busy?: boolean; label: string; busyLabel?: string; onClick?: () => void }) {
   return (
     <button type="button" disabled={disabled || busy} onClick={onClick}
-      style={{ padding: "14px 16px", borderRadius: 14, width: "100%", fontWeight: 800,
-        background: disabled || busy ? "rgba(255,255,255,0.10)" : "#fff",
-        color: disabled || busy ? "#888" : "#000",
-        border: "1px solid rgba(255,255,255,0.14)",
-        cursor: disabled || busy ? "not-allowed" : "pointer" }}>
+      style={disabled || busy
+        ? { ...ui.cta, background: "rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.45)", boxShadow: "none", cursor: "not-allowed" }
+        : ui.cta}>
       {busy ? (busyLabel || "…") : label}
     </button>
   );
@@ -201,15 +200,15 @@ export default function UploadPage() {
     } finally { setBusy(false); }
   }
 
-  if (!roleReady) return <main style={{ minHeight: "100vh", background: "#000" }} />;
+  if (!roleReady) return <main style={{ minHeight: "100vh" }} />;
 
   return (
-    <main style={{ minHeight: "100vh", background: "#000", color: "#fff", padding: "16px 16px 120px" }}>
-      <div style={{ maxWidth: 680, margin: "0 auto", display: "grid", gap: 14 }}>
+    <main style={ui.page}>
+      <div style={ui.shell}>
 
         <PageHeader title="Upload" sub="Register your track for scanning." />
 
-        <Card title="1. Track">
+        <Card title="Track">
           <div style={{ display: "grid", gap: 10 }}>
             <input value={artist} onChange={(e) => setArtist(e.target.value)}
               placeholder="Your artist name" style={inputStyle} />
@@ -218,18 +217,18 @@ export default function UploadPage() {
           </div>
         </Card>
 
-        <Card title="2. Audio">
+        <Card title="Audio">
           <input ref={audioInputRef} type="file"
             accept=".mp3,.wav,.aiff,.aif,.flac,.m4a,.aac,.ogg,.opus,.mp4,.mov,video/*,audio/*"
             onChange={onPickAudio} style={{ display: "none" }} />
           {!audioFile ? (
             <div onClick={() => audioInputRef.current?.click()} onDrop={onDropFile}
               onDragOver={(e) => e.preventDefault()}
-              style={{ border: "1px dashed rgba(255,255,255,0.18)", borderRadius: 16,
+              style={{ border: "1px dashed rgba(245,207,104,0.40)", borderRadius: 18,
                 padding: "28px 16px", textAlign: "center", cursor: "pointer",
-                background: "rgba(255,255,255,0.03)" }}>
-              <div style={{ fontSize: 15, fontWeight: 800 }}>Drop audio / video here</div>
-              <div style={{ marginTop: 6, fontSize: 13, opacity: 0.65 }}>or tap to choose a file</div>
+                background: "rgba(245,207,104,0.06)" }}>
+              <div style={{ fontSize: 16, fontWeight: 600 }}>Drop audio or video here</div>
+              <div style={{ marginTop: 4, fontSize: 13, color: C.text3 }}>or tap to choose a file</div>
             </div>
           ) : (
             <div style={{ display: "grid", gap: 10 }}>
@@ -252,34 +251,35 @@ export default function UploadPage() {
           )}
         </Card>
 
-        <Card title="3. Release Status">
+        <Card title="Release status">
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             {(["unreleased", "released"] as ReleaseStatus[]).map((s) => (
               <button key={s} type="button" onClick={() => setReleaseStatus(s)}
-                style={{ padding: "14px 12px", borderRadius: 14, fontWeight: 700, color: "#fff", cursor: "pointer",
-                  border: releaseStatus === s ? "1px solid rgba(255,255,255,0.5)" : "1px solid rgba(255,255,255,0.12)",
-                  background: releaseStatus === s ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.04)" }}>
+                style={{ padding: "12px", borderRadius: 999, fontWeight: 600, fontSize: 15, cursor: "pointer", fontFamily: "inherit",
+                  color: releaseStatus === s ? C.goldInk : "#fff",
+                  border: releaseStatus === s ? "1px solid transparent" : `1px solid ${C.glassBorder}`,
+                  background: releaseStatus === s ? C.goldGrad : "rgba(255,255,255,0.06)" }}>
                 {s.charAt(0).toUpperCase() + s.slice(1)}
               </button>
             ))}
           </div>
           <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
-            <label style={{ fontSize: 13, opacity: 0.75 }}>
+            <label style={{ fontSize: 13, color: C.text3 }}>
               Release date (optional)
               <input type="date" value={releaseDate} onChange={(e) => setReleaseDate(e.target.value)}
                 style={{ ...inputStyle, marginTop: 6 }} />
             </label>
             <label style={checkRow}>
-              <input type="checkbox" checked={allowPreview} onChange={(e) => setAllowPreview(e.target.checked)} />
+              <input type="checkbox" style={{ accentColor: "#e9b844", width: 18, height: 18, flexShrink: 0 }} checked={allowPreview} onChange={(e) => setAllowPreview(e.target.checked)} />
               <span>Allow 10-second public preview</span>
             </label>
           </div>
         </Card>
 
-        <Card title="4. Rights & Submit">
+        <Card title="Rights & submit">
           <div style={{ display: "grid", gap: 14 }}>
             <label style={checkRow}>
-              <input type="checkbox" checked={agreeRights} onChange={(e) => setAgreeRights(e.target.checked)} />
+              <input type="checkbox" style={{ accentColor: "#e9b844", width: 18, height: 18, flexShrink: 0 }} checked={agreeRights} onChange={(e) => setAgreeRights(e.target.checked)} />
               <span>I own the rights or have permission to analyze this audio.</span>
             </label>
             <PrimaryBtn disabled={!canSubmit} busy={busy} label="Submit for Scan"
@@ -304,12 +304,12 @@ export default function UploadPage() {
   );
 }
 
-const cardStyle: React.CSSProperties = { border: "1px solid rgba(255,255,255,0.10)", borderRadius: 18, padding: 16, background: "rgba(255,255,255,0.03)", display: "grid", gap: 12 };
-const cardTitleStyle: React.CSSProperties = { fontSize: 11, fontWeight: 800, letterSpacing: "0.18em", opacity: 0.65 };
-const inputStyle: React.CSSProperties = { padding: 12, borderRadius: 12, width: "100%", border: "1px solid rgba(255,255,255,0.14)", background: "#0d0d0d", color: "#fff", fontSize: 15 };
-const summaryBox: React.CSSProperties = { borderRadius: 14, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", padding: 12 };
+const cardStyle: React.CSSProperties = { ...glass, borderRadius: 22, padding: 18, display: "grid", gap: 12 };
+const cardTitleStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, color: C.text3 };
+const inputStyle: React.CSSProperties = { ...ui.input };
+const summaryBox: React.CSSProperties = { borderRadius: 16, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", padding: 12 };
 const infoBox: React.CSSProperties = { borderRadius: 14, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", padding: 12, fontSize: 13 };
 const errorBox: React.CSSProperties = { borderRadius: 14, background: "rgba(255,80,80,0.10)", border: "1px solid rgba(255,80,80,0.25)", padding: 12, fontSize: 13, color: "#ffb5b5" };
 const successBox: React.CSSProperties = { borderRadius: 14, background: "rgba(120,255,160,0.08)", border: "1px solid rgba(120,255,160,0.20)", padding: 12, fontSize: 13, color: "#d9ffe2" };
-const ghostBtn: React.CSSProperties = { padding: "12px 16px", borderRadius: 14, width: "100%", fontWeight: 600, border: "1px solid rgba(255,255,255,0.10)", background: "transparent", color: "#fff", cursor: "pointer" };
+const ghostBtn: React.CSSProperties = { ...ui.pill, width: "100%", padding: "13px 16px", fontSize: 15 };
 const checkRow: React.CSSProperties = { display: "flex", gap: 10, alignItems: "flex-start", fontSize: 14, lineHeight: 1.4 };

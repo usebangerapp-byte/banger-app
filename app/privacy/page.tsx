@@ -227,7 +227,7 @@ export default function PrivacyPage() {
 }
 
 const s: Record<string, React.CSSProperties> = {
-  page:         { minHeight: "100vh", background: "#000", color: "#fff", padding: "32px 20px" },
+  page:         { minHeight: "100vh", background: "transparent", color: "#fff", padding: "32px 20px" },
   shell:        { maxWidth: 720, margin: "0 auto", display: "grid", gap: 28, lineHeight: 1.75, fontSize: 15 },
   h1:           { fontSize: 32, fontWeight: 900, margin: 0 },
   meta:         { opacity: 0.5, fontSize: 13, margin: 0 },
@@ -235,7 +235,7 @@ const s: Record<string, React.CSSProperties> = {
   h2:           { fontSize: 18, fontWeight: 800, margin: 0, borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: 8 },
   h3:           { fontSize: 14, fontWeight: 700, margin: "8px 0 0", color: "rgba(255,255,255,0.7)" },
   ul:           { margin: "6px 0", paddingLeft: 20, display: "grid", gap: 4 },
-  link:         { color: "#00E5FF", textDecoration: "none" },
+  link:         { color: "#f5cf68", textDecoration: "none" },
   contactBlock: { fontWeight: 700, fontSize: 16 },
   links:        { opacity: 0.6, fontSize: 13, paddingTop: 8 },
 };

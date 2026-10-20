@@ -1,33 +1,34 @@
 "use client";
 
 import React from "react";
-import { C, MONO } from "@/lib/ui";
+import { C } from "@/lib/ui";
 
 /**
- * Page header shared by every tab: one compact band at the top —
- * UPPERCASE title (left) + small mono code (right), the sentence under it, then a hairline.
+ * Page header shared by every tab: UPPERCASE title + one grey sentence,
+ * optional status capsule on the right (glass).
  */
 export default function PageHeader({ title, sub, code }: { title: string; sub?: string; code?: React.ReactNode }) {
   return (
     <header style={wrap}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
+      <div style={{ display: "grid", gap: 3, minWidth: 0 }}>
         <h1 style={titleStyle}>{title.toUpperCase()}</h1>
-        {code && <span style={codeStyle}>{code}</span>}
+        {sub && <p style={subStyle}>{sub}</p>}
       </div>
-      {sub && <p style={subStyle}>{sub}</p>}
+      {code && <span style={codeStyle}>{code}</span>}
     </header>
   );
 }
 
 const wrap: React.CSSProperties = {
-  display: "grid", gap: 6, paddingBottom: 16, borderBottom: `1px solid ${C.lineSoft}`,
+  display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "6px 4px 6px",
 };
 const titleStyle: React.CSSProperties = {
-  margin: 0, fontSize: 15, fontWeight: 800, letterSpacing: "0.26em", lineHeight: 1.2, color: C.fg,
-};
-const codeStyle: React.CSSProperties = {
-  fontFamily: MONO, fontSize: 9, letterSpacing: "0.3em", color: C.text4, whiteSpace: "nowrap",
+  margin: 0, fontSize: 15, fontWeight: 700, letterSpacing: "0.16em", lineHeight: 1.2, color: C.fg,
 };
 const subStyle: React.CSSProperties = {
-  margin: 0, fontSize: 12, lineHeight: 1.5, color: C.text3,
+  margin: 0, fontSize: 13, lineHeight: 1.4, color: C.text3,
+};
+const codeStyle: React.CSSProperties = {
+  fontSize: 11, fontWeight: 600, color: C.text2, whiteSpace: "nowrap", flexShrink: 0,
+  padding: "6px 11px", borderRadius: 999, background: "rgba(255,255,255,0.08)", border: `1px solid ${C.glassBorder}`,
 };

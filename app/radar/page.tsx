@@ -4,7 +4,7 @@ import { authFetch } from "@/lib/authFetch";
 import { useEffect, useState, useCallback } from "react"
 import { createSupabaseBrowser } from "@/lib/supabase/client"
 import PageHeader from "@/components/PageHeader"
-import { ui, C, MONO } from "@/lib/ui"
+import { ui, C } from "@/lib/ui"
 
 type RadarTrack = { track_title: string; track_subtitle?: string; scans: number }
 type WantedTrack = { track_title: string; track_subtitle?: string; followers: number }
@@ -84,7 +84,7 @@ export default function RadarPage() {
       {toast && <div style={ui.toast}>{toast}</div>}
 
       <div style={ui.shell}>
-        <PageHeader title="Radar" sub="What the scene is scanning right now." code="THIS WEEK" />
+        <PageHeader title="Radar" sub="What the scene is scanning right now." code="This week" />
 
         {loading ? (
           <div style={ui.empty}>Loading…</div>
@@ -94,14 +94,14 @@ export default function RadarPage() {
           <section style={ui.section}>
             <div style={ui.label}>Hot right now</div>
             {data.hot ? (
-              <div style={{ padding: "22px 0 4px", display: "grid", gap: 8 }}>
-                <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.2 }}>
+              <div style={{ padding: "16px 0 16px", display: "grid", gap: 6 }}>
+                <div style={{ fontSize: 21, fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.2 }}>
                   {data.hot.track_title}
                 </div>
-                <div style={{ fontSize: 13, color: C.text2 }}>{data.hot.track_subtitle || "Unknown"}</div>
+                <div style={{ fontSize: 15, color: C.text2 }}>{data.hot.track_subtitle || "Unknown"}</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 6, flexWrap: "wrap" }}>
-                  <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.22em", color: C.text3 }}>
-                    {data.hot.scans} SCANS THIS WEEK
+                  <span style={{ fontSize: 13, color: C.text3 }}>
+                    {data.hot.scans} scans this week
                   </span>
                   <FollowBtn title={data.hot.track_title} subtitle={data.hot.track_subtitle || ""}
                     followed={followed} loading={followLoading} onToggle={toggleFollow} />
@@ -124,7 +124,7 @@ export default function RadarPage() {
               ))}
               {data.trending.length > 3 && (
                 <button onClick={() => setShowMoreTrending(v => !v)} style={ui.more}>
-                  {showMoreTrending ? "SHOW LESS" : `+${data.trending.length - 3} MORE`}
+                  {showMoreTrending ? "Show less" : `Show ${data.trending.length - 3} more`}
                 </button>
               )}
             </>)}
@@ -142,7 +142,7 @@ export default function RadarPage() {
               ))}
               {data.mostWanted.length > 3 && (
                 <button onClick={() => setShowMoreWanted(v => !v)} style={ui.more}>
-                  {showMoreWanted ? "SHOW LESS" : `+${data.mostWanted.length - 3} MORE`}
+                  {showMoreWanted ? "Show less" : `Show ${data.mostWanted.length - 3} more`}
                 </button>
               )}
             </>)}
@@ -160,7 +160,7 @@ function TrackRow({ rank, title, subtitle, meta, followed, loading, onToggle }: 
 }) {
   return (
     <div style={ui.row}>
-      <span style={ui.rank}>{String(rank).padStart(2, "0")}</span>
+      <span style={ui.rank}>{rank}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={ui.rowTitle}>{title}</div>
         <div style={ui.rowSub}>{subtitle}{subtitle ? " · " : ""}{meta}</div>
@@ -179,7 +179,7 @@ function FollowBtn({ title, subtitle, followed, loading, onToggle }: {
   const isBusy = loading.has(key)
   return (
     <button onClick={() => onToggle(title, subtitle)} disabled={isBusy}
-      style={isFollowing ? { ...ui.pillSmall, color: C.text3 } : { ...ui.pillSmall, color: C.fg, borderColor: "rgba(255,255,255,0.3)" }}>
+      style={isFollowing ? { ...ui.pillSmall, color: C.text3 } : { ...ui.pillSmall, color: C.gold, background: "rgba(245,207,104,0.12)", borderColor: "rgba(245,207,104,0.30)" }}>
       {isBusy ? "…" : isFollowing ? "Following ✓" : "+ Follow"}
     </button>
   )

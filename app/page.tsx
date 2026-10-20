@@ -39,7 +39,7 @@ export default function LandingPage() {
         {/* Auth */}
         <div style={authBlock}>
           <button onClick={() => continueWith("google")} disabled={busy !== ""} style={googleBtn}>
-            <GoogleIcon />
+            <span style={{ width: 24, height: 24, borderRadius: "50%", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}><GoogleIcon /></span>
             {busy === "google" ? "Connecting…" : "Continue with Google"}
           </button>
 
@@ -59,7 +59,7 @@ export default function LandingPage() {
 
 function GoogleIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+    <svg width="14" height="14" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
       <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
       <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
       <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
@@ -69,9 +69,9 @@ function GoogleIcon() {
 }
 
 const page: React.CSSProperties = {
-  minHeight: "100vh", background: "#000", color: "#fff",
+  minHeight: "100vh", background: "radial-gradient(480px 480px at 50% 42%, rgba(232,170,40,0.30), rgba(232,170,40,0.07) 45%, transparent 70%)", color: "#fff",
   display: "flex", alignItems: "center", justifyContent: "center",
-  padding: "0 24px",
+  padding: "0 24px", fontFamily: "var(--font-ui)",
 };
 const shell: React.CSSProperties = {
   width: "100%", maxWidth: 360,
@@ -85,34 +85,36 @@ const logoInner: React.CSSProperties = {
   display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 20,
 };
 const logoMark: React.CSSProperties = {
-  textAlign: "center", fontSize: 22, fontWeight: 800, letterSpacing: "0.42em",
+  textAlign: "center", fontSize: 20, fontWeight: 700, letterSpacing: "0.42em",
   paddingLeft: "0.42em", // optically re-center the letter-spaced word
-  color: "#fff",
-  textShadow: "0 0 10px rgba(255,255,255,0.55), 0 0 28px rgba(255,255,255,0.30), 0 0 60px rgba(255,255,255,0.15)",
+  color: "#f8dc8a",
+  textShadow: "0 0 10px rgba(245,207,104,0.55), 0 0 28px rgba(232,170,40,0.35), 0 0 60px rgba(232,170,40,0.20)",
 };
 const tagline: React.CSSProperties = {
-  fontSize: "clamp(28px,8vw,38px)", fontWeight: 500,
-  letterSpacing: "-0.02em", lineHeight: 1.18, color: "rgba(255,255,255,0.90)",
+  fontSize: "clamp(28px,8vw,36px)", fontWeight: 700,
+  letterSpacing: "-0.03em", lineHeight: 1.12, color: "#fff",
 };
 const authBlock: React.CSSProperties = {
   display: "flex", flexDirection: "column", gap: 10,
 };
 const googleBtn: React.CSSProperties = {
   display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-  padding: "15px 18px", borderRadius: 14, width: "100%",
-  background: "#fff", color: "#000", fontWeight: 800, fontSize: 14,
-  border: "none", cursor: "pointer", letterSpacing: "0.01em",
+  padding: "16px 18px", borderRadius: 999, width: "100%",
+  background: "linear-gradient(180deg, #f8d77a 0%, #d9a227 100%)", color: "#1a1000", fontWeight: 700, fontSize: 16,
+  border: "none", cursor: "pointer", fontFamily: "inherit",
+  boxShadow: "0 10px 30px rgba(232,170,40,0.38), inset 0 1px 0 rgba(255,255,255,0.5)",
 };
 const appleBtn: React.CSSProperties = {
   display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-  padding: "15px 18px", borderRadius: 14, width: "100%",
-  background: "rgba(255,255,255,0.07)", color: "#fff", fontWeight: 800, fontSize: 14,
-  border: "1px solid rgba(255,255,255,0.10)", cursor: "pointer", letterSpacing: "0.01em",
+  padding: "16px 18px", borderRadius: 999, width: "100%",
+  background: "rgba(255,255,255,0.08)", color: "#fff", fontWeight: 600, fontSize: 16,
+  border: "1px solid rgba(255,255,255,0.14)", cursor: "pointer", fontFamily: "inherit",
+  backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
 };
 const errorStyle: React.CSSProperties = {
   color: "#ffb7b7", fontSize: 13, textAlign: "center",
 };
 const note: React.CSSProperties = {
-  textAlign: "center", fontSize: 11, color: "rgba(255,255,255,0.25)",
-  fontWeight: 600, letterSpacing: "0.06em", paddingTop: 2,
+  textAlign: "center", fontSize: 13, color: "rgba(255,255,255,0.45)",
+  fontWeight: 500, paddingTop: 4,
 };

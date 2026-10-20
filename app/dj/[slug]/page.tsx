@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { SkeletonTrackRow, SkeletonStyles } from "@/components/Skeleton";
 import { PeopleSheet } from "@/components/People";
-import { ui, C, MONO, tag } from "@/lib/ui";
+import { ui, C, glass, tag, TAG_TEXT } from "@/lib/ui";
 
 type Profile = {
   id: string; email: string; display_name: string | null;
@@ -109,7 +109,7 @@ export default function DJProfilePage() {
         <div style={{ fontSize: 48 }}>🎧</div>
         <div style={{ fontSize: 20, fontWeight: 800, marginTop: 16 }}>DJ not found</div>
         <div style={{ fontSize: 14, opacity: 0.5, marginTop: 8 }}>No profile found for "{slug}"</div>
-        <button onClick={() => router.push("/home")} style={{ ...followBtnBase, marginTop: 24, background: "#fff", color: "#000", border: "none" }}>Go scan</button>
+        <button onClick={() => router.push("/home")} style={{ ...ui.pillSolid, marginTop: 24 }}>Go scan</button>
       </div>
     </main>
   );
@@ -122,8 +122,8 @@ export default function DJProfilePage() {
       <SkeletonStyles />
       <div style={shellStyle}>
         <div style={ui.catalogue}>
-          <button onClick={() => router.back()} style={backStyle}>← BACK</button>
-          <span style={{ color: profile?.role === "pro" ? C.gold : C.text3 }}>{profile?.role === "pro" ? "✦ PRO" : "BNGR — ARTIST"}</span>
+          <button onClick={() => router.back()} style={backStyle}>‹ Back</button>
+          {profile?.role === "pro" ? <span style={tag("pro")}>PRO</span> : <span>Artist</span>}
         </div>
 
         <div style={headerStyle}>
@@ -136,9 +136,9 @@ export default function DJProfilePage() {
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" as const }}>
-                <h1 style={{ margin: 0, fontSize: 19, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const, minWidth: 0 }}>{displayName}</h1>
+                <h1 style={{ margin: 0, fontSize: 21, fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const, minWidth: 0 }}>{displayName}</h1>
               </div>
-              {profile?.genre && <div style={{ fontSize: 12, color: C.text3, marginTop: 5 }}>{profile.genre}</div>}
+              {profile?.genre && <div style={{ fontSize: 13, color: C.text3, marginTop: 4 }}>{profile.genre}</div>}
               {/* Compact stats */}
               <div style={statsLine}>
                 <button onClick={() => profile && setPeopleList("followers")} style={statBtn}><b style={statNum}>{profile?.follower_count || 0}</b> followers</button>
@@ -201,20 +201,20 @@ export default function DJProfilePage() {
         </div>
 
         {tracks.length > 0 && (
-          <div style={{ display: "grid", gap: 4, minWidth: 0 }}>
-            <div style={secTitle}>TRACKS</div>
+          <div style={{ ...ui.section, paddingBottom: 4 }}>
+            <div style={secTitle}>Tracks</div>
             {(showAllTracks ? tracks : tracks.slice(0, 3)).map(t => (
               <div key={t.id} style={trackRow}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={ui.rowTitle}>{t.title || "Untitled"}</div>
                   {t.artist && <div style={ui.rowSub}>{t.artist}</div>}
                 </div>
-                <span style={tag(t.is_released ? "rel" : "unrel")}>{t.is_released ? "REL" : "UNREL"}</span>
+                <span style={tag(t.is_released ? "rel" : "unrel")}>{t.is_released ? TAG_TEXT.rel : TAG_TEXT.unrel}</span>
               </div>
             ))}
             {tracks.length > 3 && (
               <button onClick={() => setShowAllTracks(v => !v)} style={moreBtn}>
-                {showAllTracks ? "Show less" : `+${tracks.length - 3} more`}
+                {showAllTracks ? "Show less" : `Show ${tracks.length - 3} more`}
               </button>
             )}
           </div>
@@ -237,13 +237,13 @@ const pillGhost: React.CSSProperties = { ...ui.pill };
 
 const pageStyle: React.CSSProperties = { ...ui.page };
 const shellStyle: React.CSSProperties = { ...ui.shell };
-const backStyle: React.CSSProperties = { background:"none", border:"none", color:C.text3, fontFamily:MONO, fontSize:10, letterSpacing:"0.28em", cursor:"pointer", padding:0 };
-const headerStyle: React.CSSProperties = { display:"grid", gap:22, minWidth:0 };
-const avatarStyle: React.CSSProperties = { width:56, height:56, borderRadius:"50%", flexShrink:0, overflow:"hidden", background:"linear-gradient(135deg,rgba(255,255,255,0.16),rgba(255,255,255,0.05))", border:`1px solid ${C.line}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, fontWeight:800 };
-const statsLine: React.CSSProperties = { display:"flex", alignItems:"center", gap:16, flexWrap:"wrap", marginTop:10, fontSize:12, color:C.text3 };
+const backStyle: React.CSSProperties = { background:"none", border:"none", color:C.gold, fontSize:16, fontWeight:500, cursor:"pointer", padding:0, fontFamily:"inherit" };
+const headerStyle: React.CSSProperties = { ...glass, borderRadius:24, padding:18, display:"grid", gap:16, minWidth:0 };
+const avatarStyle: React.CSSProperties = { width:64, height:64, borderRadius:"50%", flexShrink:0, overflow:"hidden", background:"rgba(255,255,255,0.08)", border:`1px solid ${C.line}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, fontWeight:800 };
+const statsLine: React.CSSProperties = { display:"flex", alignItems:"center", gap:16, flexWrap:"wrap", marginTop:8, fontSize:13, color:C.text3 };
 const statBtn: React.CSSProperties = { background:"none", border:"none", padding:0, color:"inherit", font:"inherit", cursor:"pointer" };
-const statNum: React.CSSProperties = { color:"#fff", fontWeight:700, fontSize:13, marginRight:3 };
-const bioStyle: React.CSSProperties = { fontSize:13, color:C.text2, lineHeight:1.6, borderLeft:`1px solid ${C.line}`, paddingLeft:12 };
+const statNum: React.CSSProperties = { color:"#fff", fontWeight:700, fontSize:15, marginRight:3 };
+const bioStyle: React.CSSProperties = { fontSize:14, color:C.text2, lineHeight:1.55 };
 const trackRow: React.CSSProperties = { ...ui.row };
 const tagStyle: React.CSSProperties = { fontSize:9, fontWeight:700, letterSpacing:"0.06em", borderRadius:5, padding:"3px 7px", flexShrink:0, whiteSpace:"nowrap" };
 const tagRel: React.CSSProperties = { color:"rgba(29,185,84,0.95)", border:"1px solid rgba(29,185,84,0.5)" };

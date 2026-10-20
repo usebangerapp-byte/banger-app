@@ -1,100 +1,125 @@
 import type { CSSProperties } from "react";
 
 /**
- * BANGER design system — one look for every tab, taken from the Upgrade page:
- * black ground, white heavy sans for titles, mono "catalogue" labels, hairline
- * rows instead of boxed cards, round pills, gold used only as a small accent.
+ * BANGER design system — "Glass".
+ * Black ground lit by a soft KRK-gold glow, translucent frosted cards,
+ * iOS system typography, gold only for actions and the active state.
+ *
+ * Information (meta, dates, counts, section names) = small grey text.
+ * Content (tracks, people) = white semibold text inside glass cards.
+ * Actions = gold capsule buttons.
  */
 
-export const MONO = "var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace";
-export const SANS = "var(--font-geist-sans), -apple-system, system-ui, sans-serif";
+export const SANS = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', var(--font-geist-sans), system-ui, sans-serif";
+/** Kept for numbers only (tabular figures) — no more "technical" labels. */
+export const MONO = SANS;
 
 export const C = {
   bg: "#000",
   fg: "#fff",
-  text2: "rgba(255,255,255,0.62)",
-  text3: "rgba(255,255,255,0.40)",
-  text4: "rgba(255,255,255,0.28)",
-  line: "rgba(255,255,255,0.09)",
-  lineSoft: "rgba(255,255,255,0.05)",
-  surface: "rgba(255,255,255,0.03)",
-  gold: "#e8b84a",
-  rel: "#3ccf7a",
-  unrel: "#f0b440",
-  danger: "rgba(255,90,90,0.85)",
+  text2: "rgba(255,255,255,0.64)",
+  text3: "rgba(255,255,255,0.50)",
+  text4: "rgba(255,255,255,0.40)",
+  line: "rgba(255,255,255,0.12)",
+  lineSoft: "rgba(255,255,255,0.07)",
+  surface: "rgba(255,255,255,0.07)",
+  glassBorder: "rgba(255,255,255,0.12)",
+  gold: "#f5cf68",
+  goldDeep: "#d9a227",
+  goldGrad: "linear-gradient(180deg, #f8d77a 0%, #d9a227 100%)",
+  goldInk: "#1a1000",
+  rel: "#5fe39a",
+  unrel: "#f5cf68",
+  danger: "#ff7a7a",
+};
+
+const blur = "blur(28px) saturate(160%)";
+
+/** Frosted glass surface — spread into any card. */
+export const glass: CSSProperties = {
+  background: C.surface,
+  border: `1px solid ${C.glassBorder}`,
+  backdropFilter: blur,
+  WebkitBackdropFilter: blur,
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.10)",
 };
 
 export const ui: Record<string, CSSProperties> = {
-  page: { minHeight: "100vh", background: C.bg, color: C.fg, padding: "20px 0 140px", overflowX: "hidden", fontFamily: SANS },
-  shell: { maxWidth: 560, margin: "0 auto", padding: "0 22px", display: "grid", gap: 44, boxSizing: "border-box", width: "100%" },
+  page: { minHeight: "100vh", background: "transparent", color: C.fg, padding: "18px 0 150px", overflowX: "hidden", fontFamily: SANS, position: "relative" },
+  shell: { position: "relative", maxWidth: 560, margin: "0 auto", padding: "0 18px", display: "grid", gap: 18, boxSizing: "border-box", width: "100%" },
 
-  // Page header ("catalogue" line + big title)
-  catalogue: {
-    display: "flex", justifyContent: "space-between", gap: 12, fontFamily: MONO, fontSize: 9,
-    letterSpacing: "0.3em", color: C.text4, paddingBottom: 12, borderBottom: `1px solid ${C.lineSoft}`,
-  },
-  title: { margin: "26px 0 0", fontSize: 22, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.2 },
-  subtitle: { margin: "8px 0 0", fontSize: 13, lineHeight: 1.6, color: C.text3 },
+  // Legacy header pieces (PageHeader is preferred)
+  catalogue: { display: "flex", justifyContent: "space-between", gap: 12, fontSize: 12, color: C.text3 },
+  title: { margin: "8px 0 0", fontSize: 24, fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.2 },
+  subtitle: { margin: "6px 0 0", fontSize: 14, lineHeight: 1.5, color: C.text2 },
 
-  // Sections
-  section: { display: "grid", gap: 0, minWidth: 0 },
-  label: { fontFamily: MONO, fontSize: 9, fontWeight: 600, letterSpacing: "0.3em", color: C.text4, textTransform: "uppercase", paddingBottom: 12, borderBottom: `1px solid ${C.lineSoft}` },
+  // Glass card section: label on top, rows inside
+  card: { ...glass, borderRadius: 22, padding: 18, minWidth: 0 },
+  section: { ...glass, borderRadius: 22, padding: "2px 16px", display: "grid", gap: 0, minWidth: 0 },
+  label: { fontSize: 13, fontWeight: 600, color: C.text3, padding: "14px 0 10px", borderBottom: `1px solid ${C.lineSoft}` },
 
   // List rows
-  row: { display: "flex", alignItems: "center", gap: 14, padding: "18px 0", borderBottom: `1px solid ${C.lineSoft}`, minWidth: 0 },
-  rowTitle: { fontSize: 14, fontWeight: 700, letterSpacing: "-0.005em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
-  rowSub: { fontSize: 12, color: C.text3, marginTop: 5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
-  rank: { fontFamily: MONO, fontSize: 10, color: C.text4, width: 22, flexShrink: 0 },
+  row: { display: "flex", alignItems: "center", gap: 14, padding: "13px 0", borderBottom: `1px solid ${C.lineSoft}`, minWidth: 0 },
+  rowTitle: { fontSize: 16, fontWeight: 600, letterSpacing: "-0.01em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  rowSub: { fontSize: 13, color: C.text2, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  rank: { fontSize: 15, fontWeight: 700, color: C.gold, width: 22, flexShrink: 0, fontVariantNumeric: "tabular-nums" },
 
   // Buttons
   pill: {
     display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
-    padding: "8px 14px", borderRadius: 999, fontSize: 12, fontWeight: 600, lineHeight: 1,
-    background: "transparent", color: C.fg, border: "1px solid rgba(255,255,255,0.16)",
+    padding: "9px 16px", borderRadius: 999, fontSize: 13, fontWeight: 600, lineHeight: 1,
+    background: "rgba(255,255,255,0.08)", color: C.fg, border: `1px solid ${C.glassBorder}`,
     cursor: "pointer", whiteSpace: "nowrap", textDecoration: "none",
   },
   pillSolid: {
     display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
-    padding: "8px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, lineHeight: 1,
-    background: C.fg, color: "#000", border: "1px solid transparent",
+    padding: "9px 16px", borderRadius: 999, fontSize: 13, fontWeight: 700, lineHeight: 1,
+    background: C.goldGrad, color: C.goldInk, border: "1px solid transparent",
+    boxShadow: "0 6px 18px rgba(232,170,40,0.30)",
     cursor: "pointer", whiteSpace: "nowrap", textDecoration: "none",
   },
   pillSmall: {
-    display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 999,
-    fontSize: 11, fontWeight: 600, lineHeight: 1, background: "transparent", color: C.text2,
-    border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer", whiteSpace: "nowrap", textDecoration: "none",
+    display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 11px", borderRadius: 999,
+    fontSize: 12, fontWeight: 600, lineHeight: 1, background: "rgba(255,255,255,0.08)", color: C.fg,
+    border: `1px solid ${C.glassBorder}`, cursor: "pointer", whiteSpace: "nowrap", textDecoration: "none",
   },
   cta: {
-    width: "100%", padding: "15px", borderRadius: 6, border: "none", cursor: "pointer",
-    background: C.fg, color: "#000", fontFamily: MONO, fontWeight: 700, fontSize: 11, letterSpacing: "0.24em",
+    width: "100%", padding: "16px", borderRadius: 999, border: "none", cursor: "pointer",
+    background: C.goldGrad, color: C.goldInk, fontWeight: 700, fontSize: 16, fontFamily: SANS,
+    boxShadow: "0 10px 30px rgba(232,170,40,0.38), inset 0 1px 0 rgba(255,255,255,0.5)",
   },
-  more: { justifySelf: "start", background: "none", border: "none", padding: "16px 0 0", fontFamily: MONO, fontSize: 9, letterSpacing: "0.24em", color: C.text3, cursor: "pointer" },
+  more: { justifySelf: "start", background: "none", border: "none", padding: "12px 0 14px", fontSize: 13, fontWeight: 600, color: C.gold, cursor: "pointer", fontFamily: SANS },
 
   // Inputs
   input: {
-    width: "100%", boxSizing: "border-box", background: "transparent", border: "none",
-    borderBottom: `1px solid ${C.line}`, color: C.fg, fontSize: 14, padding: "12px 0", outline: "none",
+    width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.06)", border: `1px solid ${C.glassBorder}`,
+    borderRadius: 14, color: C.fg, fontSize: 15, padding: "12px 14px", outline: "none", fontFamily: SANS,
   },
 
-  empty: { fontSize: 13, color: C.text3, padding: "18px 0" },
+  empty: { fontSize: 14, color: C.text3, padding: "16px 0" },
   avatar: {
-    width: 40, height: 40, borderRadius: "50%", overflow: "hidden", flexShrink: 0,
-    background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.10)",
-    display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 900,
+    width: 42, height: 42, borderRadius: "50%", overflow: "hidden", flexShrink: 0,
+    background: "rgba(255,255,255,0.08)", border: `1px solid ${C.glassBorder}`,
+    display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 700,
   },
   toast: {
-    position: "fixed", bottom: 110, left: "50%", transform: "translateX(-50%)", zIndex: 999,
-    background: "rgba(18,18,18,0.96)", border: `1px solid ${C.line}`, borderRadius: 999,
-    padding: "10px 18px", fontSize: 13, fontWeight: 600, color: C.fg, whiteSpace: "nowrap",
+    position: "fixed", bottom: 112, left: "50%", transform: "translateX(-50%)", zIndex: 999,
+    ...glass, background: "rgba(30,30,30,0.75)", borderRadius: 999,
+    padding: "11px 18px", fontSize: 14, fontWeight: 600, color: C.fg, whiteSpace: "nowrap",
   },
 };
 
-/** REL / UNREL / PRO tags — one style everywhere. */
+/** Status capsules (Unreleased / Released / Pro) — one style everywhere. */
 export function tag(kind: "rel" | "unrel" | "pro" | "neutral"): CSSProperties {
-  const color = kind === "rel" ? C.rel : kind === "unrel" ? C.unrel : kind === "pro" ? C.gold : C.text3;
-  return {
-    fontFamily: MONO, fontSize: 9, fontWeight: 600, letterSpacing: "0.14em", lineHeight: 1,
-    padding: "4px 7px", borderRadius: 4, border: `1px solid ${color}`, color, flexShrink: 0, whiteSpace: "nowrap",
-    opacity: 0.9,
+  const base: CSSProperties = {
+    fontFamily: SANS, fontSize: 11, fontWeight: 600, lineHeight: 1, letterSpacing: "0.01em",
+    padding: "5px 9px", borderRadius: 999, flexShrink: 0, whiteSpace: "nowrap",
   };
+  if (kind === "pro") return { ...base, background: C.goldGrad, color: C.goldInk, fontWeight: 700 };
+  if (kind === "rel") return { ...base, background: "rgba(95,227,154,0.14)", color: C.rel };
+  if (kind === "unrel") return { ...base, background: "rgba(245,207,104,0.16)", color: C.gold };
+  return { ...base, background: "rgba(255,255,255,0.08)", color: C.text2 };
 }
+
+/** Label text for tags, so the wording is the same everywhere. */
+export const TAG_TEXT = { rel: "Released", unrel: "Unreleased", pro: "PRO", neutral: "" } as const;

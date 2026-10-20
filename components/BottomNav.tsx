@@ -2,25 +2,36 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { getBrowserRole, type BangerRole } from "@/lib/auth/getBrowserRole";
 
 const HIDDEN = ["/","/login","/unlock","/onboarding","/auth/callback","/admin-access","/privacy","/terms","/contact"];
 
-const PUBLIC_ITEMS = [
-  { label: "Profile", href: "/profile" },
-  { label: "Radar",   href: "/radar" },
-  { label: "SCAN",    href: "/home" },
-  { label: "Charts",  href: "/charts" },
-  { label: "Upgrade", href: "/upgrade" },
+type Item = { label: string; href: string; icon: ReactNode };
+
+const I = {
+  profile: <><circle cx="12" cy="8" r="4" /><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" /></>,
+  radar: <><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><path d="M12 12l7-7" /></>,
+  scan: <><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="3" /></>,
+  charts: <path d="M5 20V10M12 20V4M19 20v-7" />,
+  pro: <path d="M12 3l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.3 6.8 19.1l1-5.8L3.5 9.2l5.9-.8z" />,
+  upload: <path d="M12 19V5M6 11l6-6 6 6" />,
+};
+
+const PUBLIC_ITEMS: Item[] = [
+  { label: "Profile", href: "/profile", icon: I.profile },
+  { label: "Radar",   href: "/radar",   icon: I.radar },
+  { label: "Scan",    href: "/home",    icon: I.scan },
+  { label: "Charts",  href: "/charts",  icon: I.charts },
+  { label: "Pro",     href: "/upgrade", icon: I.pro },
 ];
 
-const PRO_ITEMS = [
-  { label: "Profile", href: "/profile" },
-  { label: "Radar",   href: "/radar" },
-  { label: "SCAN",    href: "/home" },
-  { label: "Charts",  href: "/charts" },
-  { label: "Upload",  href: "/bpro" },
+const PRO_ITEMS: Item[] = [
+  { label: "Profile", href: "/profile", icon: I.profile },
+  { label: "Radar",   href: "/radar",   icon: I.radar },
+  { label: "Scan",    href: "/home",    icon: I.scan },
+  { label: "Charts",  href: "/charts",  icon: I.charts },
+  { label: "Upload",  href: "/bpro",    icon: I.upload },
 ];
 
 export default function BottomNav() {
@@ -39,41 +50,32 @@ export default function BottomNav() {
 
   return (
     <>
-      <div style={{ height: 96, background: "#000" }} />
+      <div style={{ height: 104 }} />
       <nav aria-label="Primary" style={{
-        position: "fixed", left: 12, right: 12, bottom: 12, zIndex: 70,
-        border: "1px solid rgba(255,255,255,0.08)", background: "rgba(5,5,5,0.94)",
-        backdropFilter: "blur(18px)", WebkitBackdropFilter: "blur(18px)",
-        borderRadius: 24, boxShadow: "0 14px 40px rgba(0,0,0,0.45)", overflow: "hidden",
+        position: "fixed", left: 14, right: 14, bottom: "calc(14px + env(safe-area-inset-bottom))", zIndex: 70,
+        maxWidth: 520, margin: "0 auto", height: 66, borderRadius: 33,
+        background: "rgba(28,28,28,0.55)", border: "1px solid rgba(255,255,255,0.12)",
+        backdropFilter: "blur(30px) saturate(180%)", WebkitBackdropFilter: "blur(30px) saturate(180%)",
+        boxShadow: "0 12px 34px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.08)",
+        display: "grid", gridTemplateColumns: "repeat(5, 1fr)", alignItems: "center", padding: "0 4px",
       }}>
-        <div style={{
-          maxWidth: 860, margin: "0 auto", display: "grid",
-          gridTemplateColumns: "repeat(5, 1fr)", gap: 6,
-          padding: "10px 10px calc(10px + env(safe-area-inset-bottom))", background: "#050505",
-        }}>
-          {items.map((item) => {
-            const isScan = item.href === "/home";
-            const active = item.href === "/" ? pathname === "/" : pathname === item.href || pathname.startsWith(item.href + "/");
-            return (
-              <Link key={item.href} href={item.href} style={{
-                textDecoration: "none",
-                color: active ? "#fff" : "rgba(255,255,255,0.55)",
-                textAlign: "center",
-                fontSize: isScan ? 14 : 12,
-                fontWeight: isScan ? 900 : active ? 800 : 600,
-                letterSpacing: isScan ? "0.06em" : "0.02em",
-                padding: "12px 4px", borderRadius: 16,
-                background: active ? (isScan
-                  ? "linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.06))"
-                  : "linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04))")
-                  : "transparent",
-                border: active ? "1px solid rgba(255,255,255,0.10)" : "1px solid transparent",
-              }}>
-                {item.label}
-              </Link>
-            );
-          })}
-        </div>
+        {items.map((item) => {
+          const active = pathname === item.href || pathname.startsWith(item.href + "/");
+          return (
+            <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined} style={{
+              textDecoration: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+              color: active ? "#f5cf68" : "rgba(255,255,255,0.55)",
+              fontSize: 10, fontWeight: active ? 600 : 500, padding: "8px 0",
+            }}>
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}
+                strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+                style={active ? { filter: "drop-shadow(0 0 6px rgba(245,207,104,0.8))" } : undefined}>
+                {item.icon}
+              </svg>
+              {item.label}
+            </Link>
+          );
+        })}
       </nav>
     </>
   );

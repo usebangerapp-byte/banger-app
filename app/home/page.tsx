@@ -7,7 +7,8 @@ import type { CSSProperties } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { isNativeApp, nativeHaptic } from "@/lib/native";
 import { startOAuth } from "@/lib/oauth";
-import { ui, C, MONO, tag as tagStyle } from "@/lib/ui";
+import { ui, C, glass, tag as tagStyle, TAG_TEXT } from "@/lib/ui";
+import PageHeader from "@/components/PageHeader";
 import { startAudioMeter } from "@/lib/scan/audioMeter";
 import { mapRecognizeResult } from "@/lib/scan/resultState";
 import { getRegion } from "@/lib/scan/getRegion";
@@ -25,7 +26,7 @@ type ScanWindow = Window & typeof globalThis & {
 };
 
 
-const CYAN = "#00E5FF";
+const CYAN = "#f5cf68";
 
 const PAGE_BG =
   "radial-gradient(900px 700px at 50% 18%, " +
@@ -193,8 +194,8 @@ function WooferSVG({ audioLevel, listening, kick = 0 }: { audioLevel: number; li
         position: "absolute",
         width: 28, height: 28,
         objectFit: "contain",
-        filter: "brightness(0) invert(1)",
-        opacity: 0.88,
+        filter: "drop-shadow(0 0 6px rgba(245,207,104,0.75))",
+        opacity: 1,
         transition: "transform 0.06s cubic-bezier(0.2, 0.9, 0.3, 1)",
         transform: `scale(${pump * domePunch})`,
       }}/>
@@ -239,9 +240,9 @@ export default function Home() {
   useEffect(() => {
     const fit = () => {
       const vh = window.visualViewport?.height || window.innerHeight;
-      const avail = vh - 52 - 96;
+      const avail = vh - 56 - 104 - 60; // top bar, bottom nav, page header
       const byWidth = (window.innerWidth - 40) / 240; // the visible speaker, the soft halo may bleed off-screen
-      const byHeight = (avail - 170) / 235;
+      const byHeight = (avail - 215) / 235;
       setBtnScale(Math.max(0.9, Math.min(1.55, byWidth, byHeight)));
     };
     fit();
@@ -527,10 +528,10 @@ const region = await getRegion();
       "drop-shadow(0 0 34px rgba(255,255,255,0.62))"
     : listening
     ? `brightness(${1.10 + audioLevel * 1.05}) contrast(1.08) ` +
-      `drop-shadow(0 0 ${10 + audioLevel * 26}px rgba(0,229,255,0.28))`
+      `drop-shadow(0 0 ${10 + audioLevel * 26}px rgba(245,207,104,0.28))`
     : recognizing
     ? "brightness(1.20) contrast(1.08) " +
-      "drop-shadow(0 0 14px rgba(0,229,255,0.18))"
+      "drop-shadow(0 0 14px rgba(245,207,104,0.18))"
     : "brightness(1) contrast(1)";
 
   if (sessionLoading) {
@@ -554,7 +555,7 @@ const region = await getRegion();
 
   if (!sessionOk) {
     return (
-      <main style={{ ...scanStyles.page, background: "#0b0b0c" }}>
+      <main style={{ ...scanStyles.page }}>
         <div style={{ ...scanStyles.phone, justifyContent: "center" }}>
           <div style={{ ...scanStyles.center, justifyContent: "center", gap: 18 }}>
             <div style={scanStyles.logoWrap}>
@@ -635,6 +636,9 @@ const region = await getRegion();
       `}</style>
 
       <div style={scanStyles.phone}>
+        <div style={{ padding: "18px 18px 0" }}>
+          <PageHeader title="Scan" sub="Identify any track, even unreleased." />
+        </div>
 
         <div style={scanStyles.center}>
           <div style={{ width: "100%", height: 235 * btnScale, position: "relative", flexShrink: 0 }}>
@@ -679,9 +683,9 @@ const region = await getRegion();
           </div>
 
           <div style={scanStyles.status}>
-            {status === "idle" ? "DROP IT" : null}
-            {status === "listening" ? "LISTENING..." : null}
-            {status === "recognizing" ? "IDENTIFYING..." : null}
+            {status === "idle" ? "Tap to scan" : null}
+            {status === "listening" ? "Listening…" : null}
+            {status === "recognizing" ? "Identifying…" : null}
           </div>
 
           {/* ── RESULT ── */}
@@ -690,7 +694,8 @@ const region = await getRegion();
               <div style={scanStyles.resultTitle}>{title}</div>
               {subtitle ? <div style={scanStyles.resultSub}>{subtitle}</div> : null}
               <div style={{ display: "flex", justifyContent: "center", marginTop: 12 }}>
-                <span style={tagStyle(tag === "UNRELEASED" ? "unrel" : tag === "RELEASED" ? "rel" : "neutral")}>                {tag}
+                <span style={tagStyle(tag === "UNRELEASED" ? "unrel" : tag === "RELEASED" ? "rel" : "neutral")}>
+                  {tag === "UNRELEASED" ? TAG_TEXT.unrel : tag === "RELEASED" ? TAG_TEXT.rel : tag}
                 </span>
               </div>
               {(spotifyUrl || beatportUrl) && (
@@ -710,12 +715,12 @@ const region = await getRegion();
 
 const scanStyles: Record<string, CSSProperties> = {
   page: {
-    height: "calc(100dvh - 148px)", // 52px top bar + 96px bottom nav
+    height: "calc(100dvh - 160px - env(safe-area-inset-top))", // 56px top bar + 104px bottom nav
     minHeight: 420,
     overflow: "hidden",
     touchAction: "none",
     overscrollBehavior: "none",
-    background: "#000",
+    background: "transparent",
     color: "#fff",
     display: "flex",
     justifyContent: "center",
@@ -791,8 +796,8 @@ const scanStyles: Record<string, CSSProperties> = {
     height: 280,
     borderRadius: 9999,
     background:
-      "radial-gradient(circle at 50% 50%, rgba(0,229,255,0.22) 0%, " +
-      "rgba(0,229,255,0.08) 36%, rgba(0,0,0,0) 72%)",
+      "radial-gradient(circle at 50% 50%, rgba(245,207,104,0.22) 0%, " +
+      "rgba(245,207,104,0.08) 36%, rgba(0,0,0,0) 72%)",
     filter: "blur(12px)",
     pointerEvents: "none",
     zIndex: 1,
@@ -809,18 +814,18 @@ const scanStyles: Record<string, CSSProperties> = {
     borderRadius: 9999,
     background:
       "conic-gradient(from 0deg, transparent 0deg, " +
-      "rgba(0,229,255,0.00) 14deg, " +
-      "rgba(0,229,255,0.30) 22deg, " +
-      "rgba(0,229,255,0.95) 35deg, " +
-      "rgba(0,229,255,0.35) 52deg, " +
-      "rgba(0,229,255,0.10) 70deg, " +
+      "rgba(245,207,104,0.00) 14deg, " +
+      "rgba(245,207,104,0.30) 22deg, " +
+      "rgba(245,207,104,0.95) 35deg, " +
+      "rgba(245,207,104,0.35) 52deg, " +
+      "rgba(245,207,104,0.10) 70deg, " +
       "transparent 92deg)",
     filter: "blur(0.3px)",
     transform: "translate(-50%,-50%)",
     opacity: 0.95,
     pointerEvents: "none",
     zIndex: 2,
-    boxShadow: "0 0 26px rgba(0,229,255,0.12)",
+    boxShadow: "0 0 26px rgba(245,207,104,0.12)",
     maskImage:
       "radial-gradient(circle, transparent 62%, #000 66%, #000 100%)",
     WebkitMaskImage:
@@ -834,7 +839,7 @@ const scanStyles: Record<string, CSSProperties> = {
     width: 220,
     height: 220,
     borderRadius: 9999,
-    border: "1px solid rgba(0,229,255,0.25)",
+    border: "1px solid rgba(245,207,104,0.25)",
     filter: "blur(0.8px)",
     pointerEvents: "none",
     zIndex: 1,
@@ -847,7 +852,7 @@ const scanStyles: Record<string, CSSProperties> = {
     width: 220,
     height: 220,
     borderRadius: 9999,
-    border: "1px solid rgba(0,229,255,0.15)",
+    border: "1px solid rgba(245,207,104,0.15)",
     filter: "blur(1.2px)",
     pointerEvents: "none",
     zIndex: 1,
@@ -860,7 +865,7 @@ const scanStyles: Record<string, CSSProperties> = {
     width: 220,
     height: 220,
     borderRadius: 9999,
-    border: "1px solid rgba(0,229,255,0.08)",
+    border: "1px solid rgba(245,207,104,0.08)",
     filter: "blur(1.8px)",
     pointerEvents: "none",
     zIndex: 1,
@@ -874,7 +879,7 @@ const scanStyles: Record<string, CSSProperties> = {
     width: 220,
     height: 220,
     borderRadius: 9999,
-    border: "1px solid rgba(0,229,255,0.22)",
+    border: "1px solid rgba(245,207,104,0.22)",
     filter: "blur(1.1px)",
     pointerEvents: "none",
     zIndex: 1,
@@ -887,7 +892,7 @@ const scanStyles: Record<string, CSSProperties> = {
     width: 220,
     height: 220,
     borderRadius: 9999,
-    border: "1px solid rgba(0,229,255,0.12)",
+    border: "1px solid rgba(245,207,104,0.12)",
     filter: "blur(1.7px)",
     pointerEvents: "none",
     zIndex: 1,
@@ -903,7 +908,7 @@ const scanStyles: Record<string, CSSProperties> = {
     borderRadius: 9999,
     background:
       "linear-gradient(90deg, rgba(0,0,0,0), " +
-      "rgba(0,229,255,0.55), rgba(0,0,0,0))",
+      "rgba(245,207,104,0.55), rgba(0,0,0,0))",
     filter: "blur(1px)",
     pointerEvents: "none",
     zIndex: 3,
@@ -920,7 +925,7 @@ const scanStyles: Record<string, CSSProperties> = {
     borderRadius: 9999,
     background: CYAN,
     boxShadow:
-      "0 0 10px rgba(0,229,255,0.22), 0 0 18px rgba(0,229,255,0.10)",
+      "0 0 10px rgba(245,207,104,0.22), 0 0 18px rgba(245,207,104,0.10)",
     pointerEvents: "none",
     zIndex: 2,
     filter: "blur(0.2px)",
@@ -965,8 +970,8 @@ const scanStyles: Record<string, CSSProperties> = {
     inset: -36,
     borderRadius: 9999,
     background:
-      "radial-gradient(circle at 50% 50%, rgba(0,229,255,0.30) 0%, " +
-      "rgba(0,229,255,0.12) 28%, rgba(0,0,0,0) 62%)",
+      "radial-gradient(circle at 50% 50%, rgba(245,207,104,0.30) 0%, " +
+      "rgba(245,207,104,0.12) 28%, rgba(0,0,0,0) 62%)",
     filter: "blur(14px)",
     mixBlendMode: "screen",
     pointerEvents: "none",
@@ -995,13 +1000,10 @@ const scanStyles: Record<string, CSSProperties> = {
   },
 
   status: {
-    fontFamily: MONO,
-    fontSize: 11,
-    color: C.text2,
-    letterSpacing: "0.32em",
-    paddingLeft: "0.32em",
+    fontSize: 17,
+    color: "#fff",
     fontWeight: 600,
-    textTransform: "uppercase",
+    letterSpacing: "-0.01em",
   },
 
   recent: { width: "100%", paddingLeft: 0, paddingRight: 0 },
@@ -1045,24 +1047,26 @@ const scanStyles: Record<string, CSSProperties> = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    filter: "drop-shadow(0 0 18px rgba(255,255,255,0.18))",
+    filter: "drop-shadow(0 0 18px rgba(245,207,104,0.35))",
   },
   googleBtn: {
     width: "min(340px, 100%)",
-    padding: "14px 16px",
-    borderRadius: 14,
-    background: "rgba(255,255,255,0.08)",
-    border: "1px solid rgba(255,255,255,0.14)",
-    color: "#fff",
+    padding: "15px 16px",
+    borderRadius: 999,
+    background: C.goldGrad,
+    border: "none",
+    color: C.goldInk,
     cursor: "pointer",
     fontSize: 16,
     fontWeight: 700,
-    letterSpacing: 0.4,
+    boxShadow: "0 10px 30px rgba(232,170,40,0.35)",
   },
   loginHint: {
-    opacity: 0.7,
-    fontSize: 12,
-    letterSpacing: "0.06em",
+    color: C.text2,
+    fontSize: 15,
+    textAlign: "center" as const,
+    whiteSpace: "pre-line" as const,
+    lineHeight: 1.5,
   },
   loading: {
     opacity: 0.8,
@@ -1072,15 +1076,13 @@ const scanStyles: Record<string, CSSProperties> = {
   },
   appleBtn: {
     width: "min(340px, 100%)",
-    padding: "14px 16px",
-    borderRadius: 14,
-    background: "#000",
-    border: "1px solid rgba(255,255,255,0.30)",
+    padding: "15px 16px",
+    borderRadius: 999,
+    ...glass,
     color: "#fff",
     cursor: "pointer",
     fontSize: 16,
-    fontWeight: 700,
-    letterSpacing: 0.4,
+    fontWeight: 600,
     textAlign: "center" as const,
   },
   resultLink: {
@@ -1088,26 +1090,26 @@ const scanStyles: Record<string, CSSProperties> = {
     border: "1px solid rgba(255,255,255,0.12)", borderRadius: 999, padding: "4px 10px",
   },
   resultBlock: {
+    ...glass,
+    borderRadius: 22,
+    padding: "16px 18px",
     textAlign: "center" as const,
-    paddingTop: 0,
-    maxWidth: 300,
+    width: "100%",
+    maxWidth: 340,
+    boxSizing: "border-box" as const,
     animation: "fadeUp 0.35s ease-out",
   },
   resultTitle: {
-    fontSize: 19,
-    fontWeight: 800,
+    fontSize: 18,
+    fontWeight: 700,
     letterSpacing: "-0.02em",
-    background: "linear-gradient(180deg, rgba(245,245,245,0.98), rgba(160,160,160,0.72))",
-    WebkitBackgroundClip: "text",
-    backgroundClip: "text",
-    color: "transparent",
-    lineHeight: 1.2,
+    color: "#fff",
+    lineHeight: 1.25,
   },
   resultSub: {
-    marginTop: 6,
+    marginTop: 4,
     fontSize: 14,
     color: C.text2,
-    letterSpacing: "0.02em",
   },
   spotifyBtn: {
     display: "block",
@@ -1126,9 +1128,9 @@ const scanStyles: Record<string, CSSProperties> = {
     display: "block",
     padding: "11px 14px",
     borderRadius: 12,
-    background: "rgba(0,229,255,0.10)",
-    border: "1px solid rgba(0,229,255,0.30)",
-    color: "#00E5FF",
+    background: "rgba(245,207,104,0.10)",
+    border: "1px solid rgba(245,207,104,0.30)",
+    color: "#f5cf68",
     fontWeight: 700,
     fontSize: 13,
     textDecoration: "none",

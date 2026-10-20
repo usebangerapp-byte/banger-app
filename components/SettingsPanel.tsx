@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { authFetch } from "@/lib/authFetch";
+import { C, glass, tag } from "@/lib/ui";
 
-const MONO = "var(--font-geist-mono), ui-monospace, monospace";
 
 
 export default function SettingsPanel({ onClose }: { onClose: () => void }) {
@@ -80,6 +80,7 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
 
   return (
     <div style={overlay}>
+      <div aria-hidden style={glow} />
       <div style={shell}>
 
         {/* Header */}
@@ -89,78 +90,76 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* Notifications — first */}
-        <section style={section}>
-          <div style={row}>
+        <section style={group}>
+          <div style={{ ...row, borderBottom: "none" }}>
             <div>
               <div style={rowTitle}>Notifications</div>
               <div style={rowSub}>Messages, followers, releases</div>
             </div>
-            <button onClick={toggleNotifs} aria-label="Toggle notifications" style={{
-              width: 46, height: 26, borderRadius: 13, border: "none", cursor: "pointer", flexShrink: 0,
-              background: notifsEnabled ? "#fff" : "rgba(255,255,255,0.15)", position: "relative", transition: "background 0.2s",
+            <button onClick={toggleNotifs} role="switch" aria-checked={notifsEnabled} aria-label="Notifications" style={{
+              width: 51, height: 31, borderRadius: 16, border: "none", cursor: "pointer", flexShrink: 0,
+              background: notifsEnabled ? C.goldGrad : "rgba(255,255,255,0.16)", position: "relative", transition: "background 0.2s",
             }}>
               <span style={{
-                position: "absolute", top: 3, left: notifsEnabled ? 23 : 3, width: 20, height: 20, borderRadius: "50%",
-                transition: "left 0.2s", background: notifsEnabled ? "#000" : "rgba(255,255,255,0.55)",
+                position: "absolute", top: 2, left: notifsEnabled ? 22 : 2, width: 27, height: 27, borderRadius: "50%",
+                transition: "left 0.2s", background: "#fff", boxShadow: "0 2px 6px rgba(0,0,0,0.35)",
               }} />
             </button>
           </div>
         </section>
 
         {/* Account */}
-        <section style={section}>
-          <div style={label}>ACCOUNT</div>
+        <div style={groupLabel}>Account</div>
+        <section style={group}>
           <div style={row}>
-            <span style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <span style={{ fontSize: 15, color: C.text2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {email || "—"}
             </span>
+            <span style={isPro ? tag("pro") : tag("neutral")}>{isPro ? "PRO" : "Free"}</span>
           </div>
-          <div style={row}>
-            <span style={isPro ? badgePro : badgeFree}>{isPro ? "✦ PRO" : "FREE"}</span>
-            {isPro ? (
-              <button onClick={openPortal} disabled={portalLoading} style={textLink}>
-                {portalLoading ? "Opening…" : "Manage subscription →"}
-              </button>
-            ) : (
-              <button onClick={() => { onClose(); window.location.href = "/upgrade"; }} style={textLink}>
-                Upgrade →
-              </button>
-            )}
-          </div>
+          {isPro ? (
+            <button onClick={openPortal} disabled={portalLoading} style={{ ...linkRow, borderBottom: "none" }}>
+              <span>{portalLoading ? "Opening…" : "Manage subscription"}</span><span style={chev}>›</span>
+            </button>
+          ) : (
+            <button onClick={() => { onClose(); window.location.href = "/upgrade"; }} style={{ ...linkRow, borderBottom: "none", color: C.gold }}>
+              <span>Go Pro</span><span style={chev}>›</span>
+            </button>
+          )}
         </section>
 
         {/* Profile */}
-        <section style={section}>
-          <div style={label}>PROFILE</div>
-          <button onClick={() => { onClose(); window.location.href = "/profile?edit=1"; }} style={linkRow}>
+        <section style={group}>
+          <button onClick={() => { onClose(); window.location.href = "/profile?edit=1"; }} style={{ ...linkRow, borderBottom: "none" }}>
             <span>Edit profile</span><span style={chev}>›</span>
           </button>
-          <div style={rowSub}>Tap your photo on your profile to change it.</div>
         </section>
 
         {/* About & legal (required by the App Store) */}
-        <section style={section}>
-          <div style={label}>ABOUT</div>
+        <div style={groupLabel}>About</div>
+        <section style={group}>
           <a href="/contact" style={linkRow}><span>Contact</span><span style={chev}>›</span></a>
           <a href="/terms" style={linkRow}><span>Terms of Service</span><span style={chev}>›</span></a>
-          <a href="/privacy" style={linkRow}><span>Privacy Policy</span><span style={chev}>›</span></a>
+          <a href="/privacy" style={{ ...linkRow, borderBottom: "none" }}><span>Privacy Policy</span><span style={chev}>›</span></a>
         </section>
 
         {/* Sign out */}
-        <button onClick={signOut} style={signOutBtn}>Sign out</button>
+        <section style={group}>
+          <button onClick={signOut} style={{ ...linkRow, borderBottom: "none", color: C.danger, justifyContent: "center" }}>Sign out</button>
+        </section>
 
         {/* Delete account — two-step confirmation */}
-        <section style={{ ...section, gap: 10 }}>
+        <section style={{ display: "grid", gap: 10 }}>
           {!confirmDelete ? (
             <button onClick={() => setConfirmDelete(true)} style={deleteLink}>Delete my account</button>
           ) : (
             <div style={dangerBox}>
-              <div style={{ fontSize: 14, fontWeight: 800 }}>Delete your account?</div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", lineHeight: 1.5 }}>
+              <div style={{ fontSize: 16, fontWeight: 700 }}>Delete your account?</div>
+              <div style={{ fontSize: 13, color: C.text2, lineHeight: 1.5 }}>
                 Your profile, scans, follows, messages and notifications are erased for good. If you have a PRO
                 subscription, cancel it first in Manage subscription.
               </div>
-              {deleteError && <div style={{ fontSize: 12, color: "rgba(255,120,120,0.9)" }}>{deleteError}</div>}
+              {deleteError && <div style={{ fontSize: 13, color: C.danger }}>{deleteError}</div>}
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => setConfirmDelete(false)} disabled={deleting} style={cancelBtn}>Cancel</button>
                 <button onClick={deleteAccount} disabled={deleting} style={dangerBtn}>{deleting ? "Deleting…" : "Delete forever"}</button>
@@ -177,71 +176,47 @@ const overlay: React.CSSProperties = {
   position: "fixed", inset: 0, zIndex: 300, background: "#000", color: "#fff",
   overflowY: "auto", WebkitOverflowScrolling: "touch",
 };
+const glow: React.CSSProperties = {
+  position: "fixed", inset: 0, pointerEvents: "none",
+  background: "radial-gradient(520px 520px at 15% 10%, rgba(232,170,40,0.24), rgba(232,170,40,0.06) 45%, transparent 70%)",
+};
 const shell: React.CSSProperties = {
-  maxWidth: 560, margin: "0 auto",
-  padding: "calc(20px + env(safe-area-inset-top)) 22px calc(60px + env(safe-area-inset-bottom))",
-  display: "grid", gap: 40,
+  position: "relative", maxWidth: 560, margin: "0 auto",
+  padding: "calc(18px + env(safe-area-inset-top)) 18px calc(60px + env(safe-area-inset-bottom))",
+  display: "grid", gap: 14,
 };
-const section: React.CSSProperties = { display: "grid", gap: 14 };
-const row: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, minWidth: 0 };
-const rowTitle: React.CSSProperties = { fontSize: 15, fontWeight: 700 };
-const rowSub: React.CSSProperties = { fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 3 };
-const textLink: React.CSSProperties = {
-  background: "none", border: "none", padding: 0, cursor: "pointer",
-  color: "rgba(255,255,255,0.7)", fontSize: 13, fontWeight: 700,
+const group: React.CSSProperties = { ...glass, borderRadius: 18, padding: "0 16px", display: "grid" };
+const groupLabel: React.CSSProperties = { fontSize: 13, color: C.text3, padding: "10px 4px 0" };
+const row: React.CSSProperties = {
+  display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, minWidth: 0,
+  padding: "14px 0", borderBottom: `1px solid ${C.lineSoft}`,
 };
-const eyebrow: React.CSSProperties = { fontSize: 15, fontWeight: 800, letterSpacing: "0.26em", color: "#fff" };
-const label: React.CSSProperties = {
-  fontFamily: MONO, fontSize: 10, fontWeight: 700, letterSpacing: "0.24em", color: "rgba(255,255,255,0.3)",
-  paddingBottom: 10, borderBottom: "1px solid rgba(255,255,255,0.08)",
-};
+const rowTitle: React.CSSProperties = { fontSize: 16, fontWeight: 600 };
+const rowSub: React.CSSProperties = { fontSize: 13, color: C.text3, marginTop: 2 };
+const eyebrow: React.CSSProperties = { fontSize: 15, fontWeight: 700, letterSpacing: "0.16em", color: "#fff" };
 const closeBtn: React.CSSProperties = {
-  width: 36, height: 36, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.12)",
-  background: "transparent", color: "rgba(255,255,255,0.7)", fontSize: 14, cursor: "pointer",
-};
-const badgeBase: React.CSSProperties = { fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", borderRadius: 999, padding: "4px 11px", flexShrink: 0 };
-const badgePro: React.CSSProperties = { ...badgeBase, color: "#fff", border: "1px solid rgba(255,255,255,0.35)" };
-const badgeFree: React.CSSProperties = { ...badgeBase, color: "rgba(255,255,255,0.45)", border: "1px solid rgba(255,255,255,0.14)" };
-const btnSolid: React.CSSProperties = {
-  padding: "17px 16px", borderRadius: 14, background: "#fff", color: "#000", border: "none",
-  fontWeight: 900, fontSize: 15, cursor: "pointer", letterSpacing: "0.01em",
-};
-const btnGhost: React.CSSProperties = {
-  padding: "16px", borderRadius: 14, background: "transparent", color: "#fff",
-  border: "1px solid rgba(255,255,255,0.2)", fontWeight: 800, fontSize: 14, cursor: "pointer",
-};
-const hint: React.CSSProperties = { fontSize: 12, color: "rgba(255,255,255,0.35)", textAlign: "center", lineHeight: 1.5 };
-const featureRow: React.CSSProperties = {
-  display: "flex", alignItems: "center", gap: 12, padding: "15px 0",
-  borderTop: "1px solid rgba(255,255,255,0.05)",
-};
-const proTag: React.CSSProperties = {
-  fontFamily: MONO, fontSize: 9, fontWeight: 700, letterSpacing: "0.16em",
-  border: "1px solid rgba(255,180,0,0.4)", color: "rgba(255,180,0,0.85)", borderRadius: 999, padding: "3px 8px", flexShrink: 0,
+  width: 34, height: 34, borderRadius: "50%", border: "none",
+  background: "rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.8)", fontSize: 13, cursor: "pointer",
 };
 const linkRow: React.CSSProperties = {
   display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%",
-  background: "none", border: "none", padding: "4px 0", color: "#fff", textDecoration: "none",
-  fontSize: 15, fontWeight: 600, cursor: "pointer", textAlign: "left",
+  background: "none", border: "none", borderBottom: `1px solid ${C.lineSoft}`, padding: "14px 0", color: "#fff", textDecoration: "none",
+  fontSize: 16, fontWeight: 500, cursor: "pointer", textAlign: "left", fontFamily: "inherit",
 };
-const chev: React.CSSProperties = { color: "rgba(255,255,255,0.3)", fontSize: 16 };
+const chev: React.CSSProperties = { color: "rgba(255,255,255,0.35)", fontSize: 18, lineHeight: 1 };
 const deleteLink: React.CSSProperties = {
-  justifySelf: "start", background: "none", border: "none", padding: 0, cursor: "pointer",
-  color: "rgba(255,255,255,0.3)", fontSize: 12, fontWeight: 600, textDecoration: "underline", textUnderlineOffset: 3,
+  justifySelf: "center", background: "none", border: "none", padding: "6px 0", cursor: "pointer",
+  color: C.text4, fontSize: 13, fontWeight: 500,
 };
 const dangerBox: React.CSSProperties = {
-  display: "grid", gap: 10, border: "1px solid rgba(255,80,80,0.25)", borderRadius: 14, padding: 14,
-  background: "rgba(255,60,60,0.04)",
+  ...glass, display: "grid", gap: 10, border: "1px solid rgba(255,90,90,0.30)", borderRadius: 18, padding: 16,
+  background: "rgba(255,60,60,0.06)",
 };
 const cancelBtn: React.CSSProperties = {
-  flex: 1, padding: "11px 0", borderRadius: 10, background: "none", color: "#fff",
-  border: "1px solid rgba(255,255,255,0.15)", fontSize: 13, fontWeight: 700, cursor: "pointer",
+  flex: 1, padding: "12px 0", borderRadius: 999, background: "rgba(255,255,255,0.08)", color: "#fff",
+  border: `1px solid ${C.glassBorder}`, fontSize: 14, fontWeight: 600, cursor: "pointer",
 };
 const dangerBtn: React.CSSProperties = {
-  flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(255,60,60,0.85)", color: "#fff",
-  border: "none", fontSize: 13, fontWeight: 800, cursor: "pointer",
-};
-const signOutBtn: React.CSSProperties = {
-  justifySelf: "start", background: "none", border: "none", padding: "4px 0",
-  color: "rgba(255,80,80,0.75)", fontSize: 14, fontWeight: 700, cursor: "pointer",
+  flex: 1, padding: "12px 0", borderRadius: 999, background: "#e5484d", color: "#fff",
+  border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer",
 };

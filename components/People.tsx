@@ -98,7 +98,7 @@ export function PeopleSheet({ userId, list, onClose }: { userId: string; list: "
     <div onClick={onClose} style={overlay}>
       <div onClick={(e) => e.stopPropagation()} style={sheet}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-          <div style={sheetTitle}>{list === "followers" ? "FOLLOWERS" : "FOLLOWING"}</div>
+          <div style={sheetTitle}>{list === "followers" ? "Followers" : "Following"}</div>
           <button onClick={onClose} style={clearBtn}>✕</button>
         </div>
         {people === null ? <div style={hint}>Loading…</div>
@@ -122,22 +122,24 @@ const row: React.CSSProperties = {
   borderBottom: "1px solid rgba(255,255,255,0.04)", color: "#fff", textDecoration: "none", minWidth: 0,
 };
 const searchWrap: React.CSSProperties = {
-  display: "flex", alignItems: "center", gap: 8, padding: "0 4px 6px",
-  borderBottom: "1px solid rgba(255,255,255,0.07)", color: "#fff",
+  display: "flex", alignItems: "center", gap: 8, padding: "2px 14px",
+  background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 999, color: "rgba(255,255,255,0.6)",
+  backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
 };
 const searchInput: React.CSSProperties = {
   flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none",
-  color: "#fff", fontSize: 13, padding: "6px 0",
+  color: "#fff", fontSize: 15, padding: "9px 0", fontFamily: "inherit",
 };
 const clearBtn: React.CSSProperties = {
   background: "none", border: "none", color: "rgba(255,255,255,0.35)", fontSize: 13, cursor: "pointer", padding: 4,
 };
 const resultsBox: React.CSSProperties = {
-  border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: "2px 10px", background: "rgba(255,255,255,0.02)",
+  border: "1px solid rgba(255,255,255,0.12)", borderRadius: 20, padding: "2px 12px", background: "rgba(255,255,255,0.07)",
+  backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)", marginTop: 8,
 };
 const moreBtn: React.CSSProperties = {
-  background: "none", border: "none", padding: "10px 4px 6px", color: "rgba(255,255,255,0.45)",
-  fontSize: 12, fontWeight: 700, cursor: "pointer",
+  background: "none", border: "none", padding: "10px 4px 8px", color: "#f5cf68",
+  fontSize: 13, fontWeight: 600, cursor: "pointer",
 };
 const hint: React.CSSProperties = { fontSize: 12, color: "rgba(255,255,255,0.35)", padding: "10px 4px" };
 const overlay: React.CSSProperties = {
@@ -146,7 +148,8 @@ const overlay: React.CSSProperties = {
 };
 const sheet: React.CSSProperties = {
   width: "100%", maxWidth: 680, maxHeight: "70vh", overflowY: "auto",
-  background: "#0e0e0e", borderTop: "1px solid rgba(255,255,255,0.10)",
-  borderRadius: "20px 20px 0 0", padding: "16px 16px calc(24px + env(safe-area-inset-bottom))",
+  background: "rgba(28,28,28,0.82)", border: "1px solid rgba(255,255,255,0.12)", borderBottom: "none",
+  backdropFilter: "blur(40px) saturate(180%)", WebkitBackdropFilter: "blur(40px) saturate(180%)",
+  borderRadius: "26px 26px 0 0", padding: "16px 16px calc(24px + env(safe-area-inset-bottom))",
 };
-const sheetTitle: React.CSSProperties = { fontSize: 10, fontWeight: 900, letterSpacing: "0.2em", color: "rgba(255,255,255,0.4)" };
+const sheetTitle: React.CSSProperties = { fontSize: 17, fontWeight: 700, color: "#fff" };

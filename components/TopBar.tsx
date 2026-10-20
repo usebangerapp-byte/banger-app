@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import SettingsPanel from "@/components/SettingsPanel";
+import { C, glass } from "@/lib/ui";
 
 const HIDDEN_PATHS = ["/", "/login", "/unlock", "/onboarding", "/auth/callback", "/privacy", "/terms", "/contact"];
 
@@ -89,25 +90,27 @@ export default function TopBar() {
       {/* TopBar strip */}
       <div style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
-        height: 52,
-        background: "rgba(0,0,0,0.85)",
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
+        height: "calc(56px + env(safe-area-inset-top))", paddingTop: "env(safe-area-inset-top)",
+        background: "rgba(0,0,0,0.45)",
+        backdropFilter: "blur(24px) saturate(160%)",
+        WebkitBackdropFilter: "blur(24px) saturate(160%)",
         borderBottom: "1px solid rgba(255,255,255,0.06)",
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "0 18px",
+        paddingLeft: 16, paddingRight: 16, boxSizing: "border-box",
       }}>
         {/* Settings — left */}
-        <button onClick={() => { setShowSettings(v => !v); setShowNotifs(false); }} style={iconBtn}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <button aria-label="Settings" onClick={() => { setShowSettings(v => !v); setShowNotifs(false); }} style={iconBtn}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3"/>
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
           </svg>
         </button>
 
         {/* Logo center */}
-        <span style={{ fontSize: 17, fontWeight: 900, letterSpacing: "0.22em", color: "#fff",
-          textShadow: "0 0 18px rgba(255,255,255,0.25)" }}>BANGER</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <img src="/B-logo-sm.png" alt="" width={15} height={22} style={{ height: 22, width: "auto", filter: "drop-shadow(0 0 6px rgba(245,207,104,0.55))" }} />
+          <span style={{ fontSize: 15, fontWeight: 700, letterSpacing: "0.24em", color: "#fff" }}>BANGER</span>
+        </span>
 
         {/* Notifications — right */}
         <button onClick={() => {
@@ -118,14 +121,14 @@ export default function TopBar() {
             markRead();
             // keep the "new" dots visible while the panel is open, they disappear next time
           }
-        }} style={{ ...iconBtn, position: "relative" }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        }} aria-label="Notifications" style={{ ...iconBtn, position: "relative" }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
             <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
           </svg>
           {notifCount > 0 && (
-            <span style={{ position:"absolute", top:0, right:0, width:16, height:16, borderRadius:"50%",
-              background:"#fff", color:"#000", fontSize:9, fontWeight:900,
+            <span style={{ position:"absolute", top:-3, right:-3, minWidth:17, height:17, padding:"0 4px", boxSizing:"border-box", borderRadius:999,
+              background:C.goldGrad, color:C.goldInk, fontSize:10, fontWeight:800, boxShadow:"0 0 10px rgba(245,207,104,0.6)",
               display:"flex", alignItems:"center", justifyContent:"center" }}>
               {notifCount > 9 ? "9+" : notifCount}
             </span>
@@ -134,7 +137,7 @@ export default function TopBar() {
       </div>
 
       {/* Spacer so content doesn't hide under TopBar */}
-      <div style={{ height: 52 }} />
+      <div style={{ height: "calc(56px + env(safe-area-inset-top))" }} />
 
       {/* Settings — full-screen panel */}
       {showSettings && <SettingsPanel onClose={() => setShowSettings(false)} />}
@@ -143,14 +146,14 @@ export default function TopBar() {
       {showNotifs && (
         <div style={panelStyle}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-            <div style={panelTitle}>NOTIFICATIONS</div>
-            <button onClick={() => setShowNotifs(false)} style={closeBtn}>✕</button>
+            <div style={panelTitle}>Notifications</div>
+            <button aria-label="Close" onClick={() => setShowNotifs(false)} style={closeBtn}>✕</button>
           </div>
           {notifs.length === 0 ? (
             <div style={{ display:"grid", gap:6, padding:"8px 0" }}>
-              <div style={{ fontSize:13, color:"rgba(255,255,255,0.35)", letterSpacing:"0.03em" }}>No notifications yet.</div>
+              <div style={{ fontSize:14, color:C.text3 }}>No notifications yet.</div>
               {notifDiag && (
-                <div style={{ fontSize:10, color:"rgba(255,120,120,0.6)", fontFamily:"var(--font-geist-mono), monospace", overflowWrap:"anywhere" as const }}>
+                <div style={{ fontSize:10, color:"rgba(255,120,120,0.6)", overflowWrap:"anywhere" as const }}>
                   {notifDiag}
                 </div>
               )}
@@ -168,12 +171,12 @@ export default function TopBar() {
                   </div>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:"flex", alignItems:"baseline", gap:8 }}>
-                      <span style={{ fontSize:14, fontWeight:800, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const, flex:1, minWidth:0 }}>
+                      <span style={{ fontSize:15, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const, flex:1, minWidth:0 }}>
                         {n.track_title || "BANGER"}
                       </span>
-                      <span style={{ fontSize:10, color:"rgba(255,255,255,0.3)", flexShrink:0 }}>{timeAgo(n.created_at)}</span>
+                      <span style={{ fontSize:12, color:C.text4, flexShrink:0 }}>{timeAgo(n.created_at)}</span>
                     </div>
-                    <div style={{ fontSize:12, color:"rgba(255,255,255,0.45)", marginTop:3, lineHeight:1.45 }}>
+                    <div style={{ fontSize:13, color:C.text2, marginTop:2, lineHeight:1.4 }}>
                       {n.message || (n.type==="track_released" ? "Released — available now" : "New notification")}
                     </div>
                   </div>
@@ -204,23 +207,25 @@ function timeAgo(iso?: string) {
 }
 const notifRow: React.CSSProperties = {
   display: "flex", alignItems: "center", gap: 12, padding: "13px 0",
-  borderBottom: "1px solid rgba(255,255,255,0.05)", cursor: "pointer", minWidth: 0,
+  borderBottom: "1px solid rgba(255,255,255,0.07)", cursor: "pointer", minWidth: 0,
 };
 const notifAvatar: React.CSSProperties = {
-  width: 36, height: 36, borderRadius: "50%", overflow: "hidden", flexShrink: 0,
+  width: 40, height: 40, borderRadius: "50%", overflow: "hidden", flexShrink: 0,
   background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.08)",
   display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 900,
 };
-const unreadDot: React.CSSProperties = { width: 7, height: 7, borderRadius: "50%", background: "#e8b84a", flexShrink: 0 };
+const unreadDot: React.CSSProperties = { width: 7, height: 7, borderRadius: "50%", background: C.gold, boxShadow: "0 0 8px rgba(245,207,104,0.8)", flexShrink: 0 };
 
 const iconBtn: React.CSSProperties = {
-  background: "none", border: "none", color: "rgba(255,255,255,0.75)", cursor: "pointer",
-  padding: 6, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
+  width: 38, height: 38, borderRadius: "50%", background: "rgba(255,255,255,0.08)",
+  border: "1px solid rgba(255,255,255,0.12)", color: "#fff", cursor: "pointer",
+  padding: 0, display: "flex", alignItems: "center", justifyContent: "center",
 };
 const panelStyle: React.CSSProperties = {
-  position: "fixed", top: 58, left: 12, right: 12, zIndex: 200,
-  background: "#111", border: "1px solid rgba(255,255,255,0.10)",
-  borderRadius: 20, padding: "16px 16px 14px", display: "grid", gap: 4,
+  position: "fixed", top: "calc(64px + env(safe-area-inset-top))", left: 12, right: 12, zIndex: 200,
+  ...glass, background: "rgba(28,28,28,0.72)", backdropFilter: "blur(40px) saturate(180%)", WebkitBackdropFilter: "blur(40px) saturate(180%)",
+  boxShadow: "0 20px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.10)",
+  borderRadius: 26, padding: "18px 18px 10px", display: "grid", gap: 4, maxWidth: 520, margin: "0 auto",
   maxHeight: "80vh", overflowY: "auto" as const, overflowX: "hidden" as const,
   boxSizing: "border-box" as const,
 };
@@ -238,7 +243,7 @@ const actionRow: React.CSSProperties = {
 const settingsSection: React.CSSProperties = { display: "grid", gap: 8 };
 const settingsSectionTitle: React.CSSProperties = { fontSize: 9, fontWeight: 900, letterSpacing: "0.22em", color: "rgba(255,255,255,0.30)" };
 const panelTitle: React.CSSProperties = {
-  fontSize: 10, fontWeight: 800, letterSpacing: "0.20em", opacity: 0.45, marginBottom: 4,
+  fontSize: 17, fontWeight: 700, marginBottom: 4,
 };
 const panelRow: React.CSSProperties = {
   display: "flex", justifyContent: "space-between", alignItems: "center",
@@ -253,10 +258,9 @@ const settingsBtn: React.CSSProperties = {
   textAlign: "left" as const,
 };
 const closeBtn: React.CSSProperties = {
-  position: "absolute" as const, top: 14, right: 14,
-  background: "none", border: "none", color: "rgba(255,255,255,0.4)",
-  fontSize: 16, cursor: "pointer", padding: 4,
+  width: 30, height: 30, borderRadius: "50%", background: "rgba(255,255,255,0.10)",
+  border: "none", color: "rgba(255,255,255,0.7)", fontSize: 12, cursor: "pointer", padding: 0,
 };
 const backdrop: React.CSSProperties = {
-  position: "fixed", inset: 0, zIndex: 150, background: "rgba(0,0,0,0.4)",
+  position: "fixed", inset: 0, zIndex: 150, background: "rgba(0,0,0,0.35)",
 };

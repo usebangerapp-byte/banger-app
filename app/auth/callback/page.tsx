@@ -54,7 +54,7 @@ export default function AuthCallbackPage() {
   }, [router]);
 
   return (
-    <div style={{ minHeight: "100vh", background: "#000", color: "#fff",
+    <div style={{ minHeight: "100vh", background: "transparent", color: "#fff",
       display: "flex", alignItems: "center", justifyContent: "center",
       padding: 24, textAlign: "center" }}>
       <div style={{ opacity: 0.9, fontSize: 14, letterSpacing: "0.04em" }}>{msg}</div>

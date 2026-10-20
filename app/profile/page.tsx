@@ -9,7 +9,7 @@ import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { getBrowserRole } from "@/lib/auth/getBrowserRole";
 import PageHeader from "@/components/PageHeader";
 import { PeopleSearch, PeopleSheet } from "@/components/People";
-import { ui, C, MONO, tag } from "@/lib/ui";
+import { ui, C, glass, tag, TAG_TEXT } from "@/lib/ui";
 import { Skeleton, SkeletonTrackRow, SkeletonStyles } from "@/components/Skeleton";
 
 // ── Custom inline audio player ──
@@ -457,12 +457,12 @@ export default function ProfilePageV2() {
       <div style={shellStyle}>
 
         <PageHeader title="Profile" sub="Your scans, follows and messages."
-          code={<span style={{ color: role==="pro" ? C.gold : undefined }}>{role==="pro" ? "✦ PRO" : "FREE"}</span>} />
+          code={<span style={{ color: role==="pro" ? C.gold : undefined }}>{role==="pro" ? "PRO" : "Free"}</span>} />
 
-        <div style={{ ...tabBarStyle, marginTop:-20 }}>
+        <div style={tabBarStyle}>
           {(["profile","messages"] as const).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{ ...tabBtn, ...(tab===t?tabActive:{}) }}>
-              {t==="profile" ? "OVERVIEW" : t==="settings" ? "SETTINGS" : `CHAT${convs.reduce((a,c)=>a+c.unread,0)>0?` (${convs.reduce((a,c)=>a+c.unread,0)})`:""}`}
+              {t==="profile" ? "Overview" : t==="settings" ? "Settings" : `Messages${convs.reduce((a,c)=>a+c.unread,0)>0?` · ${convs.reduce((a,c)=>a+c.unread,0)}`:""}`}
             </button>
           ))}
         </div>
@@ -470,14 +470,14 @@ export default function ProfilePageV2() {
         {tab==="profile" && (<>
 
           {/* ── IDENTITY ── */}
-          <section style={{ display:"grid", gap:22 }}>
+          <section style={{ ...glass, borderRadius:24, padding:18, display:"grid", gap:16, minWidth:0 }}>
 
             <div style={{ display:"flex", alignItems:"center", gap:16, minWidth:0 }}>
               {/* Avatar — tap to change the photo */}
               <input ref={avatarInputRef} type="file" accept="image/*" style={{ display:"none" }}
                 onChange={e => { const f = e.target.files?.[0]; if (f) uploadAvatar(f); e.target.value=""; }} />
               <div onClick={() => avatarInputRef.current?.click()}
-                style={{ ...avatarStyle, cursor:"pointer", position:"relative", overflow:"hidden", flexShrink:0 }}>
+                style={{ ...avatarStyle, ...(role==="pro" ? { border:"2px solid #e9b844", boxShadow:"0 0 16px rgba(245,207,104,0.35)" } : {}), cursor:"pointer", position:"relative", overflow:"hidden", flexShrink:0 }}>
                 {avatarUrl
                   ? <img src={avatarUrl} alt="avatar" style={{ width:"100%", height:"100%", objectFit:"cover", borderRadius:"50%" }} />
                   : <span>{name.charAt(0).toUpperCase()}</span>}
@@ -487,10 +487,10 @@ export default function ProfilePageV2() {
               </div>
 
               <div style={{ flex:1, minWidth:0, display:"grid", gap:6 }}>
-                <div style={{ fontSize:19, fontWeight:800, letterSpacing:"-0.02em", lineHeight:1.2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>
+                <div style={{ fontSize:21, fontWeight:700, letterSpacing:"-0.02em", lineHeight:1.2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>
                   {name}
                 </div>
-                {profile?.genre && <div style={{ fontSize:12, color:C.text3 }}>{profile.genre}</div>}
+                {profile?.genre && <div style={{ fontSize:13, color:C.text3 }}>{profile.genre}</div>}
                 {(profile?.instagram || profile?.soundcloud) && (
                   <div style={{ display:"flex", gap:8, flexWrap:"wrap" as const, marginTop:2 }}>
                     {profile?.instagram && (
@@ -520,7 +520,7 @@ export default function ProfilePageV2() {
             </div>
 
             {profile?.bio && (
-              <div style={{ fontSize:13, color:C.text2, lineHeight:1.6, borderLeft:`1px solid ${C.line}`, paddingLeft:12 }}>
+              <div style={{ fontSize:14, color:C.text2, lineHeight:1.55 }}>
                 {profile.bio}
               </div>
             )}
@@ -538,7 +538,7 @@ export default function ProfilePageV2() {
               <button onClick={() => setEditing(v=>!v)} style={ui.pill}>{editing ? "Cancel" : "Edit profile"}</button>
               <button onClick={shareProfile} style={ui.pill}>{shared ? "Link copied ✓" : "Share"}</button>
               {!loading && role !== "pro" && (
-                <button onClick={() => router.push("/upgrade")} style={{ ...ui.pillSolid, marginLeft:"auto" }}>✦ Go PRO</button>
+                <button onClick={() => router.push("/upgrade")} style={{ ...ui.pillSolid, marginLeft:"auto" }}>Go Pro</button>
               )}
             </div>
           </section>
@@ -550,19 +550,19 @@ export default function ProfilePageV2() {
           )}
 
           {editing && (
-            <Section title="EDIT PROFILE">
+            <Section title="Edit profile">
               <div style={{ display:"grid", gap:10 }}>
                 {[{label:"Display name",value:editName,set:setEditName,ph:"DJ Banger"},
                   {label:"Genre",value:editGenre,set:setEditGenre,ph:"Techno · House · Melodic"},
                   {label:"Instagram",value:editIG,set:setEditIG,ph:"@yourdj"},
                   {label:"SoundCloud",value:editSC,set:setEditSC,ph:"soundcloud.com/yourdj"}
                 ].map(({label,value,set,ph})=>(
-                  <label key={label} style={{ fontSize:12, opacity:0.6 }}>
+                  <label key={label} style={{ fontSize:13, color:C.text3 }}>
                     {label}
                     <input value={value} onChange={e=>set(e.target.value)} placeholder={ph} style={inputStyle} />
                   </label>
                 ))}
-                <label style={{ fontSize:12, opacity:0.6 }}>Bio
+                <label style={{ fontSize:13, color:C.text3 }}>Bio
                   <textarea value={editBio} onChange={e=>setEditBio(e.target.value)} placeholder="Tell your story…" rows={3} style={{ ...inputStyle, resize:"none" as const }} />
                 </label>
                 <button onClick={saveProfile} disabled={saving} style={saveBtn}>{saving?"Saving…":"Save Profile"}</button>
@@ -573,32 +573,33 @@ export default function ProfilePageV2() {
           {/* ── THIS WEEK ── */}
           {(sparkData.some(v => v > 0) || topScan || proStats) && (
             <div style={weekCard}>
-              <div style={sectionTitleStyle}>THIS WEEK</div>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end", gap:12, paddingTop:18 }}>
+              <div style={{ ...sectionTitleStyle, padding:"0 0 10px" }}>This week</div>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end", gap:12, paddingTop:14 }}>
                 <div>
-                  <div style={{ fontSize:22, fontWeight:800, letterSpacing:"-0.02em", lineHeight:1 }}>
-                    {sparkData.reduce((a, b) => a + b, 0)} <span style={{ fontFamily:MONO, fontSize:11, fontWeight:600, letterSpacing:"0.18em", color:C.text3 }}>SCANS</span>
+                  <div style={{ fontSize:26, fontWeight:700, letterSpacing:"-0.02em", lineHeight:1 }}>
+                    {sparkData.reduce((a, b) => a + b, 0)} <span style={{ fontSize:14, fontWeight:500, color:C.text3 }}>scans</span>
                   </div>
                 </div>
                 {/* 7-day bars */}
-                <div style={{ display:"flex", alignItems:"flex-end", gap:4, height:34 }} aria-label="Scans over the last 7 days">
+                <div style={{ display:"flex", alignItems:"flex-end", gap:5, height:40 }} aria-label="Scans over the last 7 days">
                   {sparkData.map((v, i) => {
                     const max = Math.max(1, ...sparkData);
-                    return <div key={i} style={{ width:8, borderRadius:3, height: Math.max(3, (v / max) * 34),
-                      background: i === sparkData.length - 1 ? "#e8b84a" : "rgba(255,255,255,0.22)" }} />;
+                    return <div key={i} style={{ width:10, borderRadius:4, height: Math.max(4, (v / max) * 40),
+                      background: i === sparkData.length - 1 ? C.goldGrad : "rgba(255,255,255,0.16)",
+                      boxShadow: i === sparkData.length - 1 ? "0 0 12px rgba(232,170,40,0.45)" : undefined }} />;
                   })}
                 </div>
               </div>
               {topScan && (
                 <div style={weekLine}>
-                  <span style={{ color:"rgba(255,255,255,0.4)" }}>Most scanned</span>
+                  <span style={{ color:C.text3 }}>Most scanned</span>
                   <span style={{ fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const, minWidth:0 }}>{topScan.title}</span>
                   <span style={{ color:"rgba(255,255,255,0.4)", flexShrink:0 }}>{topScan.n}×</span>
                 </div>
               )}
               {proStats && (
                 <div style={weekLine}>
-                  <span style={{ color:"#e8b84a", flexShrink:0 }}>✦</span>
+                  <span style={{ color:C.gold, flexShrink:0 }}>✦</span>
                   <span style={{ minWidth:0 }}>
                     Your IDs were scanned <b>{proStats.uploadScans7d}</b> time{proStats.uploadScans7d === 1 ? "" : "s"}
                     {proStats.topUpload ? <> · top: <b>{proStats.topUpload.title}</b></> : null}
@@ -610,22 +611,22 @@ export default function ProfilePageV2() {
 
           {/* ── SCANS LIST ── */}
           {scans.length > 0 && (
-            <Section title="RECENT SCANS">
+            <Section title="Recent scans">
               <div style={{ display:"grid", gap:2 }}>
                 {(showMoreScans ? scans : scans.slice(0,3)).map((s,i) => (
-                  <div key={i} style={{ display:"flex", alignItems:"center", gap:12, padding:"16px 0", borderBottom:`1px solid ${C.lineSoft}`, width:"100%", overflow:"hidden" }}>
+                  <div key={i} style={{ display:"flex", alignItems:"center", gap:12, padding:"13px 0", borderBottom:`1px solid ${C.lineSoft}`, width:"100%", overflow:"hidden" }}>
                     <div style={{ flex:1, minWidth:0, overflow:"hidden" }}>
                       <div style={ui.rowTitle}>{s.track_title || "Unknown"}</div>
                       {s.track_subtitle && <div style={ui.rowSub}>{s.track_subtitle}</div>}
                     </div>
                     <span style={tag(s.result_type === "recognized_unreleased" ? "unrel" : "rel")}>
-                      {s.result_type === "recognized_unreleased" ? "UNREL" : "REL"}
+                      {s.result_type === "recognized_unreleased" ? TAG_TEXT.unrel : TAG_TEXT.rel}
                     </span>
                   </div>
                 ))}
                 {scans.length > 3 && (
                   <button onClick={()=>setShowMoreScans(v=>!v)} style={showMoreBtn}>
-                    {showMoreScans ? "Show less" : `+${scans.length-3} more`}
+                    {showMoreScans ? "Show less" : `Show ${scans.length-3} more`}
                   </button>
                 )}
               </div>
@@ -634,19 +635,19 @@ export default function ProfilePageV2() {
 
           {/* ── FOLLOWS LIST ── */}
           {follows.length > 0 && (
-            <Section title="TRACK FOLLOWS">
+            <Section title="Followed tracks">
               <div style={{ display:"grid", gap:2 }}>
                 {(showMoreFollows ? follows : follows.slice(0,3)).map((f,i) => (
-                  <div key={i} style={{ display:"flex", alignItems:"center", gap:12, padding:"16px 0", borderBottom:`1px solid ${C.lineSoft}`, width:"100%", overflow:"hidden" }}>
+                  <div key={i} style={{ display:"flex", alignItems:"center", gap:12, padding:"13px 0", borderBottom:`1px solid ${C.lineSoft}`, width:"100%", overflow:"hidden" }}>
                     <span style={{ ...ui.rowTitle, flex:1, minWidth:0 }}>{f.track_title || "Unknown"}</span>
                     <span style={tag(f.is_released ? "rel" : "neutral")}>
-                      {f.is_released ? "OUT" : "WAITING"}
+                      {f.is_released ? "Out now" : "Waiting"}
                     </span>
                   </div>
                 ))}
                 {follows.length > 3 && (
                   <button onClick={()=>setShowMoreFollows(v=>!v)} style={showMoreBtn}>
-                    {showMoreFollows ? "Show less" : `+${follows.length-3} more`}
+                    {showMoreFollows ? "Show less" : `Show ${follows.length-3} more`}
                   </button>
                 )}
               </div>
@@ -655,7 +656,7 @@ export default function ProfilePageV2() {
 
           {/* ── MES TRACKS (en dernier) ── */}
           {tracks.length > 0 && (
-            <Section title="MY UPLOADS">
+            <Section title="My uploads">
               <div style={{ display:"grid", gap:4 }}>
                 {(showMoreTracks ? tracks : tracks.slice(0,3)).map((t) => (
                   <div key={t.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"16px 0", borderBottom:`1px solid ${C.lineSoft}` }}>
@@ -674,15 +675,15 @@ export default function ProfilePageV2() {
                           setTracks((prev: any[]) => prev.map((x: any) => x.id === t.id ? { ...x, is_released: !newVal, release_status: !newVal ? "released" : "unreleased" } : x));
                         }
                       }}
-                      style={{ ...tag(t.is_released ? "rel" : "unrel"), background:"none", cursor:"pointer" }}
+                      style={{ ...tag(t.is_released ? "rel" : "unrel"), border:"none", cursor:"pointer" }}
                     >
-                      {t.is_released ? "REL" : "UNREL"}
+                      {t.is_released ? TAG_TEXT.rel : TAG_TEXT.unrel}
                     </button>
                   </div>
                 ))}
                 {tracks.length > 3 && (
                   <button onClick={()=>setShowMoreTracks(v=>!v)} style={showMoreBtn}>
-                    {showMoreTracks ? "Show less" : `+${tracks.length-3} more`}
+                    {showMoreTracks ? "Show less" : `Show ${tracks.length-3} more`}
                   </button>
                 )}
               </div>
@@ -692,9 +693,9 @@ export default function ProfilePageV2() {
         </>)}
 
         {tab==="messages" && (
-          <div style={{ display:"grid", gap:12 }}>
+          <div style={{ ...glass, borderRadius:24, padding:"14px 16px 16px", display:"grid", gap:12, minWidth:0 }}>
             {!activeConv ? (<>
-              <div style={sectionTitleStyle}>CONVERSATIONS</div>
+              <div style={{ ...sectionTitleStyle, padding:"0 0 10px" }}>Conversations</div>
               {convs.length===0
                 ? <div style={emptyStyle}>No messages yet.</div>
                 : convs.map(c=>(
@@ -723,8 +724,8 @@ export default function ProfilePageV2() {
                 <div style={{ position:"fixed", inset:0, zIndex:500, background:"rgba(0,0,0,0.7)",
                   display:"flex", alignItems:"center", justifyContent:"center" }}
                   onClick={()=>setConvToDelete(null)}>
-                  <div style={{ background:"#111", border:"1px solid rgba(255,255,255,0.12)",
-                    borderRadius:20, padding:"24px 20px", maxWidth:300, width:"90%", textAlign:"center" as const }}
+                  <div style={{ ...glass, background:"rgba(30,30,30,0.85)",
+                    borderRadius:24, padding:"24px 20px", maxWidth:300, width:"90%", textAlign:"center" as const }}
                     onClick={e=>e.stopPropagation()}>
                     <div style={{ fontSize:15, fontWeight:700, marginBottom:8 }}>Supprimer la conversation ?</div>
                     <div style={{ fontSize:13, color:"rgba(255,255,255,0.45)", marginBottom:20 }}>
@@ -732,11 +733,11 @@ export default function ProfilePageV2() {
                     </div>
                     <div style={{ display:"flex", gap:10 }}>
                       <button onClick={()=>setConvToDelete(null)}
-                        style={{ flex:1, padding:"11px 0", borderRadius:12, border:"1px solid rgba(255,255,255,0.12)",
-                          background:"none", color:"#fff", fontSize:14, cursor:"pointer" }}>Annuler</button>
+                        style={{ flex:1, padding:"11px 0", borderRadius:999, border:"1px solid rgba(255,255,255,0.12)",
+                          background:"rgba(255,255,255,0.08)", color:"#fff", fontSize:14, cursor:"pointer" }}>Annuler</button>
                       <button onClick={()=>deleteConversation(convToDelete)}
-                        style={{ flex:1, padding:"11px 0", borderRadius:12, border:"none",
-                          background:"rgba(255,60,60,0.85)", color:"#fff", fontSize:14, fontWeight:700, cursor:"pointer" }}>Supprimer</button>
+                        style={{ flex:1, padding:"11px 0", borderRadius:999, border:"none",
+                          background:"#e5484d", color:"#fff", fontSize:14, fontWeight:700, cursor:"pointer" }}>Supprimer</button>
                     </div>
                   </div>
                 </div>
@@ -756,7 +757,7 @@ export default function ProfilePageV2() {
                         ? <img src={otherAvatar} alt="" style={{ width:"100%", height:"100%", borderRadius:"50%", objectFit:"cover" }} />
                         : otherName.charAt(0).toUpperCase()}
                     </div>
-                    <span style={{ fontSize:14, fontWeight:800, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{otherName}</span>
+                    <span style={{ fontSize:16, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{otherName}</span>
                     <span style={{ color:"rgba(255,255,255,0.3)", fontSize:13 }}>›</span>
                   </button>
                 );
@@ -786,9 +787,9 @@ export default function ProfilePageV2() {
                         </div>
                         <div style={{ maxWidth:"75%", minWidth:0, padding: msg.file_url && !msg.content ? "8px" : "10px 14px", fontSize:14, lineHeight:1.4,
                           borderRadius:isMine?"18px 18px 4px 18px":"18px 18px 18px 4px",
-                          background:isMine?"rgba(255,255,255,0.14)":"rgba(255,255,255,0.10)",
+                          background:isMine?C.goldGrad:"rgba(255,255,255,0.10)",
                           border:isMine?"none":"1px solid rgba(255,255,255,0.08)",
-                          color:"#fff", wordBreak:"break-word", overflowWrap:"anywhere" }}>
+                          color:isMine?C.goldInk:"#fff", wordBreak:"break-word", overflowWrap:"anywhere" }}>
                           {(() => {
                             // Detect fallback text pattern: "📎 filename — https://..." (em dash or regular dash)
                             const fallbackMatch = !msg.file_url && msg.content?.match(/^📎\s+(.+?)\s+[—\-–]\s+(https?:\/\/.+)$/);
@@ -839,7 +840,7 @@ export default function ProfilePageV2() {
                 </button>
                 <input value={msgInput} onChange={e=>setMsgInput(e.target.value)}
                   onKeyDown={e=>e.key==="Enter"&&sendMsg()} placeholder="Message…"
-                  style={{ flex:1, minWidth:0, padding:"10px 12px", borderRadius:12, background:"#0d0d0d", border:"1px solid rgba(255,255,255,0.10)", color:"#fff", fontSize:14, boxSizing:"border-box" as const, marginTop:0 }} />
+                  style={{ ...ui.input, flex:1, minWidth:0, borderRadius:999, padding:"11px 16px", marginTop:0 }} />
                 <button onClick={sendMsg} disabled={!msgInput.trim()} style={sendMsgBtn}>↑</button>
               </div>
             </>)}
@@ -851,8 +852,8 @@ export default function ProfilePageV2() {
   );
 }
 
-const weekCard: React.CSSProperties = { display:"grid", gap:0 };
-const weekLine: React.CSSProperties = { display:"flex", alignItems:"center", gap:10, fontSize:14, color:C.text2, minWidth:0, borderTop:`1px solid ${C.lineSoft}`, paddingTop:16, marginTop:16 };
+const weekCard: React.CSSProperties = { ...glass, borderRadius:24, padding:"14px 16px 16px", display:"grid", gap:0 };
+const weekLine: React.CSSProperties = { display:"flex", alignItems:"center", gap:10, fontSize:14, color:C.text2, minWidth:0, borderTop:`1px solid ${C.lineSoft}`, paddingTop:14, marginTop:14 };
 
 function formatMsgTime(iso: string) {
   const d = new Date(iso);
@@ -864,17 +865,17 @@ function formatMsgTime(iso: string) {
 }
 const chatHeader: React.CSSProperties = { display:"flex", alignItems:"center", gap:10, justifyContent:"center", background:"none", border:"none", color:"#fff", cursor:"pointer", padding:"2px 0 8px", minWidth:0, maxWidth:"100%" };
 
-const pageStyle: React.CSSProperties = { ...ui.page, padding:"8px 0 140px" };
-const shellStyle: React.CSSProperties = { ...ui.shell, gap:40 };
-const sectionStyle: React.CSSProperties = { display:"grid", gap:0, minWidth:0 };
+const pageStyle: React.CSSProperties = { ...ui.page };
+const shellStyle: React.CSSProperties = { ...ui.shell, gap:16 };
+const sectionStyle: React.CSSProperties = { ...ui.section, paddingBottom:4 };
 const sectionTitleStyle: React.CSSProperties = { ...ui.label };
 // identity card replaces old headerStyle
-const identityCard: React.CSSProperties = { border:"1px solid rgba(255,255,255,0.07)", borderRadius:22, padding:"16px 16px", display:"grid", gap:12, background:"linear-gradient(160deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))", boxSizing:"border-box", overflow:"hidden" };
+const identityCard: React.CSSProperties = { ...glass, borderRadius:24, padding:18, display:"grid", gap:12, boxSizing:"border-box", overflow:"hidden" };
 const statsRow: React.CSSProperties = { display:"flex", background:"rgba(255,255,255,0.03)", borderRadius:14, border:"1px solid rgba(255,255,255,0.07)", padding:"10px 0", overflow:"hidden", boxSizing:"border-box" };
-const avatarStyle: React.CSSProperties = { width:56, height:56, borderRadius:"50%", background:"linear-gradient(135deg,rgba(255,255,255,0.16),rgba(255,255,255,0.05))", border:`1px solid ${C.line}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, fontWeight:800, flexShrink:0 };
-const statsLine: React.CSSProperties = { display:"flex", alignItems:"center", gap:16, flexWrap:"wrap", fontSize:12, color:C.text3 };
+const avatarStyle: React.CSSProperties = { width:64, height:64, boxSizing:"border-box", borderRadius:"50%", background:"rgba(255,255,255,0.08)", border:`1px solid ${C.line}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, fontWeight:800, flexShrink:0 };
+const statsLine: React.CSSProperties = { display:"flex", alignItems:"center", gap:16, flexWrap:"wrap", fontSize:13, color:C.text3 };
 const statBtn: React.CSSProperties = { background:"none", border:"none", padding:0, color:"inherit", font:"inherit", cursor:"pointer" };
-const statNum: React.CSSProperties = { color:"#fff", fontWeight:700, fontSize:13, marginRight:3 };
+const statNum: React.CSSProperties = { color:"#fff", fontWeight:700, fontSize:15, marginRight:3 };
 const avatarSmall: React.CSSProperties = { width:40, height:40, borderRadius:"50%", background:"rgba(255,255,255,0.08)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:900, flexShrink:0 };
 const proBadge: React.CSSProperties = { fontSize:10, fontWeight:800, letterSpacing:"0.14em", border:"1px solid rgba(255,255,255,0.30)", borderRadius:999, padding:"3px 9px", color:"#fff" };
 const socialLink: React.CSSProperties = { display:"inline-flex", alignItems:"center", gap:5, whiteSpace:"nowrap", fontSize:11, color:"rgba(255,255,255,0.55)", border:"1px solid rgba(255,255,255,0.10)", borderRadius:999, padding:"3px 9px", textDecoration:"none", maxWidth:"100%", overflow:"hidden", textOverflow:"ellipsis" };
@@ -884,13 +885,13 @@ const upgradeBtn: React.CSSProperties = { padding:"5px 12px", borderRadius:999, 
 const downgradeBtn: React.CSSProperties = { padding:"11px 16px", borderRadius:14, background:"transparent", border:"1px solid rgba(255,255,255,0.06)", color:"rgba(255,255,255,0.35)", fontWeight:600, fontSize:13, cursor:"pointer" };
 const inputStyle: React.CSSProperties = { ...ui.input, display:"block", marginTop:6 };
 const saveBtn: React.CSSProperties = { ...ui.pillSolid, justifySelf:"start", padding:"12px 22px" };
-const tabBarStyle: React.CSSProperties = { display:"flex", width:"100%", borderBottom:`1px solid ${C.line}`, marginBottom:4 };
-const tabBtn: React.CSSProperties = { flex:1, padding:"16px 0", background:"none", border:"none", borderBottom:"1px solid transparent", color:C.text4, fontFamily:MONO, fontWeight:600, fontSize:10, letterSpacing:"0.28em", cursor:"pointer" };
-const tabActive: React.CSSProperties = { color:"#fff", borderBottom:"1px solid #fff" };
-const convRow: React.CSSProperties = { display:"flex", gap:14, alignItems:"center", padding:"16px 0", background:"none", border:"none", color:"#fff", cursor:"pointer", borderBottom:`1px solid ${C.lineSoft}`, width:"100%", minWidth:0, overflow:"hidden", boxSizing:"border-box", textAlign:"left" };
-const unreadBadge: React.CSSProperties = { width:20, height:20, borderRadius:"50%", background:"#fff", color:"#000", fontSize:11, fontWeight:900, display:"flex", alignItems:"center", justifyContent:"center" };
-const sendMsgBtn: React.CSSProperties = { width:44, height:44, borderRadius:"50%", background:"#fff", color:"#000", border:"none", fontSize:18, fontWeight:900, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 };
-const backBtn: React.CSSProperties = { background:"none", border:"none", color:C.text3, fontFamily:MONO, fontSize:11, letterSpacing:"0.2em", cursor:"pointer", padding:0, textAlign:"left" as const };
+const tabBarStyle: React.CSSProperties = { ...glass, display:"grid", gridTemplateColumns:"1fr 1fr", padding:4, borderRadius:999 };
+const tabBtn: React.CSSProperties = { padding:"9px 0", background:"transparent", border:"none", borderRadius:999, color:C.text3, fontWeight:500, fontSize:14, cursor:"pointer", fontFamily:"inherit" };
+const tabActive: React.CSSProperties = { color:"#fff", fontWeight:600, background:"rgba(255,255,255,0.16)", boxShadow:"inset 0 1px 0 rgba(255,255,255,0.15)" };
+const convRow: React.CSSProperties = { display:"flex", gap:14, alignItems:"center", padding:"13px 0", background:"none", border:"none", color:"#fff", cursor:"pointer", borderBottom:`1px solid ${C.lineSoft}`, width:"100%", minWidth:0, overflow:"hidden", boxSizing:"border-box", textAlign:"left" };
+const unreadBadge: React.CSSProperties = { minWidth:20, height:20, padding:"0 5px", boxSizing:"border-box", borderRadius:999, background:C.goldGrad, color:C.goldInk, fontSize:11, fontWeight:900, display:"flex", alignItems:"center", justifyContent:"center" };
+const sendMsgBtn: React.CSSProperties = { width:44, height:44, borderRadius:"50%", background:C.goldGrad, color:C.goldInk, border:"none", fontSize:18, fontWeight:900, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 };
+const backBtn: React.CSSProperties = { background:"none", border:"none", color:C.gold, fontSize:15, fontWeight:500, cursor:"pointer", padding:0, textAlign:"left" as const, fontFamily:"inherit" };
 const emptyStyle: React.CSSProperties = { ...ui.empty };
 const showMoreBtn: React.CSSProperties = { ...ui.more };
 // 1781652265

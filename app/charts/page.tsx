@@ -4,7 +4,7 @@ import { authFetch } from "@/lib/authFetch";
 import { useEffect, useMemo, useState } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import PageHeader from "@/components/PageHeader";
-import { ui, C, MONO } from "@/lib/ui";
+import { ui, C, glass } from "@/lib/ui";
 import Link from "next/link";
 import { getBrowserRole } from "@/lib/auth/getBrowserRole";
 
@@ -262,7 +262,7 @@ export default function ChartsPage() {
 
   function renderTrackList(list: any[], kind: "unreleased" | "released") {
     return (
-      <div style={{ display: "grid", gap: 10 }}>
+      <div style={{ display: "grid", gap: 0 }}>
         {list.map((track, index) => {
           const canPreview =
             kind === "released"
@@ -281,16 +281,16 @@ export default function ChartsPage() {
               : (titleText || artistText || "Untitled");
 
           return (
-            <div key={track.id} style={rowStyle}>
+            <div key={track.id} style={{ ...rowStyle, borderBottom: index === list.length - 1 ? "none" : rowStyle.borderBottom }}>
               <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-                <span style={ui.rank}>{String(index + 1).padStart(2, "0")}</span>
+                <span style={ui.rank}>{index + 1}</span>
 
                 <div style={{ flex: 1, minWidth: 0 }}>
                   {/* Title line */}
                   <div style={ui.rowTitle}>{displayLine}</div>
 
                   {/* Meta line */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
                     {canPreview && (
                       <button type="button" onClick={() => {
                         let audio = (window as any)._bangerAudio as HTMLAudioElement | undefined;
@@ -342,7 +342,7 @@ export default function ChartsPage() {
                               if (action === "follow") showToast("Following! You'll be notified when it drops 🔔");
                             }
                           }}
-                          style={isFollowing ? { ...ui.pillSmall, color: C.text3 } : { ...ui.pillSmall, color: C.fg, borderColor: "rgba(255,255,255,0.3)" }}>
+                          style={isFollowing ? { ...ui.pillSmall, color: C.text3 } : { ...ui.pillSmall, color: C.gold, background: "rgba(245,207,104,0.12)", borderColor: "rgba(245,207,104,0.30)" }}>
                           {isFollowing ? "Following ✓" : "+ Follow"}
                         </button>
                       );
@@ -370,7 +370,7 @@ export default function ChartsPage() {
       `}</style>
 
       <div style={ui.shell}>
-        <PageHeader title="Charts" sub="The most scanned tracks in the scene." code="TOP 100" />
+        <PageHeader title="Charts" sub="What the scene is playing right now." code="Top 100" />
 
         {loading ? (
           <div style={cardStyle}>Loading…</div>
@@ -378,14 +378,14 @@ export default function ChartsPage() {
           <div style={cardStyle}>{error}</div>
         ) : (
           <section style={cardStyle}>
-            <div style={{ position: "sticky", top: 52, zIndex: 5, background: "#000", paddingBottom: 6 }}>
-              <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+            <div style={{ position: "sticky", top: "calc(56px + env(safe-area-inset-top))", zIndex: 5, padding: "8px 0", margin: "0 -4px", paddingLeft: 4, paddingRight: 4, background: "rgba(0,0,0,0.35)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderRadius: 18 }}>
+              <div style={segment}>
                 <button
                   type="button"
                   onClick={() => switchChart("unreleased")}
                   style={activeChart === "unreleased" ? activeTabBtn : tabBtn}
                 >
-                  UNRELEASED
+                  Unreleased
                 </button>
 
                 <button
@@ -393,7 +393,7 @@ export default function ChartsPage() {
                   onClick={() => switchChart("released")}
                   style={activeChart === "released" ? activeTabBtn : tabBtn}
                 >
-                  RELEASED
+                  Released
                 </button>
               </div>
 
@@ -416,9 +416,9 @@ export default function ChartsPage() {
               </div>
             </div>
 
-            <div style={{ marginTop: 12 }}>
+            <div style={listCard}>
               {filteredRows.length === 0 ? (
-                <div style={{ opacity: 0.62, fontSize: 13 }}>
+                <div style={ui.empty}>
                   {activeChart === "unreleased" ? "No unreleased IDs charting yet. Be the first to scan." : "No released tracks charting yet."}
                 </div>
               ) : (
@@ -427,18 +427,17 @@ export default function ChartsPage() {
 
                   {unreleasedLocked && lockedCount > 0 && (
                     <div style={lockedBox}>
-                      <div style={{ fontSize: 22 }}>🔒</div>
-                      <div style={{ fontSize: 14, fontWeight: 800, letterSpacing: "-0.01em" }}>
-                        +{lockedCount} more unreleased ID{lockedCount > 1 ? "s" : ""} charting
+                      <div style={{ fontSize: 16, fontWeight: 600 }}>
+                        {lockedCount} more unreleased ID{lockedCount > 1 ? "s" : ""} waiting
                       </div>
-                      <div style={{ fontSize: 12, opacity: 0.5 }}>
-                        Go PRO to unlock the full unreleased chart.
+                      <div style={{ fontSize: 13, color: C.text2 }}>
+                        The full chart is for Pro members.
                       </div>
-                      <Link href="/upgrade" style={unlockBtn}>✦ Upgrade to PRO</Link>
+                      <Link href="/upgrade" style={unlockBtn}>Go Pro</Link>
                     </div>
                   )}
 
-                  <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                  <div style={{ display: "flex", gap: 16 }}>
                     {!unreleasedLocked && visibleCount < filteredRows.length && visibleCount < 100 ? (
                       <button
                         type="button"
@@ -469,13 +468,22 @@ export default function ChartsPage() {
   );
 }
 
-const cardStyle: React.CSSProperties = { display: "grid", gap: 0, minWidth: 0 };
+const cardStyle: React.CSSProperties = { display: "grid", gap: 12, minWidth: 0 };
 
-const lockedBox: React.CSSProperties = { marginTop: 18, borderTop: `1px solid ${C.line}`, padding: "26px 0 6px", display: "grid", gap: 8, justifyItems: "start" };
+const listCard: React.CSSProperties = { ...glass, borderRadius: 22, padding: "2px 16px", minWidth: 0 };
 
-const unlockBtn: React.CSSProperties = { ...ui.pillSolid, marginTop: 8 };
+const segment: React.CSSProperties = {
+  ...glass, display: "grid", gridTemplateColumns: "1fr 1fr", padding: 4, borderRadius: 999, marginBottom: 10,
+};
 
-const rowStyle: React.CSSProperties = { padding: "16px 0", borderBottom: `1px solid ${C.lineSoft}`, minWidth: 0 };
+const lockedBox: React.CSSProperties = {
+  margin: "8px -8px 12px", padding: "18px 16px", borderRadius: 18, display: "grid", gap: 6, justifyItems: "center", textAlign: "center",
+  background: "linear-gradient(160deg, rgba(245,207,104,0.16), rgba(245,207,104,0.04))", border: "1px solid rgba(245,207,104,0.25)",
+};
+
+const unlockBtn: React.CSSProperties = { ...ui.pillSolid, marginTop: 8, padding: "11px 26px", fontSize: 14 };
+
+const rowStyle: React.CSSProperties = { padding: "14px 0", borderBottom: `1px solid ${C.lineSoft}`, minWidth: 0 };
 
 const rankStyle: React.CSSProperties = {
   width: 34,
@@ -510,9 +518,9 @@ const showLessBtn: React.CSSProperties = { ...ui.more };
 
 const searchInputStyle: React.CSSProperties = { ...ui.input };
 
-const tabBtn: React.CSSProperties = { flex: 1, padding: "11px 0", borderRadius: 999, border: "1px solid rgba(255,255,255,0.14)", background: "transparent", color: C.text2, fontFamily: MONO, fontSize: 11, fontWeight: 600, letterSpacing: "0.2em", cursor: "pointer" };
+const tabBtn: React.CSSProperties = { padding: "9px 0", borderRadius: 999, border: "none", background: "transparent", color: C.text3, fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" };
 
-const activeTabBtn: React.CSSProperties = { ...tabBtn, background: C.fg, color: "#000", borderColor: C.fg };
+const activeTabBtn: React.CSSProperties = { ...tabBtn, background: "rgba(255,255,255,0.16)", color: "#fff", fontWeight: 600, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.15)" };
 
 const smallLink: React.CSSProperties = {
   color: "rgba(255,255,255,0.92)",
@@ -559,9 +567,9 @@ const beatportBtn: React.CSSProperties = {
   display: "block",
   padding: "10px 14px",
   borderRadius: 12,
-  background: "rgba(0,229,255,0.08)",
-  border: "1px solid rgba(0,229,255,0.28)",
-  color: "#00E5FF",
+  background: "rgba(245,207,104,0.08)",
+  border: "1px solid rgba(245,207,104,0.28)",
+  color: "#f5cf68",
   fontWeight: 700,
   fontSize: 13,
   textDecoration: "none",
