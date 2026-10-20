@@ -36,6 +36,9 @@ export default function PromoPage() {
   const [results, setResults] = useState<Person[]>([]);
   const [picked, setPicked] = useState<Person[]>([]);
   const [busy, setBusy] = useState(false);
+  const [stage, setStage] = useState<"" | "prepare" | "upload" | "send">("");
+  const [pct, setPct] = useState(0);
+  const [sentBytes, setSentBytes] = useState(0);
   const [error, setError] = useState("");
   const [done, setDone] = useState(0);
   const [sent, setSent] = useState<Sent[]>([]);
@@ -84,15 +87,30 @@ export default function PromoPage() {
 
   async function send() {
     if (!file || !title.trim() || picked.length === 0) return;
-    setBusy(true); setError("");
+    setBusy(true); setError(""); setStage("prepare"); setPct(0); setSentBytes(0);
     try {
       const ext = (file.name.split(".").pop() || "mp3").toLowerCase();
       const r1 = await authFetch("/api/promo/upload-url", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ext }) });
       const u = await r1.json().catch(() => ({}));
       if (!r1.ok || !u.ok) throw new Error(u.error || "Upload not available");
-      const sb = createSupabaseBrowser()!;
-      const { error: upErr } = await sb.storage.from("promos").uploadToSignedUrl(u.path, u.token, file, { contentType: file.type || "audio/mpeg" });
-      if (upErr) throw new Error(upErr.message);
+      // Upload with real progress (same request the Supabase SDK makes, but via XHR so we can follow it)
+      setStage("upload");
+      await new Promise<void>((resolve, reject) => {
+        const base = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", `${base}/storage/v1/object/upload/sign/promos/${u.path}?token=${encodeURIComponent(u.token)}`);
+        xhr.setRequestHeader("apikey", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "");
+        xhr.setRequestHeader("x-upsert", "false");
+        xhr.upload.onprogress = (e) => { if (e.lengthComputable) { setPct(Math.round((e.loaded / e.total) * 100)); setSentBytes(e.loaded); } };
+        xhr.onload = () => (xhr.status >= 200 && xhr.status < 300) ? resolve()
+          : reject(new Error(xhr.status === 413 ? "File too big (max 50 MB). Try an MP3." : `Upload failed (${xhr.status})`));
+        xhr.onerror = () => reject(new Error("Network error during upload. Check your connection."));
+        const fd = new FormData();
+        fd.append("cacheControl", "3600");
+        fd.append("", file, file.name);
+        xhr.send(fd);
+      });
+      setStage("send");
       const r2 = await authFetch("/api/promo/send", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, artist, note, file_path: u.path, recipients: picked.map((p) => p.id) }),
@@ -104,7 +122,7 @@ export default function PromoPage() {
       loadSent();
     } catch (e: any) {
       setError(e?.message || "Something went wrong");
-    } finally { setBusy(false); }
+    } finally { setBusy(false); setStage(""); }
   }
 
   if (!ready) return <main style={ui.page} />;
@@ -175,6 +193,25 @@ export default function PromoPage() {
           )}
 
           {error && <div style={{ fontSize: 13, color: C.danger }}>{error}</div>}
+
+          {/* Progress while sending */}
+          {busy && (
+            <div style={{ display: "grid", gap: 8, padding: "4px 2px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                <span style={{ color: "#fff", fontWeight: 600 }}>
+                  {stage === "prepare" ? "Preparing…" : stage === "upload" ? "Uploading the track…" : `Sending to ${picked.length} DJ${picked.length > 1 ? "s" : ""}…`}
+                </span>
+                <span style={{ color: C.text3, fontVariantNumeric: "tabular-nums" }}>
+                  {stage === "upload" && file ? `${(sentBytes / 1024 / 1024).toFixed(1)} / ${(file.size / 1024 / 1024).toFixed(1)} MB · ${pct}%` : ""}
+                </span>
+              </div>
+              <div style={{ height: 6, borderRadius: 3, background: "rgba(255,255,255,0.10)", overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${stage === "send" ? 100 : stage === "upload" ? Math.max(2, pct) : 2}%`,
+                  background: C.goldGrad, transition: "width .3s ease" }} />
+              </div>
+            </div>
+          )}
+
           <button onClick={send} disabled={!canSend}
             style={canSend ? { ...ui.cta, marginTop: 4 } : { ...ui.cta, marginTop: 4, background: "rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.45)", boxShadow: "none", cursor: "not-allowed" }}>
             {busy ? "Sending…" : picked.length > 1 ? `Send privately to ${picked.length} DJs` : "Send privately"}
