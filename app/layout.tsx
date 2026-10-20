@@ -20,6 +20,8 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "BANGER",
   description: "Scan music. Discover unreleased tracks. Follow what DJs are playing.",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: { capable: true, title: "BANGER", statusBarStyle: "black-translucent" },
 };
 
 export default function RootLayout({
