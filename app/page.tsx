@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { startOAuth } from "@/lib/oauth";
+import WooferSVG from "@/components/WooferSVG";
 
 export default function LandingPage() {
   const [busy, setBusy] = useState<"" | "google" | "apple">("");
@@ -39,34 +40,25 @@ export default function LandingPage() {
   return (
     <main style={page}>
       <style>{`
-        @keyframes bShine { 0% { background-position: 160% 0; } 28%, 100% { background-position: -60% 0; } }
+        @keyframes wooferHalo { 0%,100% { opacity: .55; transform: scale(.96); } 50% { opacity: 1; transform: scale(1.04); } }
       `}</style>
       <div style={shell}>
 
         {/* Wordmark */}
         <div style={logoMark}>BANGER</div>
 
-        {/* Glowing B with a gold sonar — it "listens" */}
+        {/* The Scan woofer as the hero, softly breathing */}
         <div style={logoBlock}>
-          {/* Gold B — a glint of light sweeps across it now and then, like on polished metal */}
-          <div style={{ position: "relative", width: 150, margin: "10px 0 18px" }}>
-            <img src="/B-glow.png" alt="BANGER" width={150} height={180} style={{ width: 150, height: "auto", display: "block" }} />
-            <div aria-hidden style={{
-              position: "absolute", inset: 0, pointerEvents: "none", mixBlendMode: "screen",
-              background: "linear-gradient(105deg, transparent 38%, rgba(255,250,230,0.95) 50%, transparent 62%)",
-              backgroundSize: "250% 100%", backgroundRepeat: "no-repeat",
-              WebkitMaskImage: "url(/B-glow.png)", maskImage: "url(/B-glow.png)",
-              WebkitMaskSize: "100% 100%", maskSize: "100% 100%",
-              animation: "bShine 4.5s ease-in-out infinite",
-            }} />
+          <div style={{ position: "relative", width: 260, height: 260, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div aria-hidden style={{ position: "absolute", inset: -50, borderRadius: "50%",
+              background: "radial-gradient(circle, rgba(255,196,60,0.40) 0%, rgba(230,160,30,0.14) 40%, rgba(0,0,0,0) 68%)",
+              animation: "wooferHalo 4s ease-in-out infinite" }} />
+            <div style={{ width: 190, height: 190, borderRadius: "50%", overflow: "hidden", position: "relative",
+              display: "flex", alignItems: "center", justifyContent: "center", transform: "scale(1.36)" }}>
+              <WooferSVG audioLevel={0} listening={false} />
+            </div>
           </div>
-
-          <h1 style={tagline}>
-            Identify any track.<br />
-            <span style={{ color: "#f5cf68" }}>Even unreleased.</span>
-          </h1>
-          <p style={sub}>Scan it. Follow it. Get it first.</p>
-
+          <div style={tagline}>Only For DJs</div>
         </div>
 
         {/* Auth */}
@@ -82,7 +74,6 @@ export default function LandingPage() {
           </button>
 
           {error && <div style={errorStyle}>{error}</div>}
-          <div style={note}>Free · No credit card required</div>
         </div>
 
       </div>
@@ -125,8 +116,7 @@ const logoMark: React.CSSProperties = {
   textShadow: "0 0 10px rgba(255,255,255,0.45), 0 0 28px rgba(255,255,255,0.18)",
 };
 const tagline: React.CSSProperties = {
-  margin: "6px 0 0", fontSize: "clamp(30px,9vw,38px)", fontWeight: 800,
-  letterSpacing: "-0.035em", lineHeight: 1.1, color: "#fff",
+  margin: "34px 0 0", fontSize: 24, fontWeight: 700, letterSpacing: "-0.01em", lineHeight: 1.2, color: "#fff",
 };
 const sub: React.CSSProperties = {
   margin: "12px 0 0", maxWidth: 320, fontSize: 15, lineHeight: 1.5, color: "rgba(255,255,255,0.6)",
@@ -143,9 +133,9 @@ const authBlock: React.CSSProperties = {
 const googleBtn: React.CSSProperties = {
   display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
   padding: "16px 18px", borderRadius: 999, width: "100%",
-  background: "radial-gradient(130% 160% at 28% -10%, rgba(255,226,120,0.55) 0%, rgba(255,200,60,0.10) 42%, rgba(0,0,0,0) 60%), linear-gradient(180deg, #e2ad2e 0%, #c88c0f 55%, #9c6807 100%)", color: "#1a1000", fontWeight: 700, fontSize: 16,
-  border: "none", cursor: "pointer", fontFamily: "inherit",
-  boxShadow: "0 8px 24px rgba(200,140,15,0.25), inset 0 1px 0 rgba(255,235,160,0.35)",
+  background: "rgba(255,255,255,0.08)", color: "#fff", fontWeight: 600, fontSize: 16,
+  border: "1px solid rgba(255,255,255,0.14)", cursor: "pointer", fontFamily: "inherit",
+  backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
 };
 const appleBtn: React.CSSProperties = {
   display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
