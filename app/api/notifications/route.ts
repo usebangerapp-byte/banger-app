@@ -15,9 +15,9 @@ export async function GET(req: Request) {
 
   // Recent history (read + unread) so the bell is never empty after opening it once
   let { data, error } = await sb.from("notifications")
-    .select("id,type,message,track_title,actor_id,count,created_at,read")
+    .select("id,type,message,track_title,title,body,actor_id,count,created_at,read")
     .eq("user_id", user.id)
-    .order("created_at", { ascending: false }).limit(30);
+    .order("created_at", { ascending: false }).limit(100);
 
   if (error && /column/i.test(error.message)) {
     ({ data, error } = await sb.from("notifications")
@@ -27,8 +27,36 @@ export async function GET(req: Request) {
   }
   if (error) return Response.json({ ok: false, error: error.message, notifications: [] }, { status: 500 });
 
-  // Attach the photo of the person behind each notification (messages, follows)
-  const rows = (data || []) as any[];
+  // Older rows used title/body instead of track_title/message
+  const raw = ((data || []) as any[]).map((n) => ({
+    ...n,
+    track_title: n.track_title || n.title || null,
+    message: n.message || n.body || null,
+  }));
+
+  // One line per person: all messages (or follows) from the same sender are added up
+  const groups = new Map<string, any>();
+  const rows: any[] = [];
+  for (const n of raw) {
+    const groupable = n.type === "message" || n.type === "follow";
+    const who = n.actor_id || n.track_title;
+    if (!groupable || !who) { rows.push(n); continue; }
+    const key = `${n.type}:${who}`;
+    const g = groups.get(key);
+    if (!g) {
+      const first = { ...n, count: n.count || 1, ids: [n.id] };
+      groups.set(key, first); rows.push(first);
+    } else {
+      g.count += n.count || 1;
+      g.ids.push(n.id);
+      if (!n.read) g.read = false;
+    }
+  }
+  for (const g of groups.values()) {
+    if (g.type === "message") g.message = g.count > 1 ? `${g.count} messages` : (g.message && !/notification/i.test(g.message) ? g.message : "Sent you a message");
+    if (g.type === "follow") g.message = "Started following you";
+  }
+  rows.splice(30);
   const actorIds = [...new Set(rows.map((n) => n.actor_id).filter(Boolean))];
   if (actorIds.length) {
     const { data: actors } = await sb.from("profiles").select("id,avatar_url").in("id", actorIds);

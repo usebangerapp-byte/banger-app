@@ -6,24 +6,56 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { getBrowserRole } from "@/lib/auth/getBrowserRole";
-import PageHeader from "@/components/PageHeader";
 import { ui, C, glass } from "@/lib/ui";
 
 
-const PERKS = [
-  { label: "The full unreleased chart", sub: "Every ID moving through the scene, not just the top 3." },
-  { label: "Upload your IDs", sub: "Drop your unreleased tracks into BANGER." },
-  { label: "Scan statistics", sub: "See where and how often your music is scanned." },
-  { label: "10-second preview", sub: "Let the crowd hear a teaser before the release." },
-  { label: "Release control", sub: "Flip Unreleased → Released the day you drop." },
-  { label: "Priority in the charts", sub: "Your tracks ranked first when they get scanned." },
+const SCENES = [
+  { icon: "chart", title: "The whole underground chart", text: "Not just the top 3. Every ID moving through the scene, right now." },
+  { icon: "upload", title: "Your track in their crates", text: "Upload your unreleased music. Every BANGER scan can now name it." },
+  { icon: "stats", title: "See it travel", text: "Know how often your IDs get scanned, week after week." },
+  { icon: "play", title: "Let them taste it", text: "A 10-second preview before anyone else can buy it." },
+  { icon: "bolt", title: "Drop day, your call", text: "Flip to Released and everyone following the track gets the alert." },
+  { icon: "crown", title: "First in line", text: "Your tracks get priority in the charts when they're scanned." },
 ];
+
+function SceneIcon({ name }: { name: string }) {
+  const p: Record<string, React.ReactNode> = {
+    chart: <path d="M5 20V10M12 20V4M19 20v-7" />,
+    upload: <path d="M12 19V5M6 11l6-6 6 6" />,
+    stats: <><path d="M3 17l6-6 4 4 8-8" /><path d="M15 7h6v6" /></>,
+    play: <path d="M8 5v14l11-7z" />,
+    bolt: <path d="M13 2L4 14h7l-1 8 9-12h-7z" />,
+    crown: <path d="M3 8l4 4 5-7 5 7 4-4-2 11H5z" />,
+  };
+  return (
+    <span style={iconWrap}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.gold} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{p[name]}</svg>
+    </span>
+  );
+}
 
 export default function UpgradePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [authed, setAuthed] = useState(false);
   const [isPro, setIsPro] = useState(false);
+  const [vault, setVault] = useState<{ titles: string[]; total: number }>({ titles: [], total: 0 });
+
+  // Tease the real hidden part of the unreleased chart (blurred)
+  useEffect(() => {
+    fetch("/api/charts").then((r) => r.json()).then((rows) => {
+      const seen = new Set<string>();
+      const titles: string[] = [];
+      for (const r of Array.isArray(rows) ? rows : []) {
+        if (r.result_type !== "recognized_unreleased") continue;
+        const t = String(r.track_title || "").trim();
+        const k = t.toLowerCase();
+        if (!t || k === "unknown" || seen.has(k)) continue;
+        seen.add(k); titles.push(r.track_subtitle ? `${r.track_subtitle} - ${t}` : t);
+      }
+      setVault({ titles: titles.slice(3, 8), total: Math.max(0, titles.length - 3) });
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -55,58 +87,106 @@ export default function UpgradePage() {
     }
   };
 
+  const cta = isPro ? (
+    <div style={alreadyPro}>You&apos;re Pro ✦ Enjoy the vault.</div>
+  ) : (
+    <button style={{ ...ui.cta, opacity: loading ? 0.6 : 1 }} onClick={handleUpgrade} disabled={loading}>
+      {loading ? "Redirecting…" : authed ? "Unlock Pro · €9.99 / month" : "Sign in to go Pro"}
+    </button>
+  );
+
   return (
     <main style={ui.page}>
+      <style>{`
+        @keyframes proHalo { 0%,100% { opacity: .55; transform: scale(.95); } 50% { opacity: 1; transform: scale(1.06); } }
+        @keyframes proFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+        @keyframes proShine { from { background-position: -200% 0; } to { background-position: 200% 0; } }
+      `}</style>
       <div style={ui.shell}>
-        <PageHeader title="Pro" sub="Unlock the whole scene." />
 
-        <section style={{ textAlign: "center", padding: "26px 8px 8px", display: "grid", gap: 10 }}>
-          <h2 style={headline}>Every unreleased ID.<br />Before everyone else.</h2>
-          <p style={intro}>For the DJs and producers who move first.</p>
+        {/* ── HERO ── */}
+        <section style={{ display: "grid", justifyItems: "center", textAlign: "center", gap: 14, padding: "18px 6px 6px" }}>
+          <div style={{ position: "relative", width: 150, height: 150, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div aria-hidden style={{ position: "absolute", inset: -30, borderRadius: "50%",
+              background: "radial-gradient(circle, rgba(245,207,104,0.45), rgba(245,207,104,0.10) 45%, transparent 70%)",
+              animation: "proHalo 3.2s ease-in-out infinite" }} />
+            <img src="/B-glow.png" alt="" width={98} height={118} style={{ position: "relative", width: 98, height: "auto", animation: "proFloat 4s ease-in-out infinite" }} />
+          </div>
+          <span style={eyebrow}>BANGER PRO</span>
+          <h1 style={headline}>Hear it first.<br /><span style={shine}>Play it first.</span></h1>
+          <p style={intro}>The IDs every DJ is chasing, before they ever drop. And your own tracks, in everyone&apos;s scanner.</p>
+          <div style={{ width: "100%", marginTop: 6 }}>{cta}</div>
+          <div style={{ fontSize: 12, color: C.text3 }}>Cancel anytime · Secure payment with Stripe</div>
         </section>
 
-        <section style={{ ...glass, borderRadius: 24, padding: "4px 18px" }}>
-          {PERKS.map((p, i) => (
-            <div key={p.label} style={{ ...perkRow, borderBottom: i === PERKS.length - 1 ? "none" : perkRow.borderBottom }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={C.gold} strokeWidth={2.2}
-                strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0, marginTop: 1 }}>
-                <path d="M5 12l5 5 9-10" />
-              </svg>
-              <div style={{ minWidth: 0 }}>
-                <div style={perkLabel}>{p.label}</div>
-                <div style={perkSub}>{p.sub}</div>
+        {/* ── THE VAULT: real hidden chart, blurred ── */}
+        <section style={{ ...glass, borderRadius: 24, padding: "16px 16px 18px", position: "relative", overflow: "hidden" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+            <span style={{ fontSize: 15, fontWeight: 600 }}>The vault</span>
+            <span style={{ fontSize: 12, color: C.text3 }}>Unreleased chart</span>
+          </div>
+          <div style={{ position: "relative" }}>
+            <div style={{ filter: "blur(6px)", opacity: 0.75, pointerEvents: "none", userSelect: "none" }} aria-hidden>
+              {(vault.titles.length ? vault.titles : ["", "", "", "", ""]).map((t, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 0", borderBottom: i < 4 ? `1px solid ${C.lineSoft}` : "none" }}>
+                  <span style={{ color: C.gold, fontWeight: 700, width: 18 }}>{i + 4}</span>
+                  {t ? <span style={{ fontSize: 15, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden" }}>{t}</span>
+                     : <span style={{ height: 12, width: `${50 + ((i * 17) % 40)}%`, borderRadius: 6, background: "rgba(255,255,255,0.25)" }} />}
+                </div>
+              ))}
+            </div>
+            <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}>
+              <div style={lockPill}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 018 0v4" /></svg>
+                {vault.total > 0 ? `${vault.total} IDs locked` : "Locked for Pro"}
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── WHAT CHANGES ── */}
+        <section style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
+          {SCENES.map((sc) => (
+            <div key={sc.title} style={{ ...glass, borderRadius: 20, padding: 14, display: "grid", gap: 8, alignContent: "start" }}>
+              <SceneIcon name={sc.icon} />
+              <div style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.25 }}>{sc.title}</div>
+              <div style={{ fontSize: 13, color: C.text3, lineHeight: 1.4 }}>{sc.text}</div>
             </div>
           ))}
         </section>
 
-        <section style={{ display: "grid", gap: 12, textAlign: "center", paddingTop: 6 }}>
-          {isPro ? (
-            <div style={alreadyPro}>You&apos;re already Pro ✦</div>
-          ) : (
-            <button style={{ ...ui.cta, opacity: loading ? 0.6 : 1 }} onClick={handleUpgrade} disabled={loading}>
-              {loading ? "Redirecting…" : authed ? "Go Pro · €9.99 / month" : "Sign in to go Pro"}
-            </button>
-          )}
-          <div style={footer}>Cancel anytime · Secure payment with Stripe</div>
-          <div style={freeNote}>Free stays free: unlimited scans, radar, released charts and the top 3 unreleased.</div>
+        {/* ── CLOSING ── */}
+        <section style={{ textAlign: "center", display: "grid", gap: 12, padding: "14px 4px 4px" }}>
+          <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.15 }}>The scene moves fast.<br />Move first.</div>
+          {cta}
+          <div style={{ fontSize: 12, color: C.text4, lineHeight: 1.5 }}>Free stays free: unlimited scans, radar, released charts and the top 3 unreleased.</div>
         </section>
       </div>
     </main>
   );
 }
 
+const eyebrow: React.CSSProperties = {
+  fontSize: 11, fontWeight: 700, letterSpacing: "0.22em", color: C.gold,
+  padding: "6px 12px", borderRadius: 999, background: "rgba(245,207,104,0.12)", border: "1px solid rgba(245,207,104,0.28)",
+};
 const headline: React.CSSProperties = {
-  margin: 0, fontSize: "clamp(30px, 9vw, 40px)", fontWeight: 800, letterSpacing: "-0.035em", lineHeight: 1.06,
+  margin: "4px 0 0", fontSize: "clamp(36px, 11vw, 48px)", fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1.02,
 };
-const intro: React.CSSProperties = { margin: 0, fontSize: 15, lineHeight: 1.5, color: C.text2 };
-const perkRow: React.CSSProperties = {
-  display: "flex", gap: 12, alignItems: "flex-start", padding: "14px 0", borderBottom: `1px solid ${C.lineSoft}`,
+const shine: React.CSSProperties = {
+  background: "linear-gradient(90deg, #d9a227 0%, #fff1c2 25%, #f5cf68 50%, #d9a227 75%, #fff1c2 100%)", backgroundSize: "200% 100%",
+  WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent", animation: "proShine 6s linear infinite",
 };
-const perkLabel: React.CSSProperties = { fontSize: 16, fontWeight: 600 };
-const perkSub: React.CSSProperties = { fontSize: 13, color: C.text3, marginTop: 2, lineHeight: 1.45 };
+const intro: React.CSSProperties = { margin: 0, maxWidth: 340, fontSize: 15, lineHeight: 1.5, color: C.text2 };
+const iconWrap: React.CSSProperties = {
+  width: 34, height: 34, borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center",
+  background: "rgba(245,207,104,0.12)", border: "1px solid rgba(245,207,104,0.22)",
+};
+const lockPill: React.CSSProperties = {
+  display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 16px", borderRadius: 999,
+  background: "rgba(20,20,20,0.75)", border: "1px solid rgba(245,207,104,0.35)", color: C.gold, fontSize: 14, fontWeight: 600,
+  backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", boxShadow: "0 0 24px rgba(245,207,104,0.25)",
+};
 const alreadyPro: React.CSSProperties = {
-  ...glass, padding: "16px", borderRadius: 999, fontSize: 15, fontWeight: 600, color: C.gold,
+  ...glass, padding: "16px", borderRadius: 999, fontSize: 15, fontWeight: 600, color: C.gold, textAlign: "center",
 };
-const footer: React.CSSProperties = { fontSize: 13, color: C.text3 };
-const freeNote: React.CSSProperties = { fontSize: 12, color: C.text4, lineHeight: 1.5, padding: "0 20px" };

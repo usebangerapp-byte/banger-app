@@ -9,6 +9,11 @@ export default function LandingPage() {
   const [busy, setBusy] = useState<"" | "google" | "apple">("");
   const [error, setError] = useState("");
   const [checking, setChecking] = useState(true);
+  const [word, setWord] = useState(0);
+  useEffect(() => {
+    const t = window.setInterval(() => setWord((w) => (w + 1) % ROTATING.length), 2400);
+    return () => window.clearInterval(t);
+  }, []);
   const router = useRouter();
 
   // Already signed in → straight into the app (no need to log in again).
@@ -38,17 +43,39 @@ export default function LandingPage() {
 
   return (
     <main style={page}>
+      <style>{`
+        @keyframes sonar { 0% { transform: scale(.55); opacity: .7; } 100% { transform: scale(1.6); opacity: 0; } }
+        @keyframes wordIn { from { opacity: 0; transform: translateY(10px); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
+        @keyframes bFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+      `}</style>
       <div style={shell}>
 
-        {/* Wordmark with halo, top of the page */}
+        {/* Wordmark */}
         <div style={logoMark}>BANGER</div>
 
-        {/* Center logo — glowing B (same look as the app icon) */}
+        {/* Glowing B with a gold sonar — it "listens" */}
         <div style={logoBlock}>
-          <div style={logoInner}>
-            <img src="/B-glow.png" alt="BANGER" width={170} height={204} style={{ width: 170, height: "auto" }} />
+          <div style={{ position: "relative", width: 220, height: 220, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {[0, 1, 2].map((i) => (
+              <span key={i} aria-hidden style={{
+                position: "absolute", inset: 0, borderRadius: "50%", border: "1px solid rgba(245,207,104,0.55)",
+                animation: `sonar 3.6s ease-out ${i * 1.2}s infinite`,
+              }} />
+            ))}
+            <img src="/B-glow.png" alt="BANGER" width={120} height={144} style={{ width: 120, height: "auto", position: "relative", animation: "bFloat 4s ease-in-out infinite" }} />
           </div>
-          <div style={tagline}>Identify any track.<br />Even unreleased.</div>
+
+          <h1 style={tagline}>
+            Name any track.<br />
+            <span key={word} style={{ display: "inline-block", color: "#f5cf68", animation: "wordIn .5s ease-out" }}>{ROTATING[word]}</span>
+          </h1>
+          <p style={sub}>Hold your phone up in the club. BANGER finds the ID and tells you the day it drops.</p>
+
+          <div style={chips}>
+            {["Scan in 10s", "Unreleased IDs", "Drop alerts"].map((c) => (
+              <span key={c} style={chip}><span style={dot} />{c}</span>
+            ))}
+          </div>
         </div>
 
         {/* Auth */}
@@ -72,6 +99,8 @@ export default function LandingPage() {
   );
 }
 
+const ROTATING = ["Even unreleased.", "Even the bootleg.", "Even the edit.", "Before it drops."];
+
 function GoogleIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
@@ -90,7 +119,7 @@ const page: React.CSSProperties = {
 };
 const shell: React.CSSProperties = {
   width: "100%", maxWidth: 360,
-  display: "flex", flexDirection: "column", gap: 52,
+  display: "flex", flexDirection: "column", gap: 34, padding: "40px 0 32px",
 };
 const logoBlock: React.CSSProperties = {
   display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center",
@@ -106,9 +135,18 @@ const logoMark: React.CSSProperties = {
   textShadow: "0 0 10px rgba(255,255,255,0.45), 0 0 28px rgba(255,255,255,0.18)",
 };
 const tagline: React.CSSProperties = {
-  fontSize: "clamp(28px,8vw,36px)", fontWeight: 700,
-  letterSpacing: "-0.03em", lineHeight: 1.12, color: "#fff",
+  margin: "6px 0 0", fontSize: "clamp(30px,9vw,38px)", fontWeight: 800,
+  letterSpacing: "-0.035em", lineHeight: 1.1, color: "#fff", minHeight: "2.2em",
 };
+const sub: React.CSSProperties = {
+  margin: "12px 0 0", maxWidth: 320, fontSize: 15, lineHeight: 1.5, color: "rgba(255,255,255,0.6)",
+};
+const chips: React.CSSProperties = { display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", marginTop: 18 };
+const chip: React.CSSProperties = {
+  display: "inline-flex", alignItems: "center", gap: 7, padding: "7px 12px", borderRadius: 999, fontSize: 12, fontWeight: 600,
+  color: "rgba(255,255,255,0.85)", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)",
+};
+const dot: React.CSSProperties = { width: 6, height: 6, borderRadius: "50%", background: "#f5cf68", boxShadow: "0 0 8px #f5cf68" };
 const authBlock: React.CSSProperties = {
   display: "flex", flexDirection: "column", gap: 10,
 };
