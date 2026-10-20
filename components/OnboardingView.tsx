@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { ui, C, MONO } from "@/lib/ui";
 
 type Plan = "public" | "pro";
 
@@ -112,188 +113,49 @@ export default function OnboardingView() {
   }
 
   return (
-    <main style={styles.page}>
-      <div style={styles.shell}>
-        <div style={styles.header}>
-          <div style={styles.eyebrow}>PICK YOUR PLAN</div>
-          <h1 style={styles.title}>How do you want to play?</h1>
-          <p style={styles.subtitle}>
-            Find the IDs, follow the DJs, stay ahead of every drop.
-            Upgrade whenever you&apos;re ready.
-          </p>
-        </div>
+    <main style={ui.page}>
+      <div style={{ ...ui.shell, gap: 44 }}>
+        <header>
+          <div style={ui.catalogue}><span>BNGR — PICK YOUR PLAN</span><span>STEP 01</span></div>
+          <h1 style={{ ...ui.title, fontSize: "clamp(40px, 11vw, 64px)" }}>
+            HOW DO YOU<br /><span style={{ color: "transparent", WebkitTextStroke: "1.5px rgba(255,255,255,0.85)" }}>WANT TO</span><br />PLAY.
+          </h1>
+          <p style={ui.subtitle}>Find the IDs, follow the DJs, stay ahead of every drop. Upgrade whenever you&apos;re ready.</p>
+        </header>
 
-        <div style={styles.grid}>
-          {plans.map((plan) => (
-            <section key={plan.key} style={styles.card}>
-              <div style={styles.cardTop}>
-                <div style={styles.planName}>{plan.name}</div>
-                <div style={styles.planPrice}>{plan.price}</div>
-                <p style={styles.planDescription}>{plan.description}</p>
+        {plans.map((plan) => (
+          <section key={plan.key} style={ui.section}>
+            <div style={{ ...ui.label, display: "flex", justifyContent: "space-between", color: plan.key === "pro" ? C.gold : C.text3 }}>
+              <span>{plan.key === "pro" ? "✦ PRO" : "FREE"}</span>
+              <span>{plan.price}</span>
+            </div>
+            <p style={{ margin: "18px 0 6px", fontSize: 15, lineHeight: 1.6, color: C.text2 }}>{plan.description}</p>
+            {plan.features.map((feature) => (
+              <div key={feature} style={{ ...ui.row, padding: "12px 0" }}>
+                <span style={{ fontFamily: MONO, fontSize: 11, color: C.text4 }}>—</span>
+                <span style={{ fontSize: 14 }}>{feature}</span>
               </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => choosePlan(plan.key)}
+              disabled={loading}
+              style={plan.key === "pro"
+                ? { ...ui.cta, marginTop: 20, opacity: loading ? 0.6 : 1 }
+                : { ...ui.pill, marginTop: 20, width: "100%", padding: "16px", fontSize: 14 }}
+            >
+              {loading && plan.key === "pro" ? "REDIRECTING…" : plan.key === "pro" ? "GO PRO  →" : plan.cta}
+            </button>
+          </section>
+        ))}
 
-              <div style={styles.features}>
-                {plan.features.map((feature) => (
-                  <div key={feature} style={styles.featureRow}>
-                    <span style={styles.featureDot} />
-                    <span>{feature}</span>
-                  </div>
-                ))}
-              </div>
-
-              <button
-                type="button"
-                onClick={() => choosePlan(plan.key)}
-                disabled={loading}
-                style={{ ...styles.primaryButton, opacity: loading && plan.key === "pro" ? 0.6 : 1 }}
-              >
-                {loading && plan.key === "pro" ? "Redirecting…" : plan.cta}
-              </button>
-            </section>
-          ))}
-        </div>
-
-        <p style={styles.consent}>
+        <p style={{ margin: 0, fontSize: 12, lineHeight: 1.6, color: C.text4 }}>
           By continuing, you agree to our{" "}
-          <a href="/terms" style={styles.footerLink}>Terms</a> &amp;{" "}
-          <a href="/privacy" style={styles.footerLink}>Privacy</a>, and to receive
+          <a href="/terms" style={{ color: C.text3 }}>Terms</a> &amp;{" "}
+          <a href="/privacy" style={{ color: C.text3 }}>Privacy</a>, and to receive
           event updates by email. Opt out anytime.
         </p>
-      </div>
-
-      <div style={styles.footer}>
-        <a href="/terms" style={styles.footerLink}>Terms</a> ·{" "}
-        <a href="/privacy" style={styles.footerLink}>Privacy</a> ·{" "}
-        <a href={`mailto:${CONTACT_EMAIL}`} style={styles.footerLink}>Contact</a>
       </div>
     </main>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  page: {
-    minHeight: "100vh",
-    background: "#000",
-    color: "#fff",
-    padding: "24px 18px 40px",
-  },
-  shell: {
-    width: "100%",
-    maxWidth: 980,
-    margin: "0 auto",
-    display: "grid",
-    gap: 24,
-  },
-  header: {
-    display: "grid",
-    gap: 10,
-    textAlign: "center",
-    paddingTop: 8,
-  },
-  eyebrow: {
-    fontSize: 12,
-    letterSpacing: "0.22em",
-    opacity: 0.58,
-    fontWeight: 800,
-  },
-  title: {
-    margin: 0,
-    fontSize: "clamp(34px, 8vw, 58px)",
-    lineHeight: 0.96,
-    letterSpacing: "-0.05em",
-    fontWeight: 900,
-  },
-  subtitle: {
-    margin: 0,
-    fontSize: 15,
-    lineHeight: 1.5,
-    opacity: 0.72,
-  },
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-    gap: 14,
-    alignItems: "stretch",
-  },
-  card: {
-    border: "1px solid rgba(255,255,255,0.10)",
-    borderRadius: 24,
-    background: "linear-gradient(180deg, rgba(12,12,12,1) 0%, rgba(5,5,5,1) 100%)",
-    padding: 20,
-    display: "grid",
-    gap: 18,
-    minHeight: 360,
-  },
-  cardTop: {
-    display: "grid",
-    gap: 8,
-  },
-  planName: {
-    fontSize: 22,
-    letterSpacing: "-0.02em",
-    opacity: 1,
-    fontWeight: 900,
-  },
-  planPrice: {
-    fontSize: 18,
-    lineHeight: 1,
-    letterSpacing: "-0.04em",
-    fontWeight: 900,
-  },
-  planDescription: {
-    margin: 0,
-    fontSize: 14,
-    lineHeight: 1.5,
-    opacity: 0.68,
-  },
-  features: {
-    display: "grid",
-    gap: 10,
-    alignContent: "start",
-  },
-  featureRow: {
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-    fontSize: 14,
-    opacity: 0.9,
-  },
-  featureDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 999,
-    background: "#fff",
-    flexShrink: 0,
-    opacity: 0.9,
-  },
-  primaryButton: {
-    marginTop: "auto",
-    padding: "15px 16px",
-    borderRadius: 18,
-    border: "1px solid rgba(255,255,255,0.14)",
-    background: "#fff",
-    color: "#000",
-    fontWeight: 800,
-    fontSize: 15,
-    cursor: "pointer",
-  },
-  consent: {
-    margin: 0,
-    textAlign: "center",
-    fontSize: 12,
-    lineHeight: 1.5,
-    opacity: 0.55,
-    maxWidth: 560,
-    justifySelf: "center",
-  },
-  footer: {
-    marginTop: 40,
-    fontSize: 12,
-    opacity: 0.5,
-    textAlign: "center",
-  },
-  footerLink: {
-    color: "rgba(255,255,255,0.85)",
-    textDecoration: "underline",
-  },
-};

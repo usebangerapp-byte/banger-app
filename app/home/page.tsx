@@ -7,6 +7,7 @@ import type { CSSProperties } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { isNativeApp, nativeHaptic } from "@/lib/native";
 import { startOAuth } from "@/lib/oauth";
+import { ui, C, MONO, tag as tagStyle } from "@/lib/ui";
 import { startAudioMeter } from "@/lib/scan/audioMeter";
 import { mapRecognizeResult } from "@/lib/scan/resultState";
 import { getRegion } from "@/lib/scan/getRegion";
@@ -688,31 +689,14 @@ const region = await getRegion();
             <div style={scanStyles.resultBlock}>
               <div style={scanStyles.resultTitle}>{title}</div>
               {subtitle ? <div style={scanStyles.resultSub}>{subtitle}</div> : null}
-              <div style={{
-                display: "inline-block",
-                marginTop: 8,
-                fontSize: 10,
-                fontWeight: 800,
-                letterSpacing: "0.12em",
-                padding: "4px 10px",
-                borderRadius: 6,
-                border: tag === "UNRELEASED"
-                  ? "1px solid rgba(255,180,0,0.7)"
-                  : tag === "RELEASED"
-                  ? "1px solid rgba(29,185,84,0.7)"
-                  : "1px solid rgba(255,255,255,0.2)",
-                color: tag === "UNRELEASED"
-                  ? "rgba(255,180,0,1)"
-                  : tag === "RELEASED"
-                  ? "rgba(29,185,84,1)"
-                  : "rgba(255,255,255,0.5)",
-              }}>
-                {tag}
+              <div style={{ display: "flex", justifyContent: "center", marginTop: 12 }}>
+                <span style={tagStyle(tag === "UNRELEASED" ? "unrel" : tag === "RELEASED" ? "rel" : "neutral")}>                {tag}
+                </span>
               </div>
               {(spotifyUrl || beatportUrl) && (
                 <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 10 }}>
-                  {spotifyUrl && <a href={spotifyUrl} target="_blank" rel="noreferrer" style={scanStyles.resultLink}>Spotify</a>}
-                  {beatportUrl && <a href={beatportUrl} target="_blank" rel="noreferrer" style={{ ...scanStyles.resultLink, color: "rgba(0,229,255,0.85)" }}>Beatport</a>}
+                  {spotifyUrl && <a href={spotifyUrl} target="_blank" rel="noreferrer" style={ui.pillSmall}>Spotify</a>}
+                  {beatportUrl && <a href={beatportUrl} target="_blank" rel="noreferrer" style={ui.pillSmall}>Beatport</a>}
                 </div>
               )}
             </div>
@@ -1011,10 +995,12 @@ const scanStyles: Record<string, CSSProperties> = {
   },
 
   status: {
-    fontSize: 15,
-    opacity: 0.85,
-    letterSpacing: "0.16em",
-    fontWeight: 900,
+    fontFamily: MONO,
+    fontSize: 13,
+    color: C.text2,
+    letterSpacing: "0.32em",
+    paddingLeft: "0.32em",
+    fontWeight: 600,
     textTransform: "uppercase",
   },
 
@@ -1108,8 +1094,8 @@ const scanStyles: Record<string, CSSProperties> = {
     animation: "fadeUp 0.35s ease-out",
   },
   resultTitle: {
-    fontSize: 20,
-    fontWeight: 800,
+    fontSize: 24,
+    fontWeight: 900,
     letterSpacing: "-0.02em",
     background: "linear-gradient(180deg, rgba(245,245,245,0.98), rgba(160,160,160,0.72))",
     WebkitBackgroundClip: "text",
@@ -1118,9 +1104,9 @@ const scanStyles: Record<string, CSSProperties> = {
     lineHeight: 1.2,
   },
   resultSub: {
-    marginTop: 4,
-    fontSize: 13,
-    opacity: 0.65,
+    marginTop: 6,
+    fontSize: 14,
+    color: C.text2,
     letterSpacing: "0.02em",
   },
   spotifyBtn: {

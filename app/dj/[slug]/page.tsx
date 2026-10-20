@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { SkeletonTrackRow, SkeletonStyles } from "@/components/Skeleton";
 import { PeopleSheet } from "@/components/People";
+import { ui, C, MONO, tag } from "@/lib/ui";
 
 type Profile = {
   id: string; email: string; display_name: string | null;
@@ -120,7 +121,10 @@ export default function DJProfilePage() {
     <main style={pageStyle}>
       <SkeletonStyles />
       <div style={shellStyle}>
-        <button onClick={() => router.back()} style={backStyle}>← Back</button>
+        <div style={ui.catalogue}>
+          <button onClick={() => router.back()} style={backStyle}>← BACK</button>
+          <span style={{ color: profile?.role === "pro" ? C.gold : C.text3 }}>{profile?.role === "pro" ? "✦ PRO" : "BNGR — ARTIST"}</span>
+        </div>
 
         <div style={headerStyle}>
           {/* Identity */}
@@ -132,16 +136,13 @@ export default function DJProfilePage() {
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" as const }}>
-                <h1 style={{ margin: 0, fontSize: 22, fontWeight: 900, letterSpacing: "-0.01em", overflowWrap: "anywhere" as const }}>{displayName}</h1>
-                {profile?.role === "pro" && <span style={proBadge}>✦ PRO</span>}
+                <h1 style={{ margin: 0, fontSize: 26, fontWeight: 900, letterSpacing: "-0.03em", lineHeight: 1.05, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const, minWidth: 0 }}>{displayName}</h1>
               </div>
-              {profile?.genre && <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginTop: 3 }}>{profile.genre}</div>}
+              {profile?.genre && <div style={{ fontSize: 14, color: C.text3, marginTop: 6 }}>{profile.genre}</div>}
               {/* Compact stats */}
               <div style={statsLine}>
                 <button onClick={() => profile && setPeopleList("followers")} style={statBtn}><b style={statNum}>{profile?.follower_count || 0}</b> followers</button>
-                <span style={{ opacity: 0.3 }}>·</span>
                 <button onClick={() => profile && setPeopleList("following")} style={statBtn}><b style={statNum}>{profile?.following_count || 0}</b> following</button>
-                <span style={{ opacity: 0.3 }}>·</span>
                 <span><b style={statNum}>{tracks.length}</b> tracks</span>
               </div>
             </div>
@@ -205,10 +206,10 @@ export default function DJProfilePage() {
             {(showAllTracks ? tracks : tracks.slice(0, 3)).map(t => (
               <div key={t.id} style={trackRow}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{t.title || "Untitled"}</div>
-                  {t.artist && <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{t.artist}</div>}
+                  <div style={ui.rowTitle}>{t.title || "Untitled"}</div>
+                  {t.artist && <div style={ui.rowSub}>{t.artist}</div>}
                 </div>
-                <span style={{ ...tagStyle, ...(t.is_released ? tagRel : tagUnrel) }}>{t.is_released ? "REL" : "UNREL"}</span>
+                <span style={tag(t.is_released ? "rel" : "unrel")}>{t.is_released ? "REL" : "UNREL"}</span>
               </div>
             ))}
             {tracks.length > 3 && (
@@ -231,25 +232,25 @@ const pillBase: React.CSSProperties = {
   padding: "7px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700,
   letterSpacing: "0.02em", cursor: "pointer",
 };
-const pillSolid: React.CSSProperties = { ...pillBase, background: "rgba(255,255,255,0.92)", color: "#000", border: "1px solid transparent" };
-const pillGhost: React.CSSProperties = { ...pillBase, background: "transparent", color: "rgba(255,255,255,0.75)", border: "1px solid rgba(255,255,255,0.16)" };
+const pillSolid: React.CSSProperties = { ...ui.pillSolid };
+const pillGhost: React.CSSProperties = { ...ui.pill };
 
-const pageStyle: React.CSSProperties = { minHeight:"100vh", background:"#000", color:"#fff", padding:"0 0 120px", overflowX:"hidden" };
-const shellStyle: React.CSSProperties = { maxWidth:680, margin:"0 auto", padding:"20px 18px", display:"grid", gap:28, boxSizing:"border-box" };
-const backStyle: React.CSSProperties = { background:"none", border:"none", color:"rgba(255,255,255,0.55)", fontSize:14, cursor:"pointer", padding:0, textAlign:"left" as const };
-const headerStyle: React.CSSProperties = { border:"1px solid rgba(255,255,255,0.07)", borderRadius:22, padding:18, display:"grid", gap:16, background:"rgba(255,255,255,0.02)", minWidth:0, boxSizing:"border-box" };
-const avatarStyle: React.CSSProperties = { width:64, height:64, borderRadius:"50%", flexShrink:0, overflow:"hidden", background:"linear-gradient(135deg,rgba(255,255,255,0.15),rgba(255,255,255,0.04))", border:"1px solid rgba(255,255,255,0.12)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:26, fontWeight:900 };
-const statsLine: React.CSSProperties = { display:"flex", alignItems:"center", gap:6, flexWrap:"wrap", marginTop:8, fontSize:12, color:"rgba(255,255,255,0.45)" };
+const pageStyle: React.CSSProperties = { ...ui.page };
+const shellStyle: React.CSSProperties = { ...ui.shell };
+const backStyle: React.CSSProperties = { background:"none", border:"none", color:C.text3, fontFamily:MONO, fontSize:10, letterSpacing:"0.28em", cursor:"pointer", padding:0 };
+const headerStyle: React.CSSProperties = { display:"grid", gap:20, minWidth:0 };
+const avatarStyle: React.CSSProperties = { width:76, height:76, borderRadius:"50%", flexShrink:0, overflow:"hidden", background:"linear-gradient(135deg,rgba(255,255,255,0.16),rgba(255,255,255,0.05))", border:`1px solid ${C.line}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:28, fontWeight:900 };
+const statsLine: React.CSSProperties = { display:"flex", alignItems:"center", gap:18, flexWrap:"wrap", marginTop:10, fontSize:14, color:C.text3 };
 const statBtn: React.CSSProperties = { background:"none", border:"none", padding:0, color:"inherit", font:"inherit", cursor:"pointer" };
-const statNum: React.CSSProperties = { color:"#fff", fontWeight:800 };
-const bioStyle: React.CSSProperties = { fontSize:13, color:"rgba(255,255,255,0.6)", lineHeight:1.55, borderLeft:"2px solid rgba(255,255,255,0.10)", paddingLeft:12 };
-const trackRow: React.CSSProperties = { display:"flex", alignItems:"center", gap:12, padding:"14px 0", borderBottom:"1px solid rgba(255,255,255,0.05)", minWidth:0 };
+const statNum: React.CSSProperties = { color:"#fff", fontWeight:800, fontSize:16, marginRight:4 };
+const bioStyle: React.CSSProperties = { fontSize:15, color:C.text2, lineHeight:1.6, borderLeft:`2px solid ${C.line}`, paddingLeft:14 };
+const trackRow: React.CSSProperties = { ...ui.row };
 const tagStyle: React.CSSProperties = { fontSize:9, fontWeight:700, letterSpacing:"0.06em", borderRadius:5, padding:"3px 7px", flexShrink:0, whiteSpace:"nowrap" };
 const tagRel: React.CSSProperties = { color:"rgba(29,185,84,0.95)", border:"1px solid rgba(29,185,84,0.5)" };
 const tagUnrel: React.CSSProperties = { color:"rgba(255,180,0,0.95)", border:"1px solid rgba(255,180,0,0.5)" };
-const moreBtn: React.CSSProperties = { justifySelf:"start", marginTop:8, background:"none", border:"none", padding:"6px 0", color:"rgba(255,255,255,0.45)", fontSize:12, fontWeight:700, cursor:"pointer" };
+const moreBtn: React.CSSProperties = { ...ui.more };
 const proBadge: React.CSSProperties = { fontSize:10, fontWeight:800, letterSpacing:"0.14em", border:"1px solid rgba(255,255,255,0.25)", borderRadius:999, padding:"3px 8px" };
-const socialStyle: React.CSSProperties = { display:"inline-flex", alignItems:"center", gap:6, fontSize:12, color:"rgba(255,255,255,0.6)", border:"1px solid rgba(255,255,255,0.10)", borderRadius:999, padding:"5px 12px", textDecoration:"none", maxWidth:"100%", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" };
+const socialStyle: React.CSSProperties = { ...ui.pillSmall, maxWidth:"100%", overflow:"hidden", textOverflow:"ellipsis" };
 const followBtnBase: React.CSSProperties = { width:"100%", padding:"13px 16px", borderRadius:14, fontWeight:800, fontSize:15, cursor:"pointer" };
 const sectionStyle: React.CSSProperties = { border:"1px solid rgba(255,255,255,0.08)", borderRadius:20, padding:16, display:"grid", gap:12 };
-const secTitle: React.CSSProperties = { fontSize:10, fontWeight:800, letterSpacing:"0.22em", color:"rgba(255,255,255,0.35)", paddingBottom:6 };
+const secTitle: React.CSSProperties = { ...ui.label };
