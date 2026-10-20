@@ -490,9 +490,54 @@ export default function ProfilePageV2() {
             </Section>
           )}
 
-          {/* ── MES TRACKS ── */}
+          {/* ── SCANS LIST ── */}
+          {scans.length > 0 && (
+            <Section title="RECENT SCANS">
+              <div style={{ display:"grid", gap:2 }}>
+                {(showMoreScans ? scans : scans.slice(0,3)).map((s,i) => (
+                  <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 0", borderBottom:"1px solid rgba(255,255,255,0.05)", width:"100%", overflow:"hidden" }}>
+                    <div style={{ flex:1, minWidth:0, overflow:"hidden" }}>
+                      <div style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{s.track_title || "Unknown"}</div>
+                      {s.track_subtitle && <div style={{ fontSize:11, color:"rgba(255,255,255,0.38)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const, marginTop:2 }}>{s.track_subtitle}</div>}
+                    </div>
+                    <span style={{ fontSize:9, fontWeight:700, flexShrink:0, whiteSpace:"nowrap" as const, border: s.result_type === "recognized_unreleased" ? "1px solid rgba(255,180,0,0.7)" : "1px solid rgba(29,185,84,0.7)", color: s.result_type === "recognized_unreleased" ? "rgba(255,180,0,1)" : "rgba(29,185,84,1)", borderRadius:5, padding:"2px 6px", letterSpacing:"0.04em" }}>
+                      {s.result_type === "recognized_unreleased" ? "UNREL" : "REL"}
+                    </span>
+                  </div>
+                ))}
+                {scans.length > 3 && (
+                  <button onClick={()=>setShowMoreScans(v=>!v)} style={showMoreBtn}>
+                    {showMoreScans ? "Show less" : `+${scans.length-3} more`}
+                  </button>
+                )}
+              </div>
+            </Section>
+          )}
+
+          {/* ── FOLLOWS LIST ── */}
+          {follows.length > 0 && (
+            <Section title="TRACK FOLLOWS">
+              <div style={{ display:"grid", gap:2 }}>
+                {(showMoreFollows ? follows : follows.slice(0,3)).map((f,i) => (
+                  <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 0", borderBottom:"1px solid rgba(255,255,255,0.05)", width:"100%", overflow:"hidden" }}>
+                    <span style={{ flex:1, fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const, minWidth:0 }}>{f.track_title || "Unknown"}</span>
+                    <span style={{ fontSize:11, color: f.is_released ? "rgba(29,185,84,0.80)" : "rgba(255,255,255,0.30)", flexShrink:0, letterSpacing:"0.02em", whiteSpace:"nowrap" as const }}>
+                      {f.is_released ? "OUT" : "WAITING"}
+                    </span>
+                  </div>
+                ))}
+                {follows.length > 3 && (
+                  <button onClick={()=>setShowMoreFollows(v=>!v)} style={showMoreBtn}>
+                    {showMoreFollows ? "Show less" : `+${follows.length-3} more`}
+                  </button>
+                )}
+              </div>
+            </Section>
+          )}
+
+          {/* ── MES TRACKS (en dernier) ── */}
           {tracks.length > 0 && (
-            <Section title="MES TRACKS">
+            <Section title="MY UPLOADS">
               <div style={{ display:"grid", gap:4 }}>
                 {tracks.map((t) => (
                   <div key={t.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 0", borderBottom:"1px solid rgba(255,255,255,0.06)" }}>
@@ -513,55 +558,10 @@ export default function ProfilePageV2() {
                       }}
                       style={{ fontSize:9, fontWeight:700, flexShrink:0, cursor:"pointer", border: t.is_released ? "1px solid rgba(29,185,84,0.7)" : "1px solid rgba(255,180,0,0.7)", color: t.is_released ? "rgba(29,185,84,1)" : "rgba(255,180,0,1)", background:"none", borderRadius:5, padding:"3px 8px", letterSpacing:"0.04em", whiteSpace:"nowrap" as const }}
                     >
-                      {t.is_released ? "RELEASED" : "UNRELEASED"}
+                      {t.is_released ? "REL" : "UNREL"}
                     </button>
                   </div>
                 ))}
-              </div>
-            </Section>
-          )}
-
-          {/* ── SCANS LIST ── */}
-          {scans.length > 0 && (
-            <Section title="RECENT SCANS">
-              <div style={{ display:"grid", gap:2 }}>
-                {(showMoreScans ? scans : scans.slice(0,5)).map((s,i) => (
-                  <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 0", borderBottom:"1px solid rgba(255,255,255,0.05)", width:"100%", overflow:"hidden" }}>
-                    <div style={{ flex:1, minWidth:0, overflow:"hidden" }}>
-                      <div style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{s.track_title || "Unknown"}</div>
-                      {s.track_subtitle && <div style={{ fontSize:11, color:"rgba(255,255,255,0.38)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const, marginTop:2 }}>{s.track_subtitle}</div>}
-                    </div>
-                    <span style={{ fontSize:9, fontWeight:700, flexShrink:0, whiteSpace:"nowrap" as const, border: s.result_type === "recognized_unreleased" ? "1px solid rgba(255,180,0,0.7)" : "1px solid rgba(29,185,84,0.7)", color: s.result_type === "recognized_unreleased" ? "rgba(255,180,0,1)" : "rgba(29,185,84,1)", borderRadius:5, padding:"2px 6px", letterSpacing:"0.04em" }}>
-                      {s.result_type === "recognized_unreleased" ? "UNRELEASED" : "REL"}
-                    </span>
-                  </div>
-                ))}
-                {scans.length > 5 && (
-                  <button onClick={()=>setShowMoreScans(v=>!v)} style={showMoreBtn}>
-                    {showMoreScans ? "Show less" : `+${scans.length-5} more`}
-                  </button>
-                )}
-              </div>
-            </Section>
-          )}
-
-          {/* ── FOLLOWS LIST ── */}
-          {follows.length > 0 && (
-            <Section title="TRACK FOLLOWS">
-              <div style={{ display:"grid", gap:2 }}>
-                {(showMoreFollows ? follows : follows.slice(0,5)).map((f,i) => (
-                  <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 0", borderBottom:"1px solid rgba(255,255,255,0.05)", width:"100%", overflow:"hidden" }}>
-                    <span style={{ flex:1, fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const, minWidth:0 }}>{f.track_title || "Unknown"}</span>
-                    <span style={{ fontSize:11, color: f.is_released ? "rgba(29,185,84,0.80)" : "rgba(255,255,255,0.30)", flexShrink:0, letterSpacing:"0.02em", whiteSpace:"nowrap" as const }}>
-                      {f.is_released ? "OUT" : "WAITING"}
-                    </span>
-                  </div>
-                ))}
-                {follows.length > 5 && (
-                  <button onClick={()=>setShowMoreFollows(v=>!v)} style={showMoreBtn}>
-                    {showMoreFollows ? "Show less" : `+${follows.length-5} more`}
-                  </button>
-                )}
               </div>
             </Section>
           )}
