@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
@@ -56,52 +57,48 @@ const plans: {
 
 export default function OnboardingView() {
   const router = useRouter();
+  const [loading, setLoading] = useState(false);
 
   async function choosePlan(plan: Plan) {
+    setLoading(true);
     try {
-      if (typeof window !== "undefined") {
-        localStorage.setItem("banger_role", plan);
-        localStorage.setItem("banger_plan", plan);
-      }
-
       const supabase = createSupabaseBrowser();
-      if (!supabase) {
-        router.replace("/home");
-        return;
-      }
+      if (!supabase) { router.replace("/home"); return; }
 
-      const { data: authData, error: authError } = await supabase.auth.getUser();
-      if (authError) {
-        console.error(authError);
-        router.replace("/home");
-        return;
-      }
+      const { data: authData } = await supabase.auth.getUser();
+      const user = authData?.user;
+      if (!user) { router.replace("/home"); return; }
 
-      const user = authData.user;
-      if (!user) {
-        router.replace("/home");
-        return;
-      }
-
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .upsert(
-          {
-            id: user.id,
-            email: user.email || null,
-            role: plan,
-          },
+      // Free plan → just set role and go
+      if (plan === "public") {
+        await supabase.from("profiles").upsert(
+          { id: user.id, email: user.email || null, role: "public" },
           { onConflict: "id" }
         );
+        router.replace("/home");
+        return;
+      }
 
-      if (profileError) {
-        console.error(profileError);
+      // PRO → redirect to Stripe Checkout
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) { router.replace("/home"); return; }
+
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` },
+      });
+      const json = await res.json();
+      if (json.url) {
+        window.location.href = json.url;
+      } else {
+        console.error("Stripe error:", json.error);
+        setLoading(false);
       }
     } catch (e) {
       console.error(e);
+      setLoading(false);
     }
-
-    router.replace("/home");
   }
 
   return (
@@ -137,9 +134,10 @@ export default function OnboardingView() {
               <button
                 type="button"
                 onClick={() => choosePlan(plan.key)}
-                style={styles.primaryButton}
+                disabled={loading}
+                style={{ ...styles.primaryButton, opacity: loading && plan.key === "pro" ? 0.6 : 1 }}
               >
-                {plan.cta}
+                {loading && plan.key === "pro" ? "Redirecting…" : plan.cta}
               </button>
             </section>
           ))}
