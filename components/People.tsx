@@ -3,6 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
+function MoreToggle({ total, shown, open, onToggle }: { total: number; shown: number; open: boolean; onToggle: () => void }) {
+  if (total <= shown) return null;
+  return (
+    <button onClick={onToggle} style={moreBtn}>
+      {open ? "Show less" : `+${total - shown} more`}
+    </button>
+  );
+}
+
 type Person = { id: string; display_name: string; genre?: string | null; avatar_url?: string | null };
 
 function Avatar({ p }: { p: Person }) {
@@ -33,6 +42,7 @@ export function PeopleSearch({ selfId }: { selfId?: string }) {
   const [q, setQ] = useState("");
   const [results, setResults] = useState<Person[]>([]);
   const [busy, setBusy] = useState(false);
+  const [all, setAll] = useState(false);
   const timer = useRef<number | null>(null);
 
   useEffect(() => {
@@ -63,7 +73,10 @@ export function PeopleSearch({ selfId }: { selfId?: string }) {
         <div style={resultsBox}>
           {busy && results.length === 0 ? <div style={hint}>Searching…</div>
             : results.length === 0 ? <div style={hint}>No one found.</div>
-            : results.map((p) => <PersonRow key={p.id} p={p} />)}
+            : <>
+                {(all ? results : results.slice(0, 4)).map((p) => <PersonRow key={p.id} p={p} />)}
+                <MoreToggle total={results.length} shown={4} open={all} onToggle={() => setAll((v) => !v)} />
+              </>}
         </div>
       )}
     </div>
@@ -73,6 +86,7 @@ export function PeopleSearch({ selfId }: { selfId?: string }) {
 /** Bottom sheet listing followers / following of a user. */
 export function PeopleSheet({ userId, list, onClose }: { userId: string; list: "followers" | "following"; onClose: () => void }) {
   const [people, setPeople] = useState<Person[] | null>(null);
+  const [all, setAll] = useState(false);
 
   useEffect(() => {
     fetch(`/api/profile/follow?list=${list}&user_id=${userId}`, { cache: "no-store" })
@@ -89,7 +103,10 @@ export function PeopleSheet({ userId, list, onClose }: { userId: string; list: "
         </div>
         {people === null ? <div style={hint}>Loading…</div>
           : people.length === 0 ? <div style={hint}>{list === "followers" ? "No followers yet." : "Not following anyone yet."}</div>
-          : people.map((p) => <PersonRow key={p.id} p={p} onClick={onClose} />)}
+          : <>
+              {(all ? people : people.slice(0, 8)).map((p) => <PersonRow key={p.id} p={p} onClick={onClose} />)}
+              <MoreToggle total={people.length} shown={8} open={all} onToggle={() => setAll((v) => !v)} />
+            </>}
       </div>
     </div>
   );
@@ -101,8 +118,8 @@ const avatar: React.CSSProperties = {
   display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800,
 };
 const row: React.CSSProperties = {
-  display: "flex", alignItems: "center", gap: 10, padding: "9px 4px",
-  borderBottom: "1px solid rgba(255,255,255,0.05)", color: "#fff", textDecoration: "none",
+  display: "flex", alignItems: "center", gap: 12, padding: "12px 4px",
+  borderBottom: "1px solid rgba(255,255,255,0.04)", color: "#fff", textDecoration: "none", minWidth: 0,
 };
 const searchWrap: React.CSSProperties = {
   display: "flex", alignItems: "center", gap: 8, padding: "0 4px 6px",
@@ -117,6 +134,10 @@ const clearBtn: React.CSSProperties = {
 };
 const resultsBox: React.CSSProperties = {
   border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: "2px 10px", background: "rgba(255,255,255,0.02)",
+};
+const moreBtn: React.CSSProperties = {
+  background: "none", border: "none", padding: "10px 4px 6px", color: "rgba(255,255,255,0.45)",
+  fontSize: 12, fontWeight: 700, cursor: "pointer",
 };
 const hint: React.CSSProperties = { fontSize: 12, color: "rgba(255,255,255,0.35)", padding: "10px 4px" };
 const overlay: React.CSSProperties = {
