@@ -1,29 +1,21 @@
 "use client";
 
 import React from "react";
+import { ui } from "@/lib/ui";
 
-export default function PageHeader({ title, sub }: { title: string; sub?: string }) {
+/**
+ * Page header shared by every tab (same look as the Upgrade page):
+ * mono catalogue line, then a big heavy title and a short subtitle.
+ */
+export default function PageHeader({ title, sub, code }: { title: string; sub?: string; code?: string }) {
   return (
-    <div style={{
-      textAlign: "center",
-      padding: "6px 0 16px",
-      borderBottom: "1px solid rgba(255,255,255,0.06)",
-      marginBottom: 16,
-    }}>
-      <div style={{
-        fontSize: 22,
-        fontWeight: 900,
-        letterSpacing: "0.04em",
-        color: "#fff",
-      }}>{title}</div>
-      {sub && (
-        <div style={{
-          fontSize: 12,
-          color: "rgba(255,255,255,0.45)",
-          marginTop: 4,
-          letterSpacing: "0.02em",
-        }}>{sub}</div>
-      )}
-    </div>
+    <header>
+      <div style={ui.catalogue}>
+        <span>BNGR — {title.toUpperCase()}</span>
+        {code && <span>{code}</span>}
+      </div>
+      <h1 style={ui.title}>{title.toUpperCase()}.</h1>
+      {sub && <p style={ui.subtitle}>{sub}</p>}
+    </header>
   );
 }

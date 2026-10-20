@@ -4,6 +4,7 @@ import { authFetch } from "@/lib/authFetch";
 import { useEffect, useState, useCallback } from "react"
 import { createSupabaseBrowser } from "@/lib/supabase/client"
 import PageHeader from "@/components/PageHeader"
+import { ui, C, MONO } from "@/lib/ui"
 
 type RadarTrack = { track_title: string; track_subtitle?: string; scans: number }
 type WantedTrack = { track_title: string; track_subtitle?: string; followers: number }
@@ -23,8 +24,8 @@ export default function RadarPage() {
   useEffect(() => {
     const sb = createSupabaseBrowser()
     if (!sb) return
-    sb.auth.getUser().then(({ data: d }) => {
-      const uid = d.user?.id || null
+    sb.auth.getSession().then(({ data: d }) => {
+      const uid = d.session?.user?.id || null
       setUserId(uid)
       if (uid) {
         authFetch(`/api/follow-track?user_id=${uid}`)
@@ -79,88 +80,69 @@ export default function RadarPage() {
   }, [userId, followed])
 
   return (
-    <main style={page}>
-      {/* Toast */}
-      {toast && (
-        <div style={toastStyle}>{toast}</div>
-      )}
+    <main style={ui.page}>
+      {toast && <div style={ui.toast}>{toast}</div>}
 
-      <div style={shell}>
-        <PageHeader title="RADAR" sub="What the scene is scanning right now" />
+      <div style={ui.shell}>
+        <PageHeader title="Radar" sub="What the scene is scanning right now." code="THIS WEEK" />
 
         {loading ? (
-          <div style={emptyStyle}>LOADING…</div>
+          <div style={ui.empty}>Loading…</div>
         ) : (<>
 
           {/* 1 — HOT RIGHT NOW */}
-          <section style={heroCard}>
-            <Label>HOT RIGHT NOW · THIS WEEK</Label>
+          <section style={ui.section}>
+            <div style={ui.label}>Hot right now</div>
             {data.hot ? (
-              <>
-                <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1.1, marginTop: 4 }}>
+              <div style={{ padding: "22px 0 4px", display: "grid", gap: 10 }}>
+                <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: "-0.03em", lineHeight: 1.05 }}>
                   {data.hot.track_title}
                 </div>
-                <div style={{ fontSize: 14, color: "rgba(255,255,255,0.58)", marginTop: 5 }}>
-                  {data.hot.track_subtitle || "Unknown"}
+                <div style={{ fontSize: 15, color: C.text2 }}>{data.hot.track_subtitle || "Unknown"}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 6, flexWrap: "wrap" }}>
+                  <span style={{ fontFamily: MONO, fontSize: 11, letterSpacing: "0.14em", color: C.text3 }}>
+                    {data.hot.scans} SCANS THIS WEEK
+                  </span>
+                  <FollowBtn title={data.hot.track_title} subtitle={data.hot.track_subtitle || ""}
+                    followed={followed} loading={followLoading} onToggle={toggleFollow} />
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10 }}>
-                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.38)" }}>
-                    {data.hot.scans} scans this week
-                  </div>
-                  <FollowBtn
-                    title={data.hot.track_title}
-                    subtitle={data.hot.track_subtitle || ""}
-                    followed={followed}
-                    loading={followLoading}
-                    onToggle={toggleFollow}
-                  />
-                </div>
-                {!followed.has(data.hot.track_title.toLowerCase().trim()) && (
-                  <div style={nudge}>
-                    🔔 Follow to get notified when this drops
-                  </div>
-                )}
-              </>
+              </div>
             ) : (
-              <div style={emptyStyle}>Nothing scanned this week yet. Be first.</div>
+              <div style={ui.empty}>Nothing scanned this week yet. Be first.</div>
             )}
           </section>
 
           {/* 2 — TRENDING THIS WEEK */}
-          <section style={card}>
-            <Label>TRENDING THIS WEEK</Label>
+          <section style={ui.section}>
+            <div style={ui.label}>Trending this week</div>
             {data.trending.length === 0 ? (
-              <div style={emptyStyle}>Nothing yet.</div>
+              <div style={ui.empty}>Nothing yet.</div>
             ) : (<>
-              <div style={{ display: "grid", gap: 8, marginTop: 4 }}>
-                {(showMoreTrending ? data.trending : data.trending.slice(0, 3)).map((t, i) => (
-                  <TrackRow key={i} rank={i + 2} title={t.track_title} subtitle={t.track_subtitle || ""}
-                    meta={`${t.scans} scans`} followed={followed} loading={followLoading} onToggle={toggleFollow} />
-                ))}
-              </div>
+              {(showMoreTrending ? data.trending : data.trending.slice(0, 3)).map((t, i) => (
+                <TrackRow key={i} rank={i + 2} title={t.track_title} subtitle={t.track_subtitle || ""}
+                  meta={`${t.scans} scans`} followed={followed} loading={followLoading} onToggle={toggleFollow} />
+              ))}
               {data.trending.length > 3 && (
-                <button onClick={() => setShowMoreTrending(v => !v)} style={showMoreBtn}>
-                  {showMoreTrending ? "Show less ↑" : "Show more ↓"}
+                <button onClick={() => setShowMoreTrending(v => !v)} style={ui.more}>
+                  {showMoreTrending ? "SHOW LESS" : `+${data.trending.length - 3} MORE`}
                 </button>
               )}
             </>)}
           </section>
 
           {/* 3 — MOST WANTED */}
-          <section style={card}>
-            <Label>MOST WANTED</Label>
+          <section style={ui.section}>
+            <div style={ui.label}>Most wanted</div>
             {data.mostWanted.length === 0 ? (
-              <div style={emptyStyle}>No followers yet — be the first to follow a track.</div>
+              <div style={ui.empty}>No followers yet — be the first to follow a track.</div>
             ) : (<>
-              <div style={{ display: "grid", gap: 8, marginTop: 4 }}>
-                {(showMoreWanted ? data.mostWanted : data.mostWanted.slice(0, 3)).map((t, i) => (
-                  <TrackRow key={i} rank={i + 1} title={t.track_title} subtitle={t.track_subtitle || ""}
-                    meta={`${t.followers} following`} followed={followed} loading={followLoading} onToggle={toggleFollow} />
-                ))}
-              </div>
+              {(showMoreWanted ? data.mostWanted : data.mostWanted.slice(0, 3)).map((t, i) => (
+                <TrackRow key={i} rank={i + 1} title={t.track_title} subtitle={t.track_subtitle || ""}
+                  meta={`${t.followers} following`} followed={followed} loading={followLoading} onToggle={toggleFollow} />
+              ))}
               {data.mostWanted.length > 3 && (
-                <button onClick={() => setShowMoreWanted(v => !v)} style={showMoreBtn}>
-                  {showMoreWanted ? "Show less ↑" : "Show more ↓"}
+                <button onClick={() => setShowMoreWanted(v => !v)} style={ui.more}>
+                  {showMoreWanted ? "SHOW LESS" : `+${data.mostWanted.length - 3} MORE`}
                 </button>
               )}
             </>)}
@@ -177,16 +159,13 @@ function TrackRow({ rank, title, subtitle, meta, followed, loading, onToggle }: 
   followed: Set<string>; loading: Set<string>; onToggle: (t: string, s: string) => void
 }) {
   return (
-    <div style={row}>
-      <div style={rankStyle}>{rank}</div>
+    <div style={ui.row}>
+      <span style={ui.rank}>{String(rank).padStart(2, "0")}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 15, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title}</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3, minWidth: 0, overflow: "hidden" }}>
-          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flexShrink: 1 }}>{subtitle}</span>
-          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.28)", flexShrink: 0 }}>· {meta}</span>
-          <FollowBtn title={title} subtitle={subtitle} followed={followed} loading={loading} onToggle={onToggle} />
-        </div>
+        <div style={ui.rowTitle}>{title}</div>
+        <div style={ui.rowSub}>{subtitle}{subtitle ? " · " : ""}{meta}</div>
       </div>
+      <FollowBtn title={title} subtitle={subtitle} followed={followed} loading={loading} onToggle={onToggle} />
     </div>
   )
 }
@@ -200,34 +179,8 @@ function FollowBtn({ title, subtitle, followed, loading, onToggle }: {
   const isBusy = loading.has(key)
   return (
     <button onClick={() => onToggle(title, subtitle)} disabled={isBusy}
-      style={{
-        flexShrink: 0, padding: "3px 9px", borderRadius: 999, fontSize: 11, fontWeight: 700,
-        cursor: isBusy ? "default" : "pointer",
-        background: isFollowing ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.10)",
-        color: isFollowing ? "rgba(255,255,255,0.45)" : "#fff",
-        border: isFollowing ? "1px solid rgba(255,255,255,0.12)" : "1px solid rgba(255,255,255,0.30)",
-        transition: "all 0.2s",
-      }}>
-      {isBusy ? "…" : isFollowing ? "✓" : "🔔 Follow"}
+      style={isFollowing ? { ...ui.pillSmall, color: C.text3 } : { ...ui.pillSmall, color: C.fg, borderColor: "rgba(255,255,255,0.3)" }}>
+      {isBusy ? "…" : isFollowing ? "Following ✓" : "+ Follow"}
     </button>
   )
 }
-
-function Label({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.22em", color: "rgba(255,255,255,0.45)", marginBottom: 6 }}>
-      {children}
-    </div>
-  )
-}
-
-const page: React.CSSProperties = { minHeight: "100vh", background: "#000", color: "#fff", padding: "0 0 120px", overflowX: "hidden" }
-const shell: React.CSSProperties = { maxWidth: 680, margin: "0 auto", padding: "16px 16px 0", overflowX: "hidden" }
-const heroCard: React.CSSProperties = { border: "1px solid rgba(255,255,255,0.10)", background: "linear-gradient(160deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))", borderRadius: 20, padding: 18, marginBottom: 12 }
-const card: React.CSSProperties = { border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)", borderRadius: 18, padding: 14, marginBottom: 12 }
-const row: React.CSSProperties = { display: "flex", gap: 12, alignItems: "center", padding: "10px 12px", border: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.015)", borderRadius: 14, minWidth: 0, overflow: "hidden" }
-const rankStyle: React.CSSProperties = { width: 28, height: 28, borderRadius: 8, display: "grid", placeItems: "center", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", fontSize: 12, fontWeight: 900, flexShrink: 0 }
-const emptyStyle: React.CSSProperties = { fontSize: 13, color: "rgba(255,255,255,0.42)", padding: "4px 0" }
-const nudge: React.CSSProperties = { marginTop: 10, fontSize: 12, color: "rgba(255,255,255,0.45)", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "8px 12px" }
-const showMoreBtn: React.CSSProperties = { marginTop: 10, width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, color: "rgba(255,255,255,0.55)", fontSize: 12, fontWeight: 700, letterSpacing: "0.05em", padding: "8px 0", cursor: "pointer" }
-const toastStyle: React.CSSProperties = { position: "fixed", bottom: 100, left: "50%", transform: "translateX(-50%)", background: "rgba(20,20,20,0.95)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 20, padding: "10px 20px", fontSize: 13, fontWeight: 600, color: "#fff", zIndex: 999, whiteSpace: "nowrap", backdropFilter: "blur(12px)" }

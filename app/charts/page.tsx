@@ -4,6 +4,7 @@ import { authFetch } from "@/lib/authFetch";
 import { useEffect, useMemo, useState } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import PageHeader from "@/components/PageHeader";
+import { ui, C, MONO } from "@/lib/ui";
 import Link from "next/link";
 import { getBrowserRole } from "@/lib/auth/getBrowserRole";
 
@@ -281,15 +282,15 @@ export default function ChartsPage() {
 
           return (
             <div key={track.id} style={rowStyle}>
-              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                <div style={rankStyle}>{index + 1}</div>
+              <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+                <span style={ui.rank}>{String(index + 1).padStart(2, "0")}</span>
 
                 <div style={{ flex: 1, minWidth: 0 }}>
                   {/* Title line */}
-                  <div style={{ fontSize: 15, fontWeight: 800, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{displayLine}</div>
+                  <div style={ui.rowTitle}>{displayLine}</div>
 
                   {/* Meta line */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
                     {canPreview && (
                       <button type="button" onClick={() => {
                         let audio = (window as any)._bangerAudio as HTMLAudioElement | undefined;
@@ -314,8 +315,12 @@ export default function ChartsPage() {
                     {kind === "released" && (() => {
                       const q = encodeURIComponent(`${track.artist || ""} ${track.title || ""}`.trim());
                       return <>
-                        <a href={track.spotify_url || `https://open.spotify.com/search/${q}`} target="_blank" rel="noreferrer" style={inlineLink}>Spotify</a>
-                        <a href={track.beatport_url || `https://www.beatport.com/search?q=${q}`} target="_blank" rel="noreferrer" style={{ ...inlineLink, color: "rgba(0,229,255,0.8)" }}>Beatport</a>
+                        <a href={track.spotify_url || `https://open.spotify.com/search/${q}`} target="_blank" rel="noreferrer" style={ui.pillSmall}>
+                          <SpotifyLogo /> Spotify
+                        </a>
+                        <a href={track.beatport_url || `https://www.beatport.com/search?q=${q}`} target="_blank" rel="noreferrer" style={ui.pillSmall}>
+                          <BeatportLogo /> Beatport
+                        </a>
                       </>;
                     })()}
 
@@ -337,14 +342,8 @@ export default function ChartsPage() {
                               if (action === "follow") showToast("Following! You'll be notified when it drops 🔔");
                             }
                           }}
-                          style={{
-                            padding: "4px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700,
-                            border: isFollowing ? "1px solid rgba(255,255,255,0.18)" : "1px solid rgba(255,255,255,0.55)",
-                            background: isFollowing ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.10)",
-                            color: isFollowing ? "rgba(255,255,255,0.55)" : "#fff",
-                            cursor: !userId ? "default" : "pointer",
-                          }}>
-                          {isFollowing ? "Following ✓" : "🔔 Follow"}
+                          style={isFollowing ? { ...ui.pillSmall, color: C.text3 } : { ...ui.pillSmall, color: C.fg, borderColor: "rgba(255,255,255,0.3)" }}>
+                          {isFollowing ? "Following ✓" : "+ Follow"}
                         </button>
                       );
                     })()}
@@ -359,12 +358,8 @@ export default function ChartsPage() {
   }
 
   return (
-    <main style={{ minHeight: "100vh", background: "#000", color: "#fff", padding: "16px 16px 120px", overflowX: "hidden" }}>
-      {toast && (
-        <div style={{ position: "fixed", bottom: 100, left: "50%", transform: "translateX(-50%)", background: "rgba(20,20,20,0.95)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 20, padding: "10px 20px", fontSize: 13, fontWeight: 600, color: "#fff", zIndex: 999, whiteSpace: "nowrap", backdropFilter: "blur(12px)" }}>
-          {toast}
-        </div>
-      )}
+    <main style={ui.page}>
+      {toast && <div style={ui.toast}>{toast}</div>}
       <style>{`
         @keyframes banger-marquee {
           0% { transform: translateX(0); }
@@ -374,8 +369,8 @@ export default function ChartsPage() {
         }
       `}</style>
 
-      <div style={{ maxWidth: 680, margin: "0 auto", display: "grid", gap: 14 }}>
-        <PageHeader title="CHARTS" sub="Most scanned tracks in the scene" />
+      <div style={ui.shell}>
+        <PageHeader title="Charts" sub="The most scanned tracks in the scene." code="TOP 100" />
 
         {loading ? (
           <div style={cardStyle}>Loading…</div>
@@ -383,7 +378,7 @@ export default function ChartsPage() {
           <div style={cardStyle}>{error}</div>
         ) : (
           <section style={cardStyle}>
-            <div style={{ position: "sticky", top: 0, zIndex: 5, background: "rgba(0,0,0,0.96)", paddingBottom: 12 }}>
+            <div style={{ position: "sticky", top: 52, zIndex: 5, background: "#000", paddingBottom: 6 }}>
               <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
                 <button
                   type="button"
@@ -474,46 +469,13 @@ export default function ChartsPage() {
   );
 }
 
-const cardStyle: React.CSSProperties = {
-  border: "1px solid rgba(255,255,255,0.08)",
-  background: "rgba(255,255,255,0.025)",
-  borderRadius: 18,
-  padding: 14,
-  boxShadow: "0 12px 30px rgba(0,0,0,0.32)",
-  backdropFilter: "blur(10px)",
-};
+const cardStyle: React.CSSProperties = { display: "grid", gap: 0, minWidth: 0 };
 
-const lockedBox: React.CSSProperties = {
-  marginTop: 10,
-  border: "1px dashed rgba(255,255,255,0.14)",
-  background: "rgba(255,255,255,0.02)",
-  borderRadius: 16,
-  padding: "18px 14px",
-  display: "grid",
-  gap: 6,
-  justifyItems: "center",
-  textAlign: "center",
-};
+const lockedBox: React.CSSProperties = { marginTop: 18, borderTop: `1px solid ${C.line}`, padding: "26px 0 6px", display: "grid", gap: 8, justifyItems: "start" };
 
-const unlockBtn: React.CSSProperties = {
-  marginTop: 6,
-  padding: "11px 18px",
-  borderRadius: 12,
-  background: "#fff",
-  color: "#000",
-  fontWeight: 900,
-  fontSize: 13,
-  textDecoration: "none",
-};
+const unlockBtn: React.CSSProperties = { ...ui.pillSolid, marginTop: 8 };
 
-const rowStyle: React.CSSProperties = {
-  border: "1px solid rgba(255,255,255,0.06)",
-  background: "rgba(255,255,255,0.02)",
-  borderRadius: 16,
-  padding: 12,
-  overflow: "hidden",
-  minWidth: 0,
-};
+const rowStyle: React.CSSProperties = { padding: "16px 0", borderBottom: `1px solid ${C.lineSoft}`, minWidth: 0 };
 
 const rankStyle: React.CSSProperties = {
   width: 34,
@@ -542,57 +504,15 @@ const secondaryBtn: React.CSSProperties = {
   fontSize: 12,
 };
 
-const showMoreBtn: React.CSSProperties = {
-  padding: "9px 12px",
-  background: "#0d0d0d",
-  border: "1px solid rgba(255,255,255,0.10)",
-  borderRadius: 10,
-  color: "#fff",
-  fontWeight: 700,
-  cursor: "pointer",
-  fontSize: 12,
-};
+const showMoreBtn: React.CSSProperties = { ...ui.more };
 
-const showLessBtn: React.CSSProperties = {
-  padding: "9px 12px",
-  background: "rgba(255,255,255,0.03)",
-  border: "1px solid rgba(255,255,255,0.10)",
-  borderRadius: 10,
-  color: "#fff",
-  fontWeight: 700,
-  cursor: "pointer",
-  fontSize: 12,
-};
+const showLessBtn: React.CSSProperties = { ...ui.more };
 
-const searchInputStyle: React.CSSProperties = {
-  width: "100%",
-  border: "1px solid rgba(255,255,255,0.10)",
-  background: "rgba(255,255,255,0.03)",
-  color: "#fff",
-  borderRadius: 12,
-  padding: "11px 12px",
-  outline: "none",
-  fontSize: 13,
-};
+const searchInputStyle: React.CSSProperties = { ...ui.input };
 
-const tabBtn: React.CSSProperties = {
-  flex: 1,
-  padding: "11px 12px",
-  borderRadius: 12,
-  border: "1px solid rgba(255,255,255,0.10)",
-  background: "rgba(255,255,255,0.03)",
-  color: "#fff",
-  fontWeight: 800,
-  cursor: "pointer",
-  fontSize: 12,
-  letterSpacing: "0.04em",
-};
+const tabBtn: React.CSSProperties = { flex: 1, padding: "11px 0", borderRadius: 999, border: "1px solid rgba(255,255,255,0.14)", background: "transparent", color: C.text2, fontFamily: MONO, fontSize: 11, fontWeight: 600, letterSpacing: "0.2em", cursor: "pointer" };
 
-const activeTabBtn: React.CSSProperties = {
-  ...tabBtn,
-  background: "#fff",
-  color: "#000",
-};
+const activeTabBtn: React.CSSProperties = { ...tabBtn, background: C.fg, color: "#000", borderColor: C.fg };
 
 const smallLink: React.CSSProperties = {
   color: "rgba(255,255,255,0.92)",
@@ -612,16 +532,7 @@ const smallLinkBtn: React.CSSProperties = {
   cursor: "pointer",
 };
 
-const previewInlineBtn: React.CSSProperties = {
-  background: "rgba(255,255,255,0.07)",
-  border: "1px solid rgba(255,255,255,0.12)",
-  borderRadius: 999,
-  color: "#fff",
-  fontSize: 11,
-  fontWeight: 700,
-  padding: "3px 9px",
-  cursor: "pointer",
-};
+const previewInlineBtn: React.CSSProperties = { ...ui.pillSmall };
 
 const inlineLink: React.CSSProperties = {
   color: "rgba(29,185,84,0.9)",
@@ -658,3 +569,21 @@ const beatportBtn: React.CSSProperties = {
   letterSpacing: "0.04em",
 };
 
+
+function SpotifyLogo() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+    </svg>
+  );
+}
+
+function BeatportLogo() {
+  // Simplified Beatport mark (stem + round bowl)
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true">
+      <path d="M7 2.5v11.5" />
+      <circle cx="12.5" cy="15.5" r="6" />
+    </svg>
+  );
+}
