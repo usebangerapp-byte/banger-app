@@ -140,6 +140,24 @@ function Sparkline({ data }: { data: number[] }) {
   );
 }
 
+// ── Settings Tab constants (must be before SettingsTab) ──
+const PLAN_FEATURES = [
+  { label: "Scan tracks",       sub: "Recognize songs in real-time",       free: true,  pro: true  },
+  { label: "Unlimited scans",   sub: "No daily cap",                        free: false, pro: true  },
+  { label: "Scan history",      sub: "View your past recognitions",          free: true,  pro: true  },
+  { label: "Follow tracks",     sub: "Get notified when a track releases",   free: true,  pro: true  },
+  { label: "Upload your IDs",   sub: "Submit unreleased tracks",             free: false, pro: true  },
+  { label: "Priority in charts",sub: "Your tracks ranked first",             free: false, pro: true  },
+  { label: "Scan statistics",   sub: "See how often you've been scanned",    free: false, pro: true  },
+  { label: "Release control",   sub: "Flip UNREL → REL when you drop",      free: false, pro: true  },
+  { label: "Audio snippet",     sub: "10s teaser for fans before release",   free: false, pro: true  },
+];
+const settingsCard: React.CSSProperties = { border:"1px solid rgba(255,255,255,0.08)", borderRadius:18, padding:"16px 14px", display:"grid", gap:12, background:"rgba(255,255,255,0.02)" };
+const settingsLabel: React.CSSProperties = { fontSize:9, fontWeight:900, letterSpacing:"0.22em", color:"rgba(255,255,255,0.30)" };
+const settingsBtnPrimary: React.CSSProperties = { padding:"14px 16px", borderRadius:14, background:"rgba(255,255,255,0.10)", border:"1px solid rgba(255,255,255,0.18)", color:"#fff", fontWeight:800, fontSize:14, cursor:"pointer" };
+const settingsBtnUpgrade: React.CSSProperties = { padding:"14px 16px", borderRadius:14, background:"#fff", border:"none", color:"#000", fontWeight:900, fontSize:15, cursor:"pointer" };
+const settingsBtnDanger: React.CSSProperties = { padding:"13px 16px", borderRadius:14, background:"transparent", border:"1px solid rgba(255,60,60,0.2)", color:"rgba(255,80,80,0.6)", fontWeight:700, fontSize:13, cursor:"pointer" };
+
 // ── Settings Tab ──
 function SettingsTab({ role, router }: { role: "public"|"pro"; router: { push: (path: string) => void } }) {
   const [portalLoading, setPortalLoading] = useState(false);
@@ -251,24 +269,6 @@ function SettingsTab({ role, router }: { role: "public"|"pro"; router: { push: (
     </div>
   );
 }
-
-const PLAN_FEATURES = [
-  { label: "Scan tracks",       sub: "Recognize songs in real-time",       free: true,  pro: true  },
-  { label: "Unlimited scans",   sub: "No daily cap",                        free: false, pro: true  },
-  { label: "Scan history",      sub: "View your past recognitions",          free: true,  pro: true  },
-  { label: "Follow tracks",     sub: "Get notified when a track releases",   free: true,  pro: true  },
-  { label: "Upload your IDs",   sub: "Submit unreleased tracks",             free: false, pro: true  },
-  { label: "Priority in charts",sub: "Your tracks ranked first",             free: false, pro: true  },
-  { label: "Scan statistics",   sub: "See how often you've been scanned",    free: false, pro: true  },
-  { label: "Release control",   sub: "Flip UNREL → REL when you drop",      free: false, pro: true  },
-  { label: "Audio snippet",     sub: "10s teaser for fans before release",   free: false, pro: true  },
-];
-
-const settingsCard: React.CSSProperties = { border:"1px solid rgba(255,255,255,0.08)", borderRadius:18, padding:"16px 14px", display:"grid", gap:12, background:"rgba(255,255,255,0.02)" };
-const settingsLabel: React.CSSProperties = { fontSize:9, fontWeight:900, letterSpacing:"0.22em", color:"rgba(255,255,255,0.30)" };
-const settingsBtnPrimary: React.CSSProperties = { padding:"14px 16px", borderRadius:14, background:"rgba(255,255,255,0.10)", border:"1px solid rgba(255,255,255,0.18)", color:"#fff", fontWeight:800, fontSize:14, cursor:"pointer" };
-const settingsBtnUpgrade: React.CSSProperties = { padding:"14px 16px", borderRadius:14, background:"#fff", border:"none", color:"#000", fontWeight:900, fontSize:15, cursor:"pointer" };
-const settingsBtnDanger: React.CSSProperties = { padding:"13px 16px", borderRadius:14, background:"transparent", border:"1px solid rgba(255,60,60,0.2)", color:"rgba(255,80,80,0.6)", fontWeight:700, fontSize:13, cursor:"pointer" };
 
 export default function ProfilePageV2() {
   const router   = useRouter();
