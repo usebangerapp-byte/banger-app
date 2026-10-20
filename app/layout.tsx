@@ -18,7 +18,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://usebanger.com"),
   title: "BANGER",
+  openGraph: { title: "BANGER", description: "Identify any track. Even unreleased.", images: ["/api/og"], siteName: "BANGER", type: "website" },
+  twitter: { card: "summary_large_image", images: ["/api/og"] },
   description: "Scan music. Discover unreleased tracks. Follow what DJs are playing.",
   manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, title: "BANGER", statusBarStyle: "black-translucent" },
