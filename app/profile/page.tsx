@@ -495,9 +495,9 @@ export default function ProfilePageV2() {
             <Section title="RECENT SCANS">
               <div style={{ display:"grid", gap:2 }}>
                 {(showMoreScans ? scans : scans.slice(0,5)).map((s,i) => (
-                  <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 0", borderBottom:"1px solid rgba(255,255,255,0.05)" }}>
-                    <span style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const, maxWidth:"72%" }}>{s.track_title || "Unknown"}</span>
-                    <span style={{ fontSize:11, color:"rgba(255,255,255,0.30)", flexShrink:0, letterSpacing:"0.02em" }}>
+                  <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 0", borderBottom:"1px solid rgba(255,255,255,0.05)", width:"100%", overflow:"hidden" }}>
+                    <span style={{ flex:1, fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const, minWidth:0 }}>{s.track_title || "Unknown"}</span>
+                    <span style={{ fontSize:11, color:"rgba(255,255,255,0.30)", flexShrink:0, letterSpacing:"0.02em", whiteSpace:"nowrap" as const }}>
                       {s.result_type === "unreleased" ? "UNRELEASED" : "RELEASED"}
                     </span>
                   </div>
@@ -516,9 +516,9 @@ export default function ProfilePageV2() {
             <Section title="TRACK FOLLOWS">
               <div style={{ display:"grid", gap:2 }}>
                 {(showMoreFollows ? follows : follows.slice(0,5)).map((f,i) => (
-                  <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 0", borderBottom:"1px solid rgba(255,255,255,0.05)" }}>
-                    <span style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const, maxWidth:"72%" }}>{f.track_title || "Unknown"}</span>
-                    <span style={{ fontSize:11, color: f.is_released ? "rgba(29,185,84,0.80)" : "rgba(255,255,255,0.30)", flexShrink:0, letterSpacing:"0.02em" }}>
+                  <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 0", borderBottom:"1px solid rgba(255,255,255,0.05)", width:"100%", overflow:"hidden" }}>
+                    <span style={{ flex:1, fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const, minWidth:0 }}>{f.track_title || "Unknown"}</span>
+                    <span style={{ fontSize:11, color: f.is_released ? "rgba(29,185,84,0.80)" : "rgba(255,255,255,0.30)", flexShrink:0, letterSpacing:"0.02em", whiteSpace:"nowrap" as const }}>
                       {f.is_released ? "OUT" : "WAITING"}
                     </span>
                   </div>
