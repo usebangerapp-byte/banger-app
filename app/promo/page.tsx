@@ -185,7 +185,10 @@ export default function PromoPage() {
             style={{ ...ui.input, resize: "none" }} />
 
           {/* Recipients */}
-          <div style={{ fontSize: 13, color: C.text3, paddingTop: 4 }}>Send to</div>
+          <div style={{ display: "grid", gap: 2, paddingTop: 4 }}>
+            <div style={{ fontSize: 13, color: C.text3 }}>Send to</div>
+            <div style={{ fontSize: 12, color: C.text4, lineHeight: 1.4 }}>Pick one or more DJs. You&apos;ll be notified each time one of them listens.</div>
+          </div>
           {picked.length > 0 && (
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {picked.map((p) => (

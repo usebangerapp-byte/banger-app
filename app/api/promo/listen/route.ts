@@ -1,4 +1,4 @@
-import { adminClient, userFromRequest } from "@/lib/server/notify";
+import { adminClient, userFromRequest, notifyPromoListened } from "@/lib/server/notify";
 import { PROMO_BUCKET } from "@/lib/server/pro";
 
 export const runtime = "nodejs";
@@ -46,5 +46,8 @@ export async function POST(req: Request) {
     listened_at: found.rec.listened_at || new Date().toISOString(),
     plays: (found.rec.plays || 0) + 1,
   }).eq("id", found.rec.id);
+  if (!found.rec.listened_at) {
+    await notifyPromoListened(sb, found.promo.sender_id, user.id, found.promo.title).catch(() => {});
+  }
   return Response.json({ ok: true });
 }
