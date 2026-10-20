@@ -577,6 +577,10 @@ const region = await getRegion();
           15%  { opacity: 0.7; transform: scale(1.0); }
           100% { opacity: 0; transform: scale(1.4); }
         }
+        @keyframes fadeUp {
+          0%   { opacity: 0; transform: translateY(10px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
       `}</style>
 
       <div style={scanStyles.phone}>
@@ -694,7 +698,34 @@ const region = await getRegion();
             {status === "recognizing" ? "IDENTIFYING..." : null}
           </div>
 
-          {/* LAST ID removed */}
+          {/* ── RESULT ── */}
+          {title !== "—" && status === "idle" && (
+            <div style={scanStyles.resultBlock}>
+              <div style={scanStyles.resultTitle}>{title}</div>
+              {subtitle ? <div style={scanStyles.resultSub}>{subtitle}</div> : null}
+              <div style={{
+                display: "inline-block",
+                marginTop: 8,
+                fontSize: 10,
+                fontWeight: 800,
+                letterSpacing: "0.12em",
+                padding: "4px 10px",
+                borderRadius: 6,
+                border: tag === "UNRELEASED"
+                  ? "1px solid rgba(255,180,0,0.7)"
+                  : tag === "RELEASED"
+                  ? "1px solid rgba(29,185,84,0.7)"
+                  : "1px solid rgba(255,255,255,0.2)",
+                color: tag === "UNRELEASED"
+                  ? "rgba(255,180,0,1)"
+                  : tag === "RELEASED"
+                  ? "rgba(29,185,84,1)"
+                  : "rgba(255,255,255,0.5)",
+              }}>
+                {tag}
+              </div>
+            </div>
+          )}
         </div>{/* end center */}
 
       </div>{/* end phone */}
@@ -706,6 +737,8 @@ const scanStyles: Record<string, CSSProperties> = {
   page: {
     height: "100vh",
     overflow: "hidden",
+    touchAction: "none",
+    overscrollBehavior: "none",
     background: "#000",
     color: "#fff",
     display: "flex",
@@ -751,7 +784,7 @@ const scanStyles: Record<string, CSSProperties> = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    overflow: "hidden",
+    overflow: "visible",
   },
   haloOuter: {
     position: "absolute",
@@ -1071,6 +1104,28 @@ const scanStyles: Record<string, CSSProperties> = {
     fontWeight: 700,
     letterSpacing: 0.4,
     textAlign: "center" as const,
+  },
+  resultBlock: {
+    textAlign: "center" as const,
+    paddingTop: 4,
+    maxWidth: 280,
+    animation: "fadeUp 0.35s ease-out",
+  },
+  resultTitle: {
+    fontSize: 20,
+    fontWeight: 800,
+    letterSpacing: "-0.02em",
+    background: "linear-gradient(180deg, rgba(245,245,245,0.98), rgba(160,160,160,0.72))",
+    WebkitBackgroundClip: "text",
+    backgroundClip: "text",
+    color: "transparent",
+    lineHeight: 1.2,
+  },
+  resultSub: {
+    marginTop: 4,
+    fontSize: 13,
+    opacity: 0.65,
+    letterSpacing: "0.02em",
   },
   spotifyBtn: {
     display: "block",
