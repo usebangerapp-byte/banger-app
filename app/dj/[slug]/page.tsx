@@ -136,9 +136,9 @@ export default function DJProfilePage() {
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" as const }}>
-                <h1 style={{ margin: 0, fontSize: 26, fontWeight: 900, letterSpacing: "-0.03em", lineHeight: 1.05, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const, minWidth: 0 }}>{displayName}</h1>
+                <h1 style={{ margin: 0, fontSize: 19, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const, minWidth: 0 }}>{displayName}</h1>
               </div>
-              {profile?.genre && <div style={{ fontSize: 14, color: C.text3, marginTop: 6 }}>{profile.genre}</div>}
+              {profile?.genre && <div style={{ fontSize: 12, color: C.text3, marginTop: 5 }}>{profile.genre}</div>}
               {/* Compact stats */}
               <div style={statsLine}>
                 <button onClick={() => profile && setPeopleList("followers")} style={statBtn}><b style={statNum}>{profile?.follower_count || 0}</b> followers</button>
@@ -238,12 +238,12 @@ const pillGhost: React.CSSProperties = { ...ui.pill };
 const pageStyle: React.CSSProperties = { ...ui.page };
 const shellStyle: React.CSSProperties = { ...ui.shell };
 const backStyle: React.CSSProperties = { background:"none", border:"none", color:C.text3, fontFamily:MONO, fontSize:10, letterSpacing:"0.28em", cursor:"pointer", padding:0 };
-const headerStyle: React.CSSProperties = { display:"grid", gap:20, minWidth:0 };
-const avatarStyle: React.CSSProperties = { width:76, height:76, borderRadius:"50%", flexShrink:0, overflow:"hidden", background:"linear-gradient(135deg,rgba(255,255,255,0.16),rgba(255,255,255,0.05))", border:`1px solid ${C.line}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:28, fontWeight:900 };
-const statsLine: React.CSSProperties = { display:"flex", alignItems:"center", gap:18, flexWrap:"wrap", marginTop:10, fontSize:14, color:C.text3 };
+const headerStyle: React.CSSProperties = { display:"grid", gap:22, minWidth:0 };
+const avatarStyle: React.CSSProperties = { width:56, height:56, borderRadius:"50%", flexShrink:0, overflow:"hidden", background:"linear-gradient(135deg,rgba(255,255,255,0.16),rgba(255,255,255,0.05))", border:`1px solid ${C.line}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, fontWeight:800 };
+const statsLine: React.CSSProperties = { display:"flex", alignItems:"center", gap:16, flexWrap:"wrap", marginTop:10, fontSize:12, color:C.text3 };
 const statBtn: React.CSSProperties = { background:"none", border:"none", padding:0, color:"inherit", font:"inherit", cursor:"pointer" };
-const statNum: React.CSSProperties = { color:"#fff", fontWeight:800, fontSize:16, marginRight:4 };
-const bioStyle: React.CSSProperties = { fontSize:15, color:C.text2, lineHeight:1.6, borderLeft:`2px solid ${C.line}`, paddingLeft:14 };
+const statNum: React.CSSProperties = { color:"#fff", fontWeight:700, fontSize:13, marginRight:3 };
+const bioStyle: React.CSSProperties = { fontSize:13, color:C.text2, lineHeight:1.6, borderLeft:`1px solid ${C.line}`, paddingLeft:12 };
 const trackRow: React.CSSProperties = { ...ui.row };
 const tagStyle: React.CSSProperties = { fontSize:9, fontWeight:700, letterSpacing:"0.06em", borderRadius:5, padding:"3px 7px", flexShrink:0, whiteSpace:"nowrap" };
 const tagRel: React.CSSProperties = { color:"rgba(29,185,84,0.95)", border:"1px solid rgba(29,185,84,0.5)" };

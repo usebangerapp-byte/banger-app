@@ -117,7 +117,7 @@ export default function OnboardingView() {
       <div style={{ ...ui.shell, gap: 44 }}>
         <header>
           <div style={ui.catalogue}><span>BNGR — PICK YOUR PLAN</span><span>STEP 01</span></div>
-          <h1 style={{ ...ui.title, fontSize: "clamp(40px, 11vw, 64px)" }}>
+          <h1 style={{ ...ui.title, fontSize: "clamp(28px, 8vw, 40px)", fontWeight: 900, letterSpacing: "-0.04em", lineHeight: 0.98 }}>
             HOW DO YOU<br /><span style={{ color: "transparent", WebkitTextStroke: "1.5px rgba(255,255,255,0.85)" }}>WANT TO</span><br />PLAY.
           </h1>
           <p style={ui.subtitle}>Find the IDs, follow the DJs, stay ahead of every drop. Upgrade whenever you&apos;re ready.</p>
@@ -129,11 +129,11 @@ export default function OnboardingView() {
               <span>{plan.key === "pro" ? "✦ PRO" : "FREE"}</span>
               <span>{plan.price}</span>
             </div>
-            <p style={{ margin: "18px 0 6px", fontSize: 15, lineHeight: 1.6, color: C.text2 }}>{plan.description}</p>
+            <p style={{ margin: "18px 0 6px", fontSize: 13, lineHeight: 1.6, color: C.text2 }}>{plan.description}</p>
             {plan.features.map((feature) => (
               <div key={feature} style={{ ...ui.row, padding: "12px 0" }}>
                 <span style={{ fontFamily: MONO, fontSize: 11, color: C.text4 }}>—</span>
-                <span style={{ fontSize: 14 }}>{feature}</span>
+                <span style={{ fontSize: 13 }}>{feature}</span>
               </div>
             ))}
             <button
@@ -142,7 +142,7 @@ export default function OnboardingView() {
               disabled={loading}
               style={plan.key === "pro"
                 ? { ...ui.cta, marginTop: 20, opacity: loading ? 0.6 : 1 }
-                : { ...ui.pill, marginTop: 20, width: "100%", padding: "16px", fontSize: 14 }}
+                : { ...ui.pill, marginTop: 20, width: "100%", padding: "14px" }}
             >
               {loading && plan.key === "pro" ? "REDIRECTING…" : plan.key === "pro" ? "GO PRO  →" : plan.cta}
             </button>

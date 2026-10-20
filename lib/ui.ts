@@ -26,57 +26,57 @@ export const C = {
 
 export const ui: Record<string, CSSProperties> = {
   page: { minHeight: "100vh", background: C.bg, color: C.fg, padding: "20px 0 140px", overflowX: "hidden", fontFamily: SANS },
-  shell: { maxWidth: 600, margin: "0 auto", padding: "0 20px", display: "grid", gap: 36, boxSizing: "border-box", width: "100%" },
+  shell: { maxWidth: 560, margin: "0 auto", padding: "0 22px", display: "grid", gap: 44, boxSizing: "border-box", width: "100%" },
 
   // Page header ("catalogue" line + big title)
   catalogue: {
-    display: "flex", justifyContent: "space-between", gap: 12, fontFamily: MONO, fontSize: 10,
-    letterSpacing: "0.28em", color: C.text3, paddingBottom: 12, borderBottom: `1px solid ${C.line}`,
+    display: "flex", justifyContent: "space-between", gap: 12, fontFamily: MONO, fontSize: 9,
+    letterSpacing: "0.3em", color: C.text4, paddingBottom: 12, borderBottom: `1px solid ${C.lineSoft}`,
   },
-  title: { margin: "18px 0 0", fontSize: "clamp(36px, 10vw, 52px)", fontWeight: 900, letterSpacing: "-0.045em", lineHeight: 0.92 },
-  subtitle: { margin: "12px 0 0", fontSize: 14, lineHeight: 1.6, color: C.text3 },
+  title: { margin: "26px 0 0", fontSize: 22, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.2 },
+  subtitle: { margin: "8px 0 0", fontSize: 13, lineHeight: 1.6, color: C.text3 },
 
   // Sections
   section: { display: "grid", gap: 0, minWidth: 0 },
-  label: { fontFamily: MONO, fontSize: 10, fontWeight: 600, letterSpacing: "0.26em", color: C.text3, textTransform: "uppercase", paddingBottom: 10, borderBottom: `1px solid ${C.line}` },
+  label: { fontFamily: MONO, fontSize: 9, fontWeight: 600, letterSpacing: "0.3em", color: C.text4, textTransform: "uppercase", paddingBottom: 12, borderBottom: `1px solid ${C.lineSoft}` },
 
   // List rows
-  row: { display: "flex", alignItems: "center", gap: 14, padding: "16px 0", borderBottom: `1px solid ${C.lineSoft}`, minWidth: 0 },
-  rowTitle: { fontSize: 15, fontWeight: 800, letterSpacing: "-0.01em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
-  rowSub: { fontSize: 13, color: C.text3, marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
-  rank: { fontFamily: MONO, fontSize: 12, color: C.text4, width: 24, flexShrink: 0 },
+  row: { display: "flex", alignItems: "center", gap: 14, padding: "18px 0", borderBottom: `1px solid ${C.lineSoft}`, minWidth: 0 },
+  rowTitle: { fontSize: 14, fontWeight: 700, letterSpacing: "-0.005em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  rowSub: { fontSize: 12, color: C.text3, marginTop: 5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  rank: { fontFamily: MONO, fontSize: 10, color: C.text4, width: 22, flexShrink: 0 },
 
   // Buttons
   pill: {
     display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
-    padding: "9px 16px", borderRadius: 999, fontSize: 13, fontWeight: 700, lineHeight: 1,
-    background: "transparent", color: C.fg, border: "1px solid rgba(255,255,255,0.18)",
+    padding: "8px 14px", borderRadius: 999, fontSize: 12, fontWeight: 600, lineHeight: 1,
+    background: "transparent", color: C.fg, border: "1px solid rgba(255,255,255,0.16)",
     cursor: "pointer", whiteSpace: "nowrap", textDecoration: "none",
   },
   pillSolid: {
     display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
-    padding: "9px 16px", borderRadius: 999, fontSize: 13, fontWeight: 800, lineHeight: 1,
+    padding: "8px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, lineHeight: 1,
     background: C.fg, color: "#000", border: "1px solid transparent",
     cursor: "pointer", whiteSpace: "nowrap", textDecoration: "none",
   },
   pillSmall: {
-    display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 999,
-    fontSize: 12, fontWeight: 700, lineHeight: 1, background: "transparent", color: C.text2,
-    border: "1px solid rgba(255,255,255,0.14)", cursor: "pointer", whiteSpace: "nowrap", textDecoration: "none",
+    display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 999,
+    fontSize: 11, fontWeight: 600, lineHeight: 1, background: "transparent", color: C.text2,
+    border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer", whiteSpace: "nowrap", textDecoration: "none",
   },
   cta: {
-    width: "100%", padding: "18px", borderRadius: 6, border: "none", cursor: "pointer",
-    background: C.fg, color: "#000", fontFamily: MONO, fontWeight: 700, fontSize: 13, letterSpacing: "0.22em",
+    width: "100%", padding: "15px", borderRadius: 6, border: "none", cursor: "pointer",
+    background: C.fg, color: "#000", fontFamily: MONO, fontWeight: 700, fontSize: 11, letterSpacing: "0.24em",
   },
-  more: { justifySelf: "start", background: "none", border: "none", padding: "14px 0 0", fontFamily: MONO, fontSize: 11, letterSpacing: "0.16em", color: C.text3, cursor: "pointer" },
+  more: { justifySelf: "start", background: "none", border: "none", padding: "16px 0 0", fontFamily: MONO, fontSize: 9, letterSpacing: "0.24em", color: C.text3, cursor: "pointer" },
 
   // Inputs
   input: {
     width: "100%", boxSizing: "border-box", background: "transparent", border: "none",
-    borderBottom: `1px solid ${C.line}`, color: C.fg, fontSize: 15, padding: "12px 0", outline: "none",
+    borderBottom: `1px solid ${C.line}`, color: C.fg, fontSize: 14, padding: "12px 0", outline: "none",
   },
 
-  empty: { fontSize: 14, color: C.text3, padding: "16px 0" },
+  empty: { fontSize: 13, color: C.text3, padding: "18px 0" },
   avatar: {
     width: 40, height: 40, borderRadius: "50%", overflow: "hidden", flexShrink: 0,
     background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.10)",
@@ -93,8 +93,8 @@ export const ui: Record<string, CSSProperties> = {
 export function tag(kind: "rel" | "unrel" | "pro" | "neutral"): CSSProperties {
   const color = kind === "rel" ? C.rel : kind === "unrel" ? C.unrel : kind === "pro" ? C.gold : C.text3;
   return {
-    fontFamily: MONO, fontSize: 10, fontWeight: 600, letterSpacing: "0.14em", lineHeight: 1,
-    padding: "5px 8px", borderRadius: 4, border: `1px solid ${color}`, color, flexShrink: 0, whiteSpace: "nowrap",
+    fontFamily: MONO, fontSize: 9, fontWeight: 600, letterSpacing: "0.14em", lineHeight: 1,
+    padding: "4px 7px", borderRadius: 4, border: `1px solid ${color}`, color, flexShrink: 0, whiteSpace: "nowrap",
     opacity: 0.9,
   };
 }

@@ -94,13 +94,13 @@ export default function RadarPage() {
           <section style={ui.section}>
             <div style={ui.label}>Hot right now</div>
             {data.hot ? (
-              <div style={{ padding: "22px 0 4px", display: "grid", gap: 10 }}>
-                <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: "-0.03em", lineHeight: 1.05 }}>
+              <div style={{ padding: "22px 0 4px", display: "grid", gap: 8 }}>
+                <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.2 }}>
                   {data.hot.track_title}
                 </div>
-                <div style={{ fontSize: 15, color: C.text2 }}>{data.hot.track_subtitle || "Unknown"}</div>
+                <div style={{ fontSize: 13, color: C.text2 }}>{data.hot.track_subtitle || "Unknown"}</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 6, flexWrap: "wrap" }}>
-                  <span style={{ fontFamily: MONO, fontSize: 11, letterSpacing: "0.14em", color: C.text3 }}>
+                  <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.22em", color: C.text3 }}>
                     {data.hot.scans} SCANS THIS WEEK
                   </span>
                   <FollowBtn title={data.hot.track_title} subtitle={data.hot.track_subtitle || ""}

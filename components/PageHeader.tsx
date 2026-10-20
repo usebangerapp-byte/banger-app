@@ -14,7 +14,7 @@ export default function PageHeader({ title, sub, code }: { title: string; sub?: 
         <span>BNGR — {title.toUpperCase()}</span>
         {code && <span>{code}</span>}
       </div>
-      <h1 style={ui.title}>{title.toUpperCase()}.</h1>
+      <h1 style={ui.title}>{title}</h1>
       {sub && <p style={ui.subtitle}>{sub}</p>}
     </header>
   );

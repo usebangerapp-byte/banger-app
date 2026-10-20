@@ -996,7 +996,7 @@ const scanStyles: Record<string, CSSProperties> = {
 
   status: {
     fontFamily: MONO,
-    fontSize: 13,
+    fontSize: 11,
     color: C.text2,
     letterSpacing: "0.32em",
     paddingLeft: "0.32em",
@@ -1094,8 +1094,8 @@ const scanStyles: Record<string, CSSProperties> = {
     animation: "fadeUp 0.35s ease-out",
   },
   resultTitle: {
-    fontSize: 24,
-    fontWeight: 900,
+    fontSize: 19,
+    fontWeight: 800,
     letterSpacing: "-0.02em",
     background: "linear-gradient(180deg, rgba(245,245,245,0.98), rgba(160,160,160,0.72))",
     WebkitBackgroundClip: "text",

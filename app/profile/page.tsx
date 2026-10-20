@@ -467,7 +467,7 @@ export default function ProfilePageV2() {
         {tab==="profile" && (<>
 
           {/* ── IDENTITY ── */}
-          <section style={{ display:"grid", gap:20 }}>
+          <section style={{ display:"grid", gap:22 }}>
             <div style={ui.catalogue}>
               <span>BNGR — PROFILE</span>
               <span style={{ color: role==="pro" ? C.gold : C.text3 }}>{role==="pro" ? "✦ PRO" : "FREE"}</span>
@@ -488,10 +488,10 @@ export default function ProfilePageV2() {
               </div>
 
               <div style={{ flex:1, minWidth:0, display:"grid", gap:6 }}>
-                <div style={{ fontSize:26, fontWeight:900, letterSpacing:"-0.03em", lineHeight:1.05, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>
+                <div style={{ fontSize:19, fontWeight:800, letterSpacing:"-0.02em", lineHeight:1.2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>
                   {name}
                 </div>
-                {profile?.genre && <div style={{ fontSize:14, color:C.text3 }}>{profile.genre}</div>}
+                {profile?.genre && <div style={{ fontSize:12, color:C.text3 }}>{profile.genre}</div>}
                 {(profile?.instagram || profile?.soundcloud) && (
                   <div style={{ display:"flex", gap:8, flexWrap:"wrap" as const, marginTop:2 }}>
                     {profile?.instagram && (
@@ -521,7 +521,7 @@ export default function ProfilePageV2() {
             </div>
 
             {profile?.bio && (
-              <div style={{ fontSize:15, color:C.text2, lineHeight:1.6, borderLeft:`2px solid ${C.line}`, paddingLeft:14 }}>
+              <div style={{ fontSize:13, color:C.text2, lineHeight:1.6, borderLeft:`1px solid ${C.line}`, paddingLeft:12 }}>
                 {profile.bio}
               </div>
             )}
@@ -577,7 +577,7 @@ export default function ProfilePageV2() {
               <div style={sectionTitleStyle}>THIS WEEK</div>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end", gap:12, paddingTop:18 }}>
                 <div>
-                  <div style={{ fontSize:34, fontWeight:900, letterSpacing:"-0.03em", lineHeight:1 }}>
+                  <div style={{ fontSize:22, fontWeight:800, letterSpacing:"-0.02em", lineHeight:1 }}>
                     {sparkData.reduce((a, b) => a + b, 0)} <span style={{ fontFamily:MONO, fontSize:11, fontWeight:600, letterSpacing:"0.18em", color:C.text3 }}>SCANS</span>
                   </div>
                 </div>
@@ -866,16 +866,16 @@ function formatMsgTime(iso: string) {
 const chatHeader: React.CSSProperties = { display:"flex", alignItems:"center", gap:10, justifyContent:"center", background:"none", border:"none", color:"#fff", cursor:"pointer", padding:"2px 0 8px", minWidth:0, maxWidth:"100%" };
 
 const pageStyle: React.CSSProperties = { ...ui.page, padding:"8px 0 140px" };
-const shellStyle: React.CSSProperties = { ...ui.shell, gap:36 };
+const shellStyle: React.CSSProperties = { ...ui.shell, gap:40 };
 const sectionStyle: React.CSSProperties = { display:"grid", gap:0, minWidth:0 };
 const sectionTitleStyle: React.CSSProperties = { ...ui.label };
 // identity card replaces old headerStyle
 const identityCard: React.CSSProperties = { border:"1px solid rgba(255,255,255,0.07)", borderRadius:22, padding:"16px 16px", display:"grid", gap:12, background:"linear-gradient(160deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))", boxSizing:"border-box", overflow:"hidden" };
 const statsRow: React.CSSProperties = { display:"flex", background:"rgba(255,255,255,0.03)", borderRadius:14, border:"1px solid rgba(255,255,255,0.07)", padding:"10px 0", overflow:"hidden", boxSizing:"border-box" };
-const avatarStyle: React.CSSProperties = { width:76, height:76, borderRadius:"50%", background:"linear-gradient(135deg,rgba(255,255,255,0.16),rgba(255,255,255,0.05))", border:`1px solid ${C.line}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:28, fontWeight:900, flexShrink:0 };
-const statsLine: React.CSSProperties = { display:"flex", alignItems:"center", gap:18, flexWrap:"wrap", fontSize:14, color:C.text3 };
+const avatarStyle: React.CSSProperties = { width:56, height:56, borderRadius:"50%", background:"linear-gradient(135deg,rgba(255,255,255,0.16),rgba(255,255,255,0.05))", border:`1px solid ${C.line}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, fontWeight:800, flexShrink:0 };
+const statsLine: React.CSSProperties = { display:"flex", alignItems:"center", gap:16, flexWrap:"wrap", fontSize:12, color:C.text3 };
 const statBtn: React.CSSProperties = { background:"none", border:"none", padding:0, color:"inherit", font:"inherit", cursor:"pointer" };
-const statNum: React.CSSProperties = { color:"#fff", fontWeight:800, fontSize:16, marginRight:4 };
+const statNum: React.CSSProperties = { color:"#fff", fontWeight:700, fontSize:13, marginRight:3 };
 const avatarSmall: React.CSSProperties = { width:40, height:40, borderRadius:"50%", background:"rgba(255,255,255,0.08)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:900, flexShrink:0 };
 const proBadge: React.CSSProperties = { fontSize:10, fontWeight:800, letterSpacing:"0.14em", border:"1px solid rgba(255,255,255,0.30)", borderRadius:999, padding:"3px 9px", color:"#fff" };
 const socialLink: React.CSSProperties = { display:"inline-flex", alignItems:"center", gap:5, whiteSpace:"nowrap", fontSize:11, color:"rgba(255,255,255,0.55)", border:"1px solid rgba(255,255,255,0.10)", borderRadius:999, padding:"3px 9px", textDecoration:"none", maxWidth:"100%", overflow:"hidden", textOverflow:"ellipsis" };
@@ -886,8 +886,8 @@ const downgradeBtn: React.CSSProperties = { padding:"11px 16px", borderRadius:14
 const inputStyle: React.CSSProperties = { ...ui.input, display:"block", marginTop:6 };
 const saveBtn: React.CSSProperties = { ...ui.pillSolid, justifySelf:"start", padding:"12px 22px" };
 const tabBarStyle: React.CSSProperties = { display:"flex", width:"100%", borderBottom:`1px solid ${C.line}`, marginBottom:4 };
-const tabBtn: React.CSSProperties = { flex:1, padding:"16px 0", background:"none", border:"none", borderBottom:"2px solid transparent", color:C.text3, fontFamily:MONO, fontWeight:600, fontSize:11, letterSpacing:"0.24em", cursor:"pointer" };
-const tabActive: React.CSSProperties = { color:"#fff", borderBottom:"2px solid #fff" };
+const tabBtn: React.CSSProperties = { flex:1, padding:"16px 0", background:"none", border:"none", borderBottom:"1px solid transparent", color:C.text4, fontFamily:MONO, fontWeight:600, fontSize:10, letterSpacing:"0.28em", cursor:"pointer" };
+const tabActive: React.CSSProperties = { color:"#fff", borderBottom:"1px solid #fff" };
 const convRow: React.CSSProperties = { display:"flex", gap:14, alignItems:"center", padding:"16px 0", background:"none", border:"none", color:"#fff", cursor:"pointer", borderBottom:`1px solid ${C.lineSoft}`, width:"100%", minWidth:0, overflow:"hidden", boxSizing:"border-box", textAlign:"left" };
 const unreadBadge: React.CSSProperties = { width:20, height:20, borderRadius:"50%", background:"#fff", color:"#000", fontSize:11, fontWeight:900, display:"flex", alignItems:"center", justifyContent:"center" };
 const sendMsgBtn: React.CSSProperties = { width:44, height:44, borderRadius:"50%", background:"#fff", color:"#000", border:"none", fontSize:18, fontWeight:900, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 };
