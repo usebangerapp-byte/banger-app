@@ -140,6 +140,136 @@ function Sparkline({ data }: { data: number[] }) {
   );
 }
 
+// ── Settings Tab ──
+function SettingsTab({ role, router }: { role: "public"|"pro"; router: ReturnType<typeof useRouter> }) {
+  const [portalLoading, setPortalLoading] = useState(false);
+
+  const openPortal = async () => {
+    setPortalLoading(true);
+    try {
+      const sb = createSupabaseBrowser()!;
+      const { data: { session } } = await sb.auth.getSession();
+      const res = await fetch("/api/stripe/portal", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      const json = await res.json();
+      if (json.url) window.location.href = json.url;
+      else alert("Could not open billing portal. Try again.");
+    } catch {
+      alert("Something went wrong.");
+    } finally {
+      setPortalLoading(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    const sb = createSupabaseBrowser();
+    if (sb) await sb.auth.signOut();
+    router.push("/login");
+  };
+
+  return (
+    <div style={{ display:"grid", gap:14 }}>
+      {/* Plan actuel */}
+      <div style={settingsCard}>
+        <div style={settingsLabel}>CURRENT PLAN</div>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <div>
+            <div style={{ fontSize:20, fontWeight:900, letterSpacing:"-0.02em" }}>
+              {role==="pro" ? "✦ BANGER PRO" : "FREE"}
+            </div>
+            <div style={{ fontSize:12, opacity:0.45, marginTop:3 }}>
+              {role==="pro"
+                ? "€9.99/month · Unlimited scans · All features"
+                : "Limited scans · No uploads"}
+            </div>
+          </div>
+          {role==="pro" && (
+            <div style={{ fontSize:10, fontWeight:800, letterSpacing:"0.14em", border:"1px solid rgba(255,255,255,0.25)", borderRadius:999, padding:"4px 10px", color:"#fff", flexShrink:0 }}>
+              ACTIVE
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Bouton selon plan */}
+      {role==="pro" ? (
+        <div style={{ display:"grid", gap:10 }}>
+          <button
+            onClick={openPortal}
+            disabled={portalLoading}
+            style={{ ...settingsBtnPrimary, opacity: portalLoading ? 0.6 : 1 }}
+          >
+            {portalLoading ? "Opening…" : "Manage Subscription"}
+          </button>
+          <div style={{ fontSize:11, opacity:0.35, textAlign:"center" as const }}>
+            Change payment method, download invoices, or cancel your plan
+          </div>
+        </div>
+      ) : (
+        <div style={{ display:"grid", gap:10 }}>
+          <button onClick={() => router.push("/upgrade")} style={settingsBtnUpgrade}>
+            ✦ Upgrade to PRO — €9.99/mo
+          </button>
+          <div style={{ fontSize:11, opacity:0.35, textAlign:"center" as const }}>
+            Unlimited scans · Upload your IDs · Priority in charts
+          </div>
+        </div>
+      )}
+
+      {/* Fonctionnalités FREE vs PRO */}
+      <div style={settingsCard}>
+        <div style={settingsLabel}>WHAT'S INCLUDED</div>
+        <div style={{ display:"grid", gap:8 }}>
+          {PLAN_FEATURES.map((f) => {
+            const active = role==="pro" ? f.pro : f.free;
+            return (
+              <div key={f.label} style={{ display:"flex", alignItems:"center", gap:10, opacity: active ? 1 : 0.3 }}>
+                <span style={{ fontSize:11, color: active ? "rgba(29,185,84,1)" : "rgba(255,255,255,0.4)", fontWeight:900, width:14, textAlign:"center" as const }}>
+                  {active ? "✓" : "✕"}
+                </span>
+                <div>
+                  <div style={{ fontSize:13, fontWeight:600 }}>{f.label}</div>
+                  {f.sub && <div style={{ fontSize:11, opacity:0.5 }}>{f.sub}</div>}
+                </div>
+                {!f.free && f.pro && role!=="pro" && (
+                  <div style={{ marginLeft:"auto", fontSize:9, fontWeight:800, letterSpacing:"0.14em", border:"1px solid rgba(255,180,0,0.4)", borderRadius:999, padding:"2px 7px", color:"rgba(255,180,0,0.9)", flexShrink:0 }}>
+                    PRO
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Sign out */}
+      <button onClick={handleSignOut} style={settingsBtnDanger}>
+        Sign Out
+      </button>
+    </div>
+  );
+}
+
+const PLAN_FEATURES = [
+  { label: "Scan tracks",       sub: "Recognize songs in real-time",       free: true,  pro: true  },
+  { label: "Unlimited scans",   sub: "No daily cap",                        free: false, pro: true  },
+  { label: "Scan history",      sub: "View your past recognitions",          free: true,  pro: true  },
+  { label: "Follow tracks",     sub: "Get notified when a track releases",   free: true,  pro: true  },
+  { label: "Upload your IDs",   sub: "Submit unreleased tracks",             free: false, pro: true  },
+  { label: "Priority in charts",sub: "Your tracks ranked first",             free: false, pro: true  },
+  { label: "Scan statistics",   sub: "See how often you've been scanned",    free: false, pro: true  },
+  { label: "Release control",   sub: "Flip UNREL → REL when you drop",      free: false, pro: true  },
+  { label: "Audio snippet",     sub: "10s teaser for fans before release",   free: false, pro: true  },
+];
+
+const settingsCard: React.CSSProperties = { border:"1px solid rgba(255,255,255,0.08)", borderRadius:18, padding:"16px 14px", display:"grid", gap:12, background:"rgba(255,255,255,0.02)" };
+const settingsLabel: React.CSSProperties = { fontSize:9, fontWeight:900, letterSpacing:"0.22em", color:"rgba(255,255,255,0.30)" };
+const settingsBtnPrimary: React.CSSProperties = { padding:"14px 16px", borderRadius:14, background:"rgba(255,255,255,0.10)", border:"1px solid rgba(255,255,255,0.18)", color:"#fff", fontWeight:800, fontSize:14, cursor:"pointer" };
+const settingsBtnUpgrade: React.CSSProperties = { padding:"14px 16px", borderRadius:14, background:"#fff", border:"none", color:"#000", fontWeight:900, fontSize:15, cursor:"pointer" };
+const settingsBtnDanger: React.CSSProperties = { padding:"13px 16px", borderRadius:14, background:"transparent", border:"1px solid rgba(255,60,60,0.2)", color:"rgba(255,80,80,0.6)", fontWeight:700, fontSize:13, cursor:"pointer" };
+
 export default function ProfilePageV2() {
   const router   = useRouter();
   const supabase = useMemo(() => createSupabaseBrowser(), []);
@@ -159,7 +289,7 @@ export default function ProfilePageV2() {
   const [scans,    setScans]    = useState<any[]>([]);
   const [tracks,   setTracks]   = useState<any[]>([]);
   const [sparkData,setSparkData]= useState<number[]>([]);
-  const [tab,      setTab]      = useState<"profile"|"messages">("profile");
+  const [tab,      setTab]      = useState<"profile"|"messages"|"settings">("profile");
   const [showMoreTracks, setShowMoreTracks] = useState(false);
   const [showMoreFollows, setShowMoreFollows] = useState(false);
   const [showMoreScans,  setShowMoreScans]  = useState(false);
@@ -377,9 +507,9 @@ export default function ProfilePageV2() {
       <div style={shellStyle}>
 
         <div style={tabBarStyle}>
-          {(["profile","messages"] as const).map(t => (
+          {(["profile","messages","settings"] as const).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{ ...tabBtn, ...(tab===t?tabActive:{}) }}>
-              {t==="profile" ? "PROFILE" : `CHAT${convs.reduce((a,c)=>a+c.unread,0)>0?` (${convs.reduce((a,c)=>a+c.unread,0)})`:""}`}
+              {t==="profile" ? "PROFILE" : t==="settings" ? "SETTINGS" : `CHAT${convs.reduce((a,c)=>a+c.unread,0)>0?` (${convs.reduce((a,c)=>a+c.unread,0)})`:""}`}
             </button>
           ))}
         </div>
@@ -696,6 +826,10 @@ export default function ProfilePageV2() {
               </div>
             </>)}
           </div>
+        )}
+
+        {tab==="settings" && (
+          <SettingsTab role={role} router={router} />
         )}
 
       </div>
