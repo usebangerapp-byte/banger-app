@@ -119,44 +119,70 @@ function AudioPlayer({ src, name }: { src: string; name: string }) {
   );
 }
 
-// ── ScanCard : cover iTunes + preview 30s + artiste ──
+// ── ScanCard : cover + artist photo + preview 30s ──
 function ScanCard({ scan, isUnreleased }: { scan: any; isUnreleased: boolean }) {
-  const [cover, setCover]         = useState<string|null>(null);
-  const [previewUrl, setPreview]  = useState<string|null>(null);
-  const [loadedMeta, setLoaded]   = useState(false);
-  const [playing, setPlaying]     = useState(false);
-  const [progress, setProgress]   = useState(0);
+  const [cover, setCover]        = useState<string|null>(null);
+  const [previewUrl, setPreview] = useState<string|null>(null);
+  const [playing, setPlaying]    = useState(false);
+  const [progress, setProgress]  = useState(false as boolean);
+  const [prog, setProg]          = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  const title  = scan.track_title  || "Unknown";
+  const title  = scan.track_title   || "Unknown";
   const artist = scan.track_subtitle || "";
+  const released = scan.result_type !== "unreleased";
 
   useEffect(() => {
-    if (isUnreleased || !title || title === "Unknown") return;
-    const q = encodeURIComponent(`${artist} ${title}`.trim());
-    fetch(`https://itunes.apple.com/search?term=${q}&media=music&limit=3`)
+    if (!title || title === "Unknown") return;
+    // Pour les released → iTunes: cover HD + preview
+    // Pour les unreleased → chercher photo artiste via iTunes artist search
+    const q = encodeURIComponent(released ? `${artist} ${title}`.trim() : artist.trim() || title);
+    fetch(`https://itunes.apple.com/search?term=${q}&media=music&limit=5&entity=${released ? "song" : "musicArtist"}`)
       .then(r => r.json())
       .then(d => {
-        const track = d.results?.[0];
-        if (!track) return;
-        setCover(track.artworkUrl100?.replace("100x100", "300x300") || null);
-        setPreview(track.previewUrl || null);
-        setLoaded(true);
+        if (released) {
+          // Pick the best match: prefer exact title match
+          const results = d.results || [];
+          const best = results.find((t: any) =>
+            (t.trackName || "").toLowerCase().includes(title.toLowerCase().split("(")[0].trim())
+          ) || results[0];
+          if (best) {
+            setCover(best.artworkUrl100?.replace("100x100bb", "300x300bb").replace("100x100", "300x300") || null);
+            setPreview(best.previewUrl || null);
+          }
+        } else {
+          // Unreleased → artist image
+          const artist0 = d.results?.[0];
+          if (artist0?.artistLinkUrl) {
+            // iTunes artist art (from artistLinkUrl we can't get img directly)
+            // Use artworkUrl100 if it's a musicArtist type
+            setCover(artist0.artworkUrl100?.replace("100x100bb","300x300bb") || null);
+          }
+          // Also try song search for artist image fallback
+          if (!d.results?.[0]?.artworkUrl100) {
+            fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(artist||title)}&media=music&limit=3&entity=song`)
+              .then(r2 => r2.json())
+              .then(d2 => {
+                const t = d2.results?.[0];
+                if (t?.artworkUrl100) setCover(t.artworkUrl100.replace("100x100bb","300x300bb").replace("100x100","300x300"));
+              }).catch(() => {});
+          }
+        }
       }).catch(() => {});
-  }, [title, artist, isUnreleased]);
+  }, [title, artist, released]);
 
-  // external pause listener
+  // External pause listener
   useEffect(() => {
     const el = audioRef.current;
     if (!el) return;
-    const handler = () => { setPlaying(false); setProgress(0); };
+    const handler = () => { setPlaying(false); setProg(0); };
     el.addEventListener("externalpause", handler);
     return () => el.removeEventListener("externalpause", handler);
   }, []);
 
   const toggle = () => {
     const el = audioRef.current;
-    if (!el) return;
+    if (!el || !previewUrl) return;
     if (playing) { el.pause(); setPlaying(false); }
     else {
       if (activeAudioRef.current && activeAudioRef.current !== el) {
@@ -168,47 +194,59 @@ function ScanCard({ scan, isUnreleased }: { scan: any; isUnreleased: boolean }) 
     }
   };
 
-  const released = scan.result_type !== "unreleased";
-  const tagColor = released ? "rgba(29,185,84,0.85)" : "rgba(255,255,255,0.28)";
+  const tagColor = released ? "rgba(29,185,84,0.85)" : "rgba(255,180,0,0.85)";
   const tagLabel = released ? "RELEASED" : "UNRELEASED";
 
   return (
-    <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 0", borderBottom:"1px solid rgba(255,255,255,0.06)", width:"100%", overflow:"hidden" }}>
-      {/* Cover or placeholder */}
-      <div style={{ width:44, height:44, borderRadius:8, overflow:"hidden", flexShrink:0, background:"rgba(255,255,255,0.07)", display:"flex", alignItems:"center", justifyContent:"center", position:"relative" }}>
+    <div style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 0", borderBottom:"1px solid rgba(255,255,255,0.06)", width:"100%", overflow:"hidden" }}>
+      {/* Cover / artist photo */}
+      <div onClick={previewUrl ? toggle : undefined}
+        style={{ width:48, height:48, borderRadius:released?8:24, overflow:"hidden", flexShrink:0,
+          background:"rgba(255,255,255,0.08)", display:"flex", alignItems:"center", justifyContent:"center",
+          position:"relative", cursor: previewUrl ? "pointer" : "default",
+          boxShadow: playing ? "0 0 0 2px rgba(255,255,255,0.5)" : "none", transition:"box-shadow 0.2s" }}>
         {cover
-          ? <img src={cover} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
-          : <svg width={20} height={20} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5"/><path d="M9 8l8 4-8 4V8z" fill="rgba(255,255,255,0.3)"/></svg>
+          ? <img src={cover} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} onError={() => setCover(null)} />
+          : <svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5"/>
+              <path d="M9 8l8 4-8 4V8z" fill="rgba(255,255,255,0.28)"/>
+            </svg>
         }
-        {/* Play button overlay if preview available */}
+        {/* Play/pause overlay */}
         {previewUrl && (
-          <button onClick={toggle} style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", background: playing ? "rgba(0,0,0,0.45)" : "rgba(0,0,0,0.25)", border:"none", cursor:"pointer", borderRadius:8 }}>
+          <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center",
+            background: playing ? "rgba(0,0,0,0.5)" : cover ? "rgba(0,0,0,0)" : "transparent",
+            borderRadius: released?8:24, transition:"background 0.2s" }}>
             {playing
-              ? <svg width={14} height={14} viewBox="0 0 24 24" fill="white"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-              : <svg width={14} height={14} viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>
+              ? <svg width={15} height={15} viewBox="0 0 24 24" fill="white"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+              : <svg width={15} height={15} viewBox="0 0 24 24" fill="white" style={{ opacity: cover ? 0 : 0.6 }}><path d="M8 5v14l11-7z"/></svg>
             }
-          </button>
-        )}
-      </div>
-      {/* Info */}
-      <div style={{ flex:1, minWidth:0, display:"flex", flexDirection:"column", gap:2 }}>
-        <span style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{title}</span>
-        {artist && <span style={{ fontSize:11, color:"rgba(255,255,255,0.45)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{artist}</span>}
-        {/* Mini progress bar */}
-        {previewUrl && playing && (
-          <div style={{ height:2, background:"rgba(255,255,255,0.15)", borderRadius:1, marginTop:2, cursor:"pointer" }}
-            onClick={e => { const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect(); const ratio = (e.clientX - rect.left) / rect.width; if (audioRef.current) audioRef.current.currentTime = ratio * (audioRef.current.duration || 0); }}>
-            <div style={{ height:"100%", width:`${progress*100}%`, background:"rgba(255,255,255,0.7)", borderRadius:1, transition:"width 0.1s linear" }} />
           </div>
         )}
       </div>
-      {/* Tag */}
-      <span style={{ fontSize:10, color:tagColor, flexShrink:0, letterSpacing:"0.04em", whiteSpace:"nowrap", fontWeight:600, border:`1px solid ${tagColor}`, borderRadius:4, padding:"2px 5px" }}>{tagLabel}</span>
-      {/* Hidden audio */}
+
+      {/* Track info */}
+      <div style={{ flex:1, minWidth:0, display:"flex", flexDirection:"column", gap:3 }}>
+        <span style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", color:"#fff" }}>{title}</span>
+        {artist && <span style={{ fontSize:11, color:"rgba(255,255,255,0.42)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{artist}</span>}
+        {/* Progress bar — visible only while playing */}
+        {playing && (
+          <div style={{ height:2, background:"rgba(255,255,255,0.13)", borderRadius:1, cursor:"pointer", marginTop:1 }}
+            onClick={e => { e.stopPropagation(); const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); const ratio = (e.clientX - r.left) / r.width; if (audioRef.current) audioRef.current.currentTime = ratio * (audioRef.current.duration || 0); }}>
+            <div style={{ height:"100%", width:`${prog*100}%`, background:"rgba(255,255,255,0.75)", borderRadius:1, transition:"width 0.1s linear" }} />
+          </div>
+        )}
+      </div>
+
+      {/* Tag pill */}
+      <span style={{ fontSize:9, color:tagColor, flexShrink:0, letterSpacing:"0.05em", whiteSpace:"nowrap", fontWeight:700,
+        border:`1px solid ${tagColor}`, borderRadius:5, padding:"2px 6px", textTransform:"uppercase" }}>{tagLabel}</span>
+
+      {/* Audio element */}
       {previewUrl && (
         <audio ref={audioRef} src={previewUrl} preload="none"
-          onTimeUpdate={() => { const a = audioRef.current; if (a?.duration) setProgress(a.currentTime / a.duration); }}
-          onEnded={() => { setPlaying(false); setProgress(0); activeAudioRef.current = null; }}
+          onTimeUpdate={() => { const a = audioRef.current; if (a?.duration) setProg(a.currentTime / a.duration); }}
+          onEnded={() => { setPlaying(false); setProg(0); activeAudioRef.current = null; }}
           style={{ display:"none" }} />
       )}
     </div>
