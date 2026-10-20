@@ -159,7 +159,8 @@ export default function ChartsPage() {
           const key    = trackKey(title);
 
           const bpro    = bproIndex.get(key);
-          const released = s.result_type === "recognized_world" || !!bpro?.is_released;
+          // The uploader's own status wins: an uploaded track marked Unreleased stays in the Unreleased chart
+          const released = bpro ? !!bpro.is_released : s.result_type === "recognized_world";
 
           const existing = mergeMap.get(key);
           if (existing) {
