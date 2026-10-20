@@ -107,7 +107,7 @@ export default function UpgradePage() {
         {/* ── HERO ── */}
         <section style={{ display: "grid", justifyItems: "center", textAlign: "center", gap: 14, padding: "26px 6px 6px" }}>
           <h1 style={headline}>Go deeper.<br /><span style={shine}>Go Pro.</span></h1>
-          <p style={intro}>For DJs and producers who move first.</p>
+          <p style={intro}>For DJs and producers.</p>
           <div style={{ width: "100%", marginTop: 6 }}>{cta}</div>
           <div style={{ fontSize: 12, color: C.text3 }}>Cancel anytime · Secure payment with Stripe</div>
         </section>
