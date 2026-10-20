@@ -531,10 +531,10 @@ export default function ProfilePageV2() {
 
             {/* Stats — followers / following open the list */}
             <div style={statsLine}>
-              <span><b style={statNum}>{scans.length}</b> scans</span>
-              <button onClick={() => setPeopleList("followers")} style={statBtn}><b style={statNum}>{profile?.follower_count||0}</b> followers</button>
+              <span><b style={statNum}>{scans.length}</b> scan{scans.length === 1 ? "" : "s"}</span>
+              <button onClick={() => setPeopleList("followers")} style={statBtn}><b style={statNum}>{profile?.follower_count||0}</b> follower{(profile?.follower_count||0) === 1 ? "" : "s"}</button>
               <button onClick={() => setPeopleList("following")} style={statBtn}><b style={statNum}>{profile?.following_count||0}</b> following</button>
-              <span><b style={statNum}>{follows.length}</b> follows</span>
+              <span><b style={statNum}>{follows.length}</b> follow{follows.length === 1 ? "" : "s"}</span>
             </div>
 
             {/* Actions — one aligned row */}
@@ -544,12 +544,28 @@ export default function ProfilePageV2() {
               {!loading && role !== "pro" && (
                 <button onClick={() => router.push("/upgrade")} style={{ ...ui.pillSolid, marginLeft:"auto" }}>Go Pro</button>
               )}
-              {!loading && role === "pro" && (<>
-                <button onClick={() => router.push("/promo")} style={{ ...ui.pill, color:C.gold, borderColor:"rgba(245,207,104,0.30)", background:"rgba(245,207,104,0.10)" }}>Promo</button>
-                <button onClick={() => router.push("/set")} style={{ ...ui.pill, color:C.gold, borderColor:"rgba(245,207,104,0.30)", background:"rgba(245,207,104,0.10)" }}>Set mode</button>
-              </>)}
+
             </div>
           </section>
+
+          {/* ── PRO TOOLS: two tiles, side by side ── */}
+          {!loading && role === "pro" && (
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(2, minmax(0,1fr))", gap:10 }}>
+              {[
+                { href:"/promo", label:"Promo", icon:<path d="M4 12l16-8-6 16-2.5-6.5L4 12z" /> },
+                { href:"/set", label:"Set mode", icon:<><path d="M4 6h16M4 12h10M4 18h7" /><circle cx="18" cy="16" r="3" /></> },
+              ].map((t) => (
+                <button key={t.href} onClick={() => router.push(t.href)}
+                  style={{ ...glass, borderRadius:20, padding:"14px 16px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", color:"#fff", fontFamily:"inherit", textAlign:"left" }}>
+                  <span style={{ width:36, height:36, borderRadius:12, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center",
+                    background:"rgba(245,207,104,0.12)", border:"1px solid rgba(245,207,104,0.25)" }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.gold} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{t.icon}</svg>
+                  </span>
+                  <span style={{ fontSize:15, fontWeight:600 }}>{t.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* ── FIND PEOPLE (discreet) ── */}
           <PeopleSearch selfId={userId} />
