@@ -106,8 +106,8 @@ export default function UpgradePage() {
 
         {/* ── HERO ── */}
         <section style={{ display: "grid", justifyItems: "center", textAlign: "center", gap: 14, padding: "26px 6px 6px" }}>
-          <h1 style={headline}>Hear it first.<br /><span style={shine}>Play it first.</span></h1>
-          <p style={intro}>The IDs every DJ is chasing, before they ever drop. And your own tracks, in everyone&apos;s scanner.</p>
+          <h1 style={headline}>Go deeper.<br /><span style={shine}>Go Pro.</span></h1>
+          <p style={intro}>For DJs and producers who move first.</p>
           <div style={{ width: "100%", marginTop: 6 }}>{cta}</div>
           <div style={{ fontSize: 12, color: C.text3 }}>Cancel anytime · Secure payment with Stripe</div>
         </section>
