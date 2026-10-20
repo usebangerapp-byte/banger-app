@@ -1,5 +1,6 @@
 {
-  "installCommand": "npm install --prefer-online",
+  "installCommand": "npm install",
+  "buildCommand": "npm install && next build",
   "crons": [
     {
       "path": "/api/bpro/release-check",
