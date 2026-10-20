@@ -99,3 +99,8 @@ export function PreviewButton({ id, snippetPath, compact }: { id: string; snippe
     </button>
   );
 }
+
+/** Link to the Track page (preview, Spotify, Beatport, follow). */
+export function trackHref(title: string, artist?: string | null) {
+  return `/track?t=${encodeURIComponent(title || "")}${artist ? `&a=${encodeURIComponent(artist)}` : ""}`;
+}

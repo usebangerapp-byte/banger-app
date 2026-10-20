@@ -3,6 +3,7 @@
 import { authFetch } from "@/lib/authFetch";
 import { useEffect, useMemo, useState } from "react";
 import MarqueeText from "@/components/MarqueeText";
+import { trackHref } from "@/lib/preview";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import PageHeader from "@/components/PageHeader";
 import { ui, C, glass } from "@/lib/ui";
@@ -291,6 +292,7 @@ export default function ChartsPage() {
 
                   {/* Meta line */}
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+                    <Link href={trackHref(titleText || displayLine, artistText)} aria-label="Open track" style={{ order: 99, marginLeft: "auto", ...{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:30, height:30, borderRadius:"50%", flexShrink:0, background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.12)", color:"rgba(255,255,255,0.6)", textDecoration:"none", fontSize:16 } }}>›</Link>
                     {canPreview && (
                       <button type="button" onClick={() => {
                         let audio = (window as any)._bangerAudio as HTMLAudioElement | undefined;

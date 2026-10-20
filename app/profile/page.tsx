@@ -11,7 +11,8 @@ import PageHeader from "@/components/PageHeader";
 import { PeopleSearch, PeopleSheet } from "@/components/People";
 import { ui, C, glass, tag, TAG_TEXT } from "@/lib/ui";
 import MarqueeText from "@/components/MarqueeText";
-import { usePreviewIndex, PreviewButton, trackKey } from "@/lib/preview";
+import { usePreviewIndex, PreviewButton, trackKey, trackHref } from "@/lib/preview";
+import Link from "next/link";
 import { Skeleton, SkeletonTrackRow, SkeletonStyles } from "@/components/Skeleton";
 
 // ── Custom inline audio player ──
@@ -665,7 +666,7 @@ export default function ProfilePageV2() {
                   <div key={i} style={{ display:"flex", alignItems:"center", gap:12, padding:"13px 0", borderBottom:`1px solid ${C.lineSoft}`, width:"100%", overflow:"hidden" }}>
                     <div style={{ flex:1, minWidth:0, overflow:"hidden" }}>
                       <MarqueeText text={s.track_title || "Unknown"} style={ui.rowTitle} />
-                      {s.track_subtitle && <div style={ui.rowSub}>{s.track_subtitle}</div>}
+                      <Link href={trackHref(s.track_title || "", s.track_subtitle)} style={{ ...ui.rowSub, display:"block", textDecoration:"none" }}>{s.track_subtitle || "Open"} <span style={{ color:C.gold }}>›</span></Link>
                     </div>
                     {previews.get(trackKey(s.track_title || "")) && (
                       <PreviewButton compact id={`scan-${i}-${s.track_title}`} snippetPath={previews.get(trackKey(s.track_title || ""))!} />
@@ -690,7 +691,8 @@ export default function ProfilePageV2() {
               <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:2 }}>
                 {(showMoreFollows ? follows : follows.slice(0,3)).map((f,i) => (
                   <div key={i} style={{ display:"flex", alignItems:"center", gap:12, padding:"13px 0", borderBottom:`1px solid ${C.lineSoft}`, width:"100%", overflow:"hidden" }}>
-                    <div style={{ flex:1, minWidth:0 }}><MarqueeText text={f.track_title || "Unknown"} style={ui.rowTitle} /></div>
+                    <div style={{ flex:1, minWidth:0 }}><MarqueeText text={f.track_title || "Unknown"} style={ui.rowTitle} />
+                      <Link href={trackHref(f.track_title || "", f.track_subtitle)} style={{ ...ui.rowSub, display:"block", textDecoration:"none" }}>{f.track_subtitle || "Open"} <span style={{ color:C.gold }}>›</span></Link></div>
                     {previews.get(trackKey(f.track_title || "")) && (
                       <PreviewButton compact id={`follow-${i}-${f.track_title}`} snippetPath={previews.get(trackKey(f.track_title || ""))!} />
                     )}
@@ -716,7 +718,7 @@ export default function ProfilePageV2() {
                   <div key={t.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"16px 0", borderBottom:`1px solid ${C.lineSoft}` }}>
                     <div style={{ flex:1, minWidth:0, overflow:"hidden" }}>
                       <MarqueeText text={t.title || "Untitled"} style={ui.rowTitle} />
-                      {t.artist && <div style={ui.rowSub}>{t.artist}</div>}
+                      <Link href={trackHref(t.title || "", t.artist)} style={{ ...ui.rowSub, display:"block", textDecoration:"none" }}>{t.artist || "Open"} <span style={{ color:C.gold }}>›</span></Link>
                     </div>
                     <button
                       onClick={async () => {

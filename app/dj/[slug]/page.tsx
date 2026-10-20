@@ -8,6 +8,8 @@ import { SkeletonTrackRow, SkeletonStyles } from "@/components/Skeleton";
 import { PeopleSheet } from "@/components/People";
 import { ui, C, glass, tag, TAG_TEXT } from "@/lib/ui";
 import MarqueeText from "@/components/MarqueeText";
+import Link from "next/link";
+import { trackHref } from "@/lib/preview";
 
 type Profile = {
   id: string; email: string; display_name: string | null;
@@ -208,7 +210,7 @@ export default function DJProfilePage() {
               <div key={t.id} style={trackRow}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <MarqueeText text={t.title || "Untitled"} style={ui.rowTitle} />
-                  {t.artist && <div style={ui.rowSub}>{t.artist}</div>}
+                  <Link href={trackHref(t.title || "", t.artist)} style={{ ...ui.rowSub, display: "block", textDecoration: "none" }}>{t.artist || "Open"} <span style={{ color: C.gold }}>›</span></Link>
                 </div>
                 <span style={tag(t.is_released ? "rel" : "unrel")}>{t.is_released ? TAG_TEXT.rel : TAG_TEXT.unrel}</span>
               </div>

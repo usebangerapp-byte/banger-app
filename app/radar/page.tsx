@@ -5,7 +5,8 @@ import { useEffect, useState, useCallback } from "react"
 import { createSupabaseBrowser } from "@/lib/supabase/client"
 import PageHeader from "@/components/PageHeader"
 import MarqueeText from "@/components/MarqueeText"
-import { usePreviewIndex, PreviewButton, trackKey } from "@/lib/preview"
+import Link from "next/link"
+import { usePreviewIndex, PreviewButton, trackKey, trackHref } from "@/lib/preview"
 import { ui, C } from "@/lib/ui"
 
 type RadarTrack = { track_title: string; track_subtitle?: string; scans: number }
@@ -167,7 +168,7 @@ function TrackRow({ rank, title, subtitle, meta, snippet, followed, loading, onT
       <span style={ui.rank}>{rank}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <MarqueeText text={title} style={ui.rowTitle} />
-        <div style={ui.rowSub}>{subtitle}{subtitle ? " · " : ""}{meta}</div>
+        <Link href={trackHref(title, subtitle)} style={{ ...ui.rowSub, display: "block", textDecoration: "none" }}>{subtitle}{subtitle ? " · " : ""}{meta} <span style={{ color: C.gold }}>›</span></Link>
       </div>
       {snippet && <PreviewButton compact id={`radar-${rank}-${title}`} snippetPath={snippet} />}
       <FollowBtn title={title} subtitle={subtitle} followed={followed} loading={loading} onToggle={onToggle} />
