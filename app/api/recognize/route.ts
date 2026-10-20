@@ -166,6 +166,7 @@ export async function POST(req: Request) {
     const userId = clean(incoming.get("user_id"));
     const country = clean(incoming.get("country"));
     const region = clean(incoming.get("region"));
+    const noLog = clean(incoming.get("no_log")) === "1"; // Set mode logs each track once itself
 
 
     if (!(file instanceof File)) {
@@ -265,7 +266,7 @@ export async function POST(req: Request) {
 
 
     // Insert non-bloquant
-    supabase.from("scan_events").insert(row).then(({ error }) => {
+    if (!noLog) supabase.from("scan_events").insert(row).then(({ error }) => {
       if (error) console.error("scan_events insert failed", error);
     });
 

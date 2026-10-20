@@ -9,6 +9,8 @@ import { isNativeApp, nativeHaptic } from "@/lib/native";
 import { startOAuth } from "@/lib/oauth";
 import { ui, C, glass, tag as tagStyle, TAG_TEXT } from "@/lib/ui";
 import MarqueeText from "@/components/MarqueeText";
+import Link from "next/link";
+import { getBrowserRole } from "@/lib/auth/getBrowserRole";
 import { startAudioMeter } from "@/lib/scan/audioMeter";
 import { mapRecognizeResult } from "@/lib/scan/resultState";
 import { getRegion } from "@/lib/scan/getRegion";
@@ -237,6 +239,8 @@ export default function Home() {
   // Size the scan button from the space actually left between the top bar (52px)
   // and the bottom nav (96px), keeping room for the status line and the result.
   const [btnScale, setBtnScale] = useState(1.3);
+  const [isProUser, setIsProUser] = useState(false);
+  useEffect(() => { getBrowserRole().then((r) => setIsProUser(r === "pro")).catch(() => {}); }, []);
   useEffect(() => {
     const fit = () => {
       const vh = window.visualViewport?.height || window.innerHeight;
@@ -684,6 +688,13 @@ const region = await getRegion();
             {status === "listening" ? "Listening…" : null}
             {status === "recognizing" ? "Identifying…" : null}
           </div>
+
+          {isProUser && status === "idle" && title === "—" && (
+            <Link href="/set" style={{ ...ui.pillSmall, color: C.gold, background: "rgba(245,207,104,0.10)", borderColor: "rgba(245,207,104,0.28)" }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h7" /><circle cx="18" cy="16" r="3" /></svg>
+              Set mode
+            </Link>
+          )}
 
           {/* ── RESULT ── */}
           {title !== "—" && status === "idle" && (

@@ -19,10 +19,11 @@ type RecognizeResult = {
   };
 };
 
-export async function recognizeAudio(blob: Blob, mimeType: string, region: string) {
+export async function recognizeAudio(blob: Blob, mimeType: string, region: string, opts?: { noLog?: boolean }) {
   const fd = new FormData();
   fd.append("audio", blob, "sample.webm");
   fd.append("region", region);
+  if (opts?.noLog) fd.append("no_log", "1");
 
   try {
     // Shared client + local session: no extra network round-trip before each scan

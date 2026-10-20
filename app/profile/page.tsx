@@ -543,6 +543,10 @@ export default function ProfilePageV2() {
               {!loading && role !== "pro" && (
                 <button onClick={() => router.push("/upgrade")} style={{ ...ui.pillSolid, marginLeft:"auto" }}>Go Pro</button>
               )}
+              {!loading && role === "pro" && (<>
+                <button onClick={() => router.push("/promo")} style={{ ...ui.pill, color:C.gold, borderColor:"rgba(245,207,104,0.30)", background:"rgba(245,207,104,0.10)" }}>Promo</button>
+                <button onClick={() => router.push("/set")} style={{ ...ui.pill, color:C.gold, borderColor:"rgba(245,207,104,0.30)", background:"rgba(245,207,104,0.10)" }}>Set mode</button>
+              </>)}
             </div>
           </section>
 
@@ -815,6 +819,20 @@ export default function ProfilePageV2() {
                                 <span style={{ fontSize:12, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{fileName}</span>
                               </a>
                             );
+                            // Private promo track → listen card
+                            const promoMatch = msg.content?.match(/^🔒 Private track: (.+?) — (\S*\/listen\/[A-Za-z0-9]+)(?:\n([\s\S]*))?$/);
+                            if (promoMatch) {
+                              const path = promoMatch[2].replace(/^https?:\/\/[^/]+/, "");
+                              return (
+                                <a href={path} style={{ display:"grid", gap:6, textDecoration:"none", color:"inherit", minWidth:180 }}>
+                                  <span style={{ fontSize:11, fontWeight:700, letterSpacing:"0.08em", opacity:0.75 }}>🔒 PRIVATE TRACK</span>
+                                  <span style={{ fontSize:15, fontWeight:700, lineHeight:1.3 }}>{promoMatch[1]}</span>
+                                  {promoMatch[3] && <span style={{ fontSize:13, opacity:0.8 }}>{promoMatch[3]}</span>}
+                                  <span style={{ justifySelf:"start", marginTop:2, padding:"6px 12px", borderRadius:999, fontSize:12, fontWeight:700,
+                                    background: isMine ? "rgba(0,0,0,0.18)" : C.goldGrad, color: isMine ? C.goldInk : C.goldInk }}>▶ Listen</span>
+                                </a>
+                              );
+                            }
                             // Regular text message
                             if (msg.content && !fallbackMatch) return <span>{msg.content}</span>;
                             return null;
