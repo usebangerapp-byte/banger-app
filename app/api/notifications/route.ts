@@ -32,7 +32,9 @@ export async function GET(req: Request) {
     ...n,
     track_title: n.track_title || n.title || null,
     message: n.message || n.body || null,
-  }));
+  }))
+  // Old empty rows (no text, no sender) are noise — hide them
+  .filter((n) => n.message || n.track_title || n.actor_id);
 
   // One line per person: all messages (or follows) from the same sender are added up
   const groups = new Map<string, any>();
@@ -59,9 +61,14 @@ export async function GET(req: Request) {
   rows.splice(30);
   const actorIds = [...new Set(rows.map((n) => n.actor_id).filter(Boolean))];
   if (actorIds.length) {
-    const { data: actors } = await sb.from("profiles").select("id,avatar_url").in("id", actorIds);
-    const byId = new Map((actors || []).map((a: any) => [a.id, a.avatar_url]));
-    rows.forEach((n) => { n.actor_avatar = n.actor_id ? byId.get(n.actor_id) || null : null; });
+    const { data: actors } = await sb.from("profiles").select("id,avatar_url,display_name").in("id", actorIds);
+    const byId = new Map((actors || []).map((a: any) => [a.id, a]));
+    rows.forEach((n) => {
+      const a: any = n.actor_id ? byId.get(n.actor_id) : null;
+      n.actor_avatar = a?.avatar_url || null;
+      // Show the person's name on grouped message/follow lines
+      if (a?.display_name && (n.type === "message" || n.type === "follow")) n.track_title = a.display_name;
+    });
   }
   const unread = rows.filter((n) => !n.read).length;
 
