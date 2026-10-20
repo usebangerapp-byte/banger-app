@@ -262,7 +262,7 @@ export default function ChartsPage() {
 
   function renderTrackList(list: any[], kind: "unreleased" | "released") {
     return (
-      <div style={{ display: "grid", gap: 0 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 10 }}>
         {list.map((track, index) => {
           const canPreview =
             kind === "released"
@@ -273,21 +273,21 @@ export default function ChartsPage() {
           const titleText = String(track.title || "").trim();
           const lowerArtist = artistText.toLowerCase();
           const lowerTitle = titleText.toLowerCase();
-          const displayLine =
-            artistText && titleText
-              ? (lowerTitle.startsWith(lowerArtist + " - ")
-                  ? titleText
-                  : `${artistText} - ${titleText}`)
-              : (titleText || artistText || "Untitled");
+          // Title on its own line (full, wraps — remix included), artist underneath.
+          const mainTitle = (artistText && lowerTitle.startsWith(lowerArtist + " - "))
+            ? titleText.slice(artistText.length + 3).trim()
+            : (titleText || artistText || "Untitled");
+          const subLine = titleText ? artistText : "";
 
           return (
-            <div key={track.id} style={{ ...rowStyle, borderBottom: index === list.length - 1 ? "none" : rowStyle.borderBottom }}>
-              <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-                <span style={ui.rank}>{index + 1}</span>
+            <div key={track.id} style={rowStyle}>
+              <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+                <span style={{ ...ui.rank, paddingTop: 1 }}>{index + 1}</span>
 
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  {/* Title line */}
-                  <div style={ui.rowTitle}>{displayLine}</div>
+                  {/* Full title (wraps, remix visible) + artist */}
+                  <div style={titleWrap}>{mainTitle}</div>
+                  {subLine && <div style={{ ...ui.rowSub, marginTop: 3 }}>{subLine}</div>}
 
                   {/* Meta line */}
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
@@ -470,20 +470,25 @@ export default function ChartsPage() {
 
 const cardStyle: React.CSSProperties = { display: "grid", gap: 12, minWidth: 0 };
 
-const listCard: React.CSSProperties = { ...glass, borderRadius: 22, padding: "2px 16px", minWidth: 0 };
+const listCard: React.CSSProperties = { minWidth: 0 };
+
+const titleWrap: React.CSSProperties = {
+  fontSize: 16, fontWeight: 600, letterSpacing: "-0.01em", lineHeight: 1.3,
+  whiteSpace: "normal", overflowWrap: "anywhere",
+};
 
 const segment: React.CSSProperties = {
   ...glass, display: "grid", gridTemplateColumns: "1fr 1fr", padding: 4, borderRadius: 999, marginBottom: 10,
 };
 
 const lockedBox: React.CSSProperties = {
-  margin: "8px -8px 12px", padding: "18px 16px", borderRadius: 18, display: "grid", gap: 6, justifyItems: "center", textAlign: "center",
+  margin: "10px 0 0", padding: "18px 16px", borderRadius: 18, display: "grid", gap: 6, justifyItems: "center", textAlign: "center",
   background: "linear-gradient(160deg, rgba(245,207,104,0.16), rgba(245,207,104,0.04))", border: "1px solid rgba(245,207,104,0.25)",
 };
 
 const unlockBtn: React.CSSProperties = { ...ui.pillSolid, marginTop: 8, padding: "11px 26px", fontSize: 14 };
 
-const rowStyle: React.CSSProperties = { padding: "14px 0", borderBottom: `1px solid ${C.lineSoft}`, minWidth: 0 };
+const rowStyle: React.CSSProperties = { ...glass, borderRadius: 20, padding: "14px 16px", minWidth: 0 };
 
 const rankStyle: React.CSSProperties = {
   width: 34,
