@@ -55,7 +55,7 @@ export const ui: Record<string, CSSProperties> = {
   subtitle: { margin: "6px 0 0", fontSize: 14, lineHeight: 1.5, color: C.text2 },
 
   // Glass card section: label on top, rows inside
-  card: { ...glass, borderRadius: 22, padding: 18, minWidth: 0 },
+  card: { ...glass, borderRadius: 22, padding: 18, minWidth: 0, gridTemplateColumns: "minmax(0, 1fr)", boxSizing: "border-box" },
   section: { ...glass, borderRadius: 22, padding: "2px 16px", display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 0, minWidth: 0 },
   label: { fontSize: 13, fontWeight: 600, color: C.text3, padding: "14px 0 10px", borderBottom: `1px solid ${C.lineSoft}` },
 

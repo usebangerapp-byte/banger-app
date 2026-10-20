@@ -170,7 +170,7 @@ export default function PromoPage() {
           <input ref={fileRef} type="file" accept="audio/*,.mp3,.wav,.aif,.aiff,.flac,.m4a" style={{ display: "none" }}
             onChange={(e) => { pickFile(e.target.files?.[0]); e.target.value = ""; }} />
           <button onClick={() => fileRef.current?.click()}
-            style={{ border: "1px dashed rgba(245,207,104,0.40)", borderRadius: 18, padding: "20px 14px", background: "rgba(245,207,104,0.06)",
+            style={{ minWidth: 0, width: "100%", boxSizing: "border-box", border: "1px dashed rgba(245,207,104,0.40)", borderRadius: 18, padding: "20px 14px", background: "rgba(245,207,104,0.06)",
               color: "#fff", cursor: "pointer", fontFamily: "inherit", textAlign: "center" }}>
             <div style={{ fontSize: 15, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {file ? file.name : "Choose the track"}
