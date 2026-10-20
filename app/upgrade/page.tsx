@@ -105,14 +105,7 @@ export default function UpgradePage() {
       <div style={ui.shell}>
 
         {/* ── HERO ── */}
-        <section style={{ display: "grid", justifyItems: "center", textAlign: "center", gap: 14, padding: "18px 6px 6px" }}>
-          <div style={{ position: "relative", width: 150, height: 150, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <div aria-hidden style={{ position: "absolute", inset: -30, borderRadius: "50%",
-              background: "radial-gradient(circle, rgba(245,207,104,0.45), rgba(245,207,104,0.10) 45%, transparent 70%)",
-              animation: "proHalo 3.2s ease-in-out infinite" }} />
-            <img src="/B-glow.png" alt="" width={98} height={118} style={{ position: "relative", width: 98, height: "auto", animation: "proFloat 4s ease-in-out infinite" }} />
-          </div>
-          <span style={eyebrow}>BANGER PRO</span>
+        <section style={{ display: "grid", justifyItems: "center", textAlign: "center", gap: 14, padding: "26px 6px 6px" }}>
           <h1 style={headline}>Hear it first.<br /><span style={shine}>Play it first.</span></h1>
           <p style={intro}>The IDs every DJ is chasing, before they ever drop. And your own tracks, in everyone&apos;s scanner.</p>
           <div style={{ width: "100%", marginTop: 6 }}>{cta}</div>
