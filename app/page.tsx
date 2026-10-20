@@ -25,14 +25,13 @@ export default function LandingPage() {
     <main style={page}>
       <div style={shell}>
 
-        {/* Center logo */}
+        {/* Wordmark with halo, top of the page */}
+        <div style={logoMark}>BANGER</div>
+
+        {/* Center logo — glowing B (same look as the app icon) */}
         <div style={logoBlock}>
           <div style={logoInner}>
-            <img src="/B-logo-sm.png" alt="B" style={{
-              width: 110, height: 110, objectFit: "contain",
-              filter: "brightness(1.1) drop-shadow(0 0 22px rgba(255,255,255,0.20))",
-            }} />
-            <div style={logoMark}>BANGER</div>
+            <img src="/B-glow.png" alt="BANGER" width={170} height={204} style={{ width: 170, height: "auto" }} />
           </div>
           <div style={tagline}>Identify any track.<br />Even unreleased.</div>
         </div>
@@ -83,11 +82,13 @@ const logoBlock: React.CSSProperties = {
   gap: 0,
 };
 const logoInner: React.CSSProperties = {
-  display: "flex", flexDirection: "column", alignItems: "center", gap: 6, marginBottom: 28,
+  display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 20,
 };
 const logoMark: React.CSSProperties = {
-  fontSize: 16, fontWeight: 700, letterSpacing: "0.36em",
-  color: "rgba(255,255,255,0.70)",
+  textAlign: "center", fontSize: 22, fontWeight: 800, letterSpacing: "0.42em",
+  paddingLeft: "0.42em", // optically re-center the letter-spaced word
+  color: "#fff",
+  textShadow: "0 0 10px rgba(255,255,255,0.55), 0 0 28px rgba(255,255,255,0.30), 0 0 60px rgba(255,255,255,0.15)",
 };
 const tagline: React.CSSProperties = {
   fontSize: "clamp(28px,8vw,38px)", fontWeight: 500,
