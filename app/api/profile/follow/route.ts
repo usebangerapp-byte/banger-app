@@ -1,11 +1,15 @@
+import { userFromRequest } from "@/lib/server/notify";
 import { createClient } from "@supabase/supabase-js";
 import { notifyFollow } from "@/lib/server/notify";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
-  const { action, follower_id, following_id } = await req.json().catch(() => ({}));
-  if (!follower_id || !following_id) return Response.json({ ok: false, error: "Missing ids" }, { status: 400 });
+  const me = await userFromRequest(sb, req);
+  if (!me) return Response.json({ ok: false, error: "Not signed in" }, { status: 401 });
+  const follower_id = me.id;
+  const { action, following_id } = await req.json().catch(() => ({}));
+  if (!following_id) return Response.json({ ok: false, error: "Missing ids" }, { status: 400 });
   if (follower_id === following_id) return Response.json({ ok: false, error: "Cannot follow yourself" }, { status: 400 });
   if (action === "unfollow") {
     await sb.from("profile_followers").delete().eq("follower_id", follower_id).eq("following_id", following_id);

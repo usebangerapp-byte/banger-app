@@ -1,3 +1,4 @@
+import { userFromRequest } from "@/lib/server/notify";
 import { createClient } from "@supabase/supabase-js";
 import { notifyMessage } from "@/lib/server/notify";
 export const runtime = "nodejs";
@@ -16,7 +17,10 @@ export async function POST(req: Request) {
     return Response.json({ ok: false, error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { sender_id, receiver_id, content, file_url, file_name, file_type } = body;
+  const me = await userFromRequest(sb, req);
+  if (!me) return Response.json({ ok: false, error: "Not signed in" }, { status: 401 });
+  const sender_id = me.id;
+  const { receiver_id, content, file_url, file_name, file_type } = body;
 
   if (!sender_id || !receiver_id) {
     return Response.json({ ok: false, error: "Missing sender_id or receiver_id" }, { status: 400 });

@@ -1,5 +1,6 @@
 "use client";
 
+import { authFetch } from "@/lib/authFetch";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
@@ -56,7 +57,7 @@ export default function DJProfilePage() {
       const uid = data?.session?.user?.id || null;
       setMyUserId(uid);
       if (!uid) return;
-      fetch(`/api/profile/follow?user_id=${uid}`)
+      authFetch(`/api/profile/follow?user_id=${uid}`)
         .then(r => r.json())
         .then(j => {
           const list = Array.isArray(j?.following) ? j.following : [];
@@ -70,7 +71,7 @@ export default function DJProfilePage() {
     setFollowBusy(true);
     try {
       const action = following ? "unfollow" : "follow";
-      const res = await fetch("/api/profile/follow", {
+      const res = await authFetch("/api/profile/follow", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, follower_id: myUserId, following_id: profile.id }),
       });
@@ -86,7 +87,7 @@ export default function DJProfilePage() {
     if (!myUserId || !profile || !msgText.trim()) return;
     setMsgBusy(true);
     try {
-      const res = await fetch("/api/messages/send", {
+      const res = await authFetch("/api/messages/send", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sender_id: myUserId, receiver_id: profile.id, content: msgText.trim() }),
       });

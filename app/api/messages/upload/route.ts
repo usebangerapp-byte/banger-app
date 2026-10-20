@@ -1,3 +1,4 @@
+import { userFromRequest } from "@/lib/server/notify";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest } from "next/server";
 
@@ -20,8 +21,10 @@ export async function POST(req: NextRequest) {
       return Response.json({ ok: false, error: "FormData parse failed: " + (e?.message || String(e)) }, { status: 400 });
     }
 
+    const me = await userFromRequest(sb, req);
+    if (!me) return Response.json({ ok: false, error: "Not signed in" }, { status: 401 });
     const file = form.get("file") as File | null;
-    const sender_id = form.get("sender_id") as string | null;
+    const sender_id = me.id;
 
     if (!file) return Response.json({ ok: false, error: "No file in form" }, { status: 400 });
     if (!sender_id) return Response.json({ ok: false, error: "No sender_id in form" }, { status: 400 });

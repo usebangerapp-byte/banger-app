@@ -2,6 +2,7 @@
 
 export const dynamic = "force-dynamic";
 
+import { authFetch } from "@/lib/authFetch";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
@@ -214,7 +215,7 @@ export default function ProfilePageV2() {
           if (j.profile.avatar_url) setAvatarUrl(j.profile.avatar_url);
         }
 
-        const fRes = await fetch(`/api/follow-track?user_id=${uid}`, { cache: "no-store" });
+        const fRes = await authFetch(`/api/follow-track?user_id=${uid}`, { cache: "no-store" });
         const fj   = await fRes.json().catch(() => null);
         if (mounted) {
           const rawFollows = Array.isArray(fj?.followed) ? fj.followed : [];
@@ -265,7 +266,7 @@ export default function ProfilePageV2() {
 
   useEffect(() => {
     if (!userId || tab !== "messages") return;
-    fetch(`/api/messages/list?user_id=${userId}`)
+    authFetch(`/api/messages/list?user_id=${userId}`)
       .then(r => r.json())
       .then(j => {
         if (!j?.messages) return;
@@ -289,7 +290,7 @@ export default function ProfilePageV2() {
 
   useEffect(() => {
     if (!activeConv || !userId) return;
-    fetch(`/api/messages/list?user_id=${userId}&other_id=${activeConv}`)
+    authFetch(`/api/messages/list?user_id=${userId}&other_id=${activeConv}`)
       .then(r => r.json()).then(j => { if (j?.messages) setMessages(j.messages); }).catch(() => {});
   }, [activeConv, userId]);
 
@@ -297,12 +298,11 @@ export default function ProfilePageV2() {
 
   async function deleteConversation(otherUserId: string) {
     if (!userId) return;
-    // Supprimer tous les messages entre les deux utilisateurs
-    const sb = createSupabaseBrowser();
-    if (!sb) return;
-    await sb.from("messages")
-      .delete()
-      .or(`and(sender_id.eq.${userId},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${userId})`);
+    // Delete the whole conversation server-side (works whatever the database access rules are)
+    await authFetch("/api/messages/delete", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ other_id: otherUserId }),
+    }).catch(() => {});
     setConvs(p => p.filter(c => c.user_id !== otherUserId));
     setConvToDelete(null);
   }
@@ -311,7 +311,7 @@ export default function ProfilePageV2() {
     if (!userId) return;
     setSaving(true);
     try {
-      await fetch("/api/profile/update", {
+      await authFetch("/api/profile/update", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId, display_name: editName, bio: editBio, genre: editGenre, instagram: editIG, soundcloud: editSC }),
       });
@@ -329,7 +329,7 @@ export default function ProfilePageV2() {
   async function sendMsg() {
     if (!msgInput.trim() || !activeConv || !userId) return;
     const content = msgInput.trim(); setMsgInput("");
-    await fetch("/api/messages/send", { method:"POST", headers:{"Content-Type":"application/json"},
+    await authFetch("/api/messages/send", { method:"POST", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({ sender_id: userId, receiver_id: activeConv, content }) });
     setMessages(p => [...p, { id: Date.now(), created_at: new Date().toISOString(), sender_id: userId, receiver_id: activeConv, content, read: false }]);
   }
@@ -352,7 +352,7 @@ export default function ProfilePageV2() {
       const fileUrl = urlData.publicUrl;
 
       // Send just the metadata to the API (small JSON, no size issue)
-      const sendRes = await fetch("/api/messages/send", {
+      const sendRes = await authFetch("/api/messages/send", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sender_id: userId, receiver_id: activeConv, content: null, file_url: fileUrl, file_name: file.name, file_type: file.type }),
       });
@@ -697,7 +697,7 @@ export default function ProfilePageV2() {
                         </div>
                         {isMine && (
                           <button onClick={async()=>{
-                            await fetch("/api/messages/delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message_id:msg.id,user_id:userId})});
+                            await authFetch("/api/messages/delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message_id:msg.id,user_id:userId})});
                             setMessages(p=>p.filter(m=>m.id!==msg.id));
                           }} style={{ background:"none",border:"none",color:"rgba(255,80,80,0.5)",fontSize:14,cursor:"pointer",padding:"0 2px",flexShrink:0 }}>✕</button>
                         )}

@@ -1,5 +1,6 @@
 "use client";
 
+import { authFetch } from "@/lib/authFetch";
 import { useEffect, useMemo, useState } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import PageHeader from "@/components/PageHeader";
@@ -102,7 +103,7 @@ export default function ChartsPage() {
       const uid = data?.session?.user?.id || null;
       setUserId(uid);
       if (!uid) return;
-      fetch(`/api/follow-track?user_id=${uid}`, { cache: "no-store" })
+      authFetch(`/api/follow-track?user_id=${uid}`, { cache: "no-store" })
         .then(r => r.json())
         .then(json => {
           const followed = Array.isArray(json?.followed) ? json.followed : [];
@@ -326,7 +327,7 @@ export default function ChartsPage() {
                           onClick={async () => {
                             if (!userId) { showToast("Sign in to follow tracks"); return; }
                             const action = isFollowing ? "unfollow" : "follow";
-                            const res = await fetch("/api/follow-track", {
+                            const res = await authFetch("/api/follow-track", {
                               method: "POST", headers: { "Content-Type": "application/json" },
                               body: JSON.stringify({ action, user_id: userId, track_title: track.title || "", track_subtitle: (track.artist || "").trim() || null }),
                             });

@@ -1,18 +1,22 @@
+import { userFromRequest } from "@/lib/server/notify";
 import { createClient } from "@supabase/supabase-js";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET(req: Request) {
   const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
   const { searchParams } = new URL(req.url);
-  const user_id  = searchParams.get("user_id")  || "";
+  const me = await userFromRequest(sb, req);
+  if (!me) return Response.json({ ok: false, error: "Not signed in" }, { status: 401 });
+  const user_id  = me.id;
   const other_id = searchParams.get("other_id") || "";
-  if (!user_id) return Response.json({ ok: false, error: "Missing user_id" }, { status: 400 });
 
-  let query = sb.from("messages").select("id,created_at,sender_id,receiver_id,content,read").order("created_at", { ascending: true }).limit(100);
+  // Newest first from the DB (a conversation keeps its latest messages), then back to chronological order
+  let query = sb.from("messages").select("*").order("created_at", { ascending: false }).limit(other_id ? 300 : 1000);
   if (other_id) query = query.or(`and(sender_id.eq.${user_id},receiver_id.eq.${other_id}),and(sender_id.eq.${other_id},receiver_id.eq.${user_id})`);
   else query = query.or(`sender_id.eq.${user_id},receiver_id.eq.${user_id}`);
-  const { data, error } = await query;
+  const { data: rawDesc, error } = await query;
   if (error) return Response.json({ ok: false, error: error.message }, { status: 500 });
+  const data = (rawDesc || []).slice().reverse();
 
   // Enrich with display_name from profiles
   const ids = [...new Set((data || []).flatMap((m: any) => [m.sender_id, m.receiver_id]))];

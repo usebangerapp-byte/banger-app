@@ -1,5 +1,6 @@
 "use client"
 
+import { authFetch } from "@/lib/authFetch";
 import { useEffect, useState, useCallback } from "react"
 import { createSupabaseBrowser } from "@/lib/supabase/client"
 import PageHeader from "@/components/PageHeader"
@@ -26,7 +27,7 @@ export default function RadarPage() {
       const uid = d.user?.id || null
       setUserId(uid)
       if (uid) {
-        fetch(`/api/follow-track?user_id=${uid}`)
+        authFetch(`/api/follow-track?user_id=${uid}`)
           .then(r => r.json())
           .then(j => {
             const set = new Set<string>((j.followed || []).map((f: any) => (f.track_title || "").toLowerCase().trim()))
@@ -59,7 +60,7 @@ export default function RadarPage() {
     const isFollowing = followed.has(key)
     setFollowLoading(prev => new Set(prev).add(key))
     try {
-      const res = await fetch("/api/follow-track", {
+      const res = await authFetch("/api/follow-track", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId, track_title, track_subtitle, action: isFollowing ? "unfollow" : "follow" }),

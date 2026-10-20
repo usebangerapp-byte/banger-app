@@ -1,4 +1,5 @@
 "use client";
+import { authFetch } from "@/lib/authFetch";
 import { useEffect, useState } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 type Props = { trackId?: string | null; trackTitle: string; trackSubtitle?: string | null };
@@ -18,7 +19,7 @@ export default function FollowTrackButton({ trackTitle, trackSubtitle }: Props) 
         if (!mounted) return;
         setUserId(uid);
         if (!uid) { setReady(true); return; }
-        const res  = await fetch(`/api/follow-track?user_id=${uid}`, { cache: "no-store" });
+        const res  = await authFetch(`/api/follow-track?user_id=${uid}`, { cache: "no-store" });
         const json = await res.json().catch(() => null);
         const followed = Array.isArray(json?.followed) ? json.followed : [];
         const wt = (trackTitle || "").trim(); const ws = (trackSubtitle || "").trim();
@@ -32,7 +33,7 @@ export default function FollowTrackButton({ trackTitle, trackSubtitle }: Props) 
     if (busy || !supabase || !userId) return;
     setBusy(true);
     try {
-      const res = await fetch("/api/follow-track", {
+      const res = await authFetch("/api/follow-track", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: following ? "unfollow" : "follow",
           user_id: userId, track_title: trackTitle, track_subtitle: trackSubtitle || null }),
