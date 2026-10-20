@@ -1,12 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   typescript: {
-    // Temporarily ignore TS errors to diagnose build failures
+    // Temporary: ensures the build passes; to remove once the types are checked
     ignoreBuildErrors: true,
-  },
-  eslint: {
-    // Temporarily ignore ESLint errors to diagnose build failures
-    ignoreDuringBuilds: true,
   },
   experimental: {
     // Increase server body size limit for audio file uploads (50MB)
