@@ -5,6 +5,8 @@ import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
+import { isNativeApp, nativeHaptic } from "@/lib/native";
+import { startOAuth } from "@/lib/oauth";
 import { startAudioMeter } from "@/lib/scan/audioMeter";
 import { mapRecognizeResult } from "@/lib/scan/resultState";
 import { getRegion } from "@/lib/scan/getRegion";
@@ -188,7 +190,7 @@ function WooferSVG({ audioLevel, listening }: { audioLevel: number; listening: b
       </svg>
 
       {/* ── B logo centered on dome ── */}
-      <img src="/B-logo.png" alt="B" style={{
+      <img src="/B-logo-sm.png" alt="B" style={{
         position: "absolute",
         width: 28, height: 28,
         objectFit: "contain",
@@ -238,6 +240,17 @@ export default function Home() {
     setSessionLoading(false);
   }, []);
 
+  // ── Siri / Shortcuts / app link: /home?scan=1 starts a scan right away ──
+  useEffect(() => {
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      if (sp.get("scan") !== "1") return;
+      window.history.replaceState(null, "", "/home");
+      if (status === "idle") startListening();
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── Control Center iOS (comme Shazam) ──
   // Déclenché quand l'user tape BANGER dans le Control Center
   useEffect(() => {
@@ -252,15 +265,7 @@ export default function Home() {
     if (!supabase) return;
     setLoginLoading(true);
     try {
-      await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo:
-            typeof window !== "undefined"
-              ? `${window.location.origin}/auth/callback`
-              : undefined,
-        },
-      });
+      await startOAuth(supabase, provider);
     } finally {
       setLoginLoading(false);
     }
@@ -276,6 +281,14 @@ export default function Home() {
   // Android: navigator.vibrate
   // iOS Safari: AudioContext pulse basse fréquence (seule méthode qui marche)
   function vib(pattern: number | number[]) {
+    // Native app (iOS): real Taptic Engine feedback instead of the web fallbacks below
+    if (isNativeApp()) {
+      const kind = typeof pattern === "number" ? "tap"
+        : pattern.length >= 5 ? "success"
+        : pattern[0] <= 6 ? "analyzing" : "fail";
+      nativeHaptic(kind);
+      return;
+    }
     // Android
     try {
       const nav = navigator as Navigator & { vibrate?: (p: number | number[]) => boolean };
@@ -504,7 +517,7 @@ const region = await getRegion();
       
       <div style={{ display: "grid", placeItems: "center", marginBottom: 12 }}>
           <Image
-            src="/banger-findids.png"
+            src="/banger-findids-sm.png"
             alt="Banger Find IDs"
             width={260}
             height={90}

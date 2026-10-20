@@ -98,8 +98,8 @@ export default function ChartsPage() {
   // Charger userId + follows indépendamment des charts
   useEffect(() => {
     if (!supabase) return;
-    supabase.auth.getUser().then(({ data }) => {
-      const uid = data?.user?.id || null;
+    supabase.auth.getSession().then(({ data }) => {
+      const uid = data?.session?.user?.id || null;
       setUserId(uid);
       if (!uid) return;
       fetch(`/api/follow-track?user_id=${uid}`, { cache: "no-store" })
@@ -189,18 +189,7 @@ export default function ChartsPage() {
 
         setTracks(merged);
 
-        // Charger tous les follows en une seule requête
-        try {
-          const { data: authData } = await supabase?.auth.getUser() || { data: null };
-          const uid = authData?.user?.id || null;
-          if (uid) {
-            setUserId(uid);
-            const res = await fetch(`/api/follow-track?user_id=${uid}`, { cache: "no-store" });
-            const json = await res.json().catch(() => null);
-            const followed = Array.isArray(json?.followed) ? json.followed : [];
-            setFollowedTitles(new Set(followed.map((f: any) => trackKey(String(f.track_title || "")))));
-          }
-        } catch {}
+        // (follows are loaded once by the effect above — no second request here)
       } catch (e: any) {
         if (!mounted) return;
         setError(e?.message || "Unable to load charts.");

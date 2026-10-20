@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { pushToUser } from "@/lib/server/apns";
 
 /** Service-role client (server only). */
 export function adminClient(): SupabaseClient {
@@ -26,6 +27,23 @@ async function notificationsEnabled(sb: SupabaseClient, userId: string) {
 
 type Row = { user_id: string; type: string; message: string; track_title?: string | null; actor_id?: string | null };
 
+/** Where a tap on the notification should lead. */
+function linkFor(row: Row) {
+  if (row.type === "message") return row.actor_id ? `/profile?tab=messages&with=${row.actor_id}` : "/profile?tab=messages";
+  if (row.type === "follow" && row.actor_id) return `/dj/${row.actor_id}`;
+  if (row.type === "track_released") return "/charts";
+  return "/home";
+}
+
+/** Phone push (iOS app) mirroring the in-app notification. No-op until APNs is configured. */
+async function push(sb: SupabaseClient, row: Row) {
+  await pushToUser(sb, row.user_id, {
+    title: row.track_title || "BANGER",
+    body: row.message,
+    url: linkFor(row),
+  }).catch(() => {});
+}
+
 /** Insert a notification. If the optional actor_id/count columns are missing, retries without them. */
 async function insertNotification(sb: SupabaseClient, row: Row) {
   const full = { ...row, read: false, count: 1 };
@@ -34,6 +52,7 @@ async function insertNotification(sb: SupabaseClient, row: Row) {
     const { actor_id, ...basic } = row;
     await sb.from("notifications").insert([{ ...basic, read: false }]);
   }
+  await push(sb, row);
 }
 
 /** One-time notification per user and type (e.g. welcome). */
@@ -57,6 +76,7 @@ export async function notifyMessage(sb: SupabaseClient, receiverId: string, send
     await sb.from("notifications").update({
       count: n, message: `${n} new messages`, track_title: name, created_at: new Date().toISOString(),
     }).eq("id", existing[0].id);
+    await push(sb, { user_id: receiverId, type: "message", actor_id: senderId, track_title: name, message: `${n} new messages` });
     return;
   }
   await insertNotification(sb, {
@@ -79,3 +99,25 @@ export async function notifyFollow(sb: SupabaseClient, followedId: string, follo
 
 export const WELCOME_TITLE = "Welcome to BANGER 🎧";
 export const WELCOME_MESSAGE = "Scan any track, follow the IDs you love, and get notified the day they drop.";
+
+/**
+ * A followed track is out: notify everyone following it (once per user and track).
+ * Called by manual release (set-release), the MusicBrainz check and the Friday refresh.
+ */
+export async function notifyTrackReleased(sb: SupabaseClient, title: string, artist?: string | null) {
+  const t = (title || "").trim();
+  if (!t) return;
+  const pattern = t.replace(/[%_\\]/g, (m) => "\\" + m); // exact, case-insensitive match
+  const { data: followers } = await sb.from("track_followers").select("user_id").ilike("track_title", pattern);
+  const ids = [...new Set((followers || []).map((f: any) => f.user_id).filter(Boolean))];
+  for (const userId of ids) {
+    if (!(await notificationsEnabled(sb, userId))) continue;
+    const { data: already } = await sb.from("notifications").select("id")
+      .eq("user_id", userId).eq("type", "track_released").ilike("track_title", pattern).limit(1);
+    if (already?.length) continue;
+    await insertNotification(sb, {
+      user_id: userId, type: "track_released", track_title: t,
+      message: artist ? `${artist} — out now. Tap to listen.` : "Out now. Tap to listen.",
+    });
+  }
+}

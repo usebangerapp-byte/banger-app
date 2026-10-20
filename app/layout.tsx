@@ -5,6 +5,7 @@ import BottomNav from "@/components/BottomNav";
 import TopBar from "@/components/TopBar";
 import PlanGate from "@/components/PlanGate";
 import RouteAudioStop from "@/components/RouteAudioStop";
+import NativeBridge from "@/components/NativeBridge";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,6 +35,7 @@ export default function RootLayout({
       >
         <PlanGate />
         <RouteAudioStop />
+        <NativeBridge />
         <TopBar />
         {children}
         <BottomNav />

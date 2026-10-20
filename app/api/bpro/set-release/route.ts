@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { notifyTrackReleased } from "@/lib/server/notify";
 
 export async function POST(req: Request) {
   const supabase = createClient(
@@ -31,7 +32,7 @@ export async function POST(req: Request) {
   // Sync scan_events result_type to match new release status
   const { data: track } = await supabase
     .from("bpro_tracks")
-    .select("title")
+    .select("title,artist")
     .eq("id", track_id)
     .maybeSingle();
 
@@ -43,6 +44,7 @@ export async function POST(req: Request) {
         .update({ result_type: "recognized_world" })
         .eq("track_title", track.title)
         .eq("result_type", "recognized_unreleased");
+      await notifyTrackReleased(supabase, track.title, (track as any).artist).catch(() => {});
     } else {
       // Revert back to unreleased
       await supabase

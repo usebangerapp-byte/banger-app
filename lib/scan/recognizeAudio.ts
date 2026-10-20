@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createSupabaseBrowser } from "@/lib/supabase/client";
 
 type RecognizeResult = {
   ok?: boolean;
@@ -25,15 +25,12 @@ export async function recognizeAudio(blob: Blob, mimeType: string, region: strin
   fd.append("region", region);
 
   try {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-    if (url && anon) {
-      const supabase = createClient(url, anon);
-      const { data: auth } = await supabase.auth.getUser();
-      const userId = auth?.user?.id || "";
+    // Shared client + local session: no extra network round-trip before each scan
+    const supabase = createSupabaseBrowser();
+    if (supabase) {
+      const { data: auth } = await supabase.auth.getSession();
+      const userId = auth?.session?.user?.id || "";
       if (userId) fd.append("user_id", userId);
-    } else {
     }
   } catch (e) {
     console.error("[recognizeAudio] auth lookup failed", e);

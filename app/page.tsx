@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
+import { startOAuth } from "@/lib/oauth";
 
 export default function LandingPage() {
   const [busy, setBusy] = useState<"" | "google" | "apple">("");
@@ -13,12 +14,7 @@ export default function LandingPage() {
     setBusy(provider);
     setError("");
     try {
-      const origin = typeof window !== "undefined" ? window.location.origin : "https://usebanger.com";
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: { redirectTo: `${origin}/auth/callback` },
-      });
-      if (error) throw error;
+      await startOAuth(supabase, provider);
     } catch (e: any) {
       setError(e?.message || "Unable to start login.");
       setBusy("");
@@ -32,7 +28,7 @@ export default function LandingPage() {
         {/* Center logo */}
         <div style={logoBlock}>
           <div style={logoInner}>
-            <img src="/B-logo.png" alt="B" style={{
+            <img src="/B-logo-sm.png" alt="B" style={{
               width: 110, height: 110, objectFit: "contain",
               filter: "brightness(1.1) drop-shadow(0 0 22px rgba(255,255,255,0.20))",
             }} />

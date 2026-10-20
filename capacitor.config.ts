@@ -3,10 +3,11 @@ import type { CapacitorConfig } from "@capacitor/cli";
 const config: CapacitorConfig = {
   appId:   "com.usebanger.app",
   appName: "BANGER",
-  webDir:  "out",
+  // Local shell required by Capacitor; the app itself loads server.url below
+  webDir:  "native-shell",
 
   server: {
-    url:       "https://banger-app-zeta.vercel.app",
+    url:       "https://usebanger.com",
     cleartext: false,
   },
 
@@ -19,6 +20,7 @@ const config: CapacitorConfig = {
 
   plugins: {
     Haptics: {},
+    PushNotifications: { presentationOptions: ["badge", "sound", "alert"] },
   },
 };
 

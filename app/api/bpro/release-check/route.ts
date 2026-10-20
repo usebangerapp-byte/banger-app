@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { notifyTrackReleased } from "@/lib/server/notify";
 export const runtime = "nodejs";
 const MB_UA = "BangerApp/1.0 (contact@usebangerapp.com)";
 
@@ -64,6 +65,7 @@ export async function GET() {
       if (isReleased) {
         await supabase.from("scan_events").update({result_type:"recognized_world"})
           .eq("track_title",title).eq("result_type","recognized_unreleased");
+        await notifyTrackReleased(supabase, title, artist).catch(() => {});
       }
       results.push({ id:track.id, title, artist, searchTitle:cleanTitle(title), searchArtist:firstArtist(artist), isReleased, mbid, releaseDate, release_status:isReleased?"released":"unknown" });
     } catch(e: any) { results.push({ id:track.id, title, artist, error:e?.message }); }

@@ -26,8 +26,8 @@ export default function PlanGate() {
       try {
         const sb = createSupabaseBrowser();
         if (!sb) return;
-        const { data: auth } = await sb.auth.getUser();
-        const uid = auth?.user?.id;
+        const { data: auth } = await sb.auth.getSession();
+        const uid = auth?.session?.user?.id;
         if (!uid) return;
         const { data, error } = await sb
           .from("profiles").select("plan_selected_at").eq("id", uid).maybeSingle();

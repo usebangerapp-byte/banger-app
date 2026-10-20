@@ -15,7 +15,7 @@ type AggregatedRow = {
   scans: number
 }
 
-export async function GET() {
+async function compute(): Promise<Response> {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -66,4 +66,14 @@ export async function GET() {
     .slice(0, 200)
 
   return Response.json(result)
+}
+
+
+// Shared CDN cache: the chart is recomputed at most once a minute instead of on every visit.
+export async function GET() {
+  const res = await compute()
+  if (res.status === 200) {
+    res.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300")
+  }
+  return res
 }

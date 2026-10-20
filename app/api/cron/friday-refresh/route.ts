@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { notifyTrackReleased } from "@/lib/server/notify";
 
 export const runtime = "nodejs";
 
@@ -38,7 +39,10 @@ export async function GET() {
         })
         .eq("id", track.id);
 
-      if (!updateError) updated += 1;
+      if (!updateError) {
+        updated += 1;
+        await notifyTrackReleased(supabase, track.title, track.artist).catch(() => {});
+      }
     }
 
     return Response.json({ ok: true, updated });

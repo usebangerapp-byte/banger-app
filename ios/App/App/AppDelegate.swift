@@ -41,12 +41,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
         if userActivity.activityType == "com.usebanger.app.scan" {
-            if let rootVC = window?.rootViewController as? CAPBridgeViewController,
-               let webView = rootVC.bridge?.webView {
-                webView.evaluateJavaScript(
-                    "window.dispatchEvent(new CustomEvent('banger:scan'))"
-                )
-            }
+            // Works from any page and on cold start (see BangerScanPlugin.swift)
+            BangerScanTrigger.fire()
             return true
         }
         return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
