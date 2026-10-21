@@ -4,6 +4,7 @@ import { findMusicLinks } from '@/lib/music/findLinks'
 import { userFromRequest } from '@/lib/server/notify'
 import { isPro } from '@/lib/server/pro'
 
+import { dupKey } from '@/lib/dupKey'
 export const runtime = 'nodejs'
 export const maxDuration = 60
 export const dynamic = 'force-dynamic'
@@ -103,6 +104,15 @@ export async function POST(req: Request) {
 
     const previewSnippet =
       uploadedSnippets.find((item) => item.isPreview) || uploadedSnippets[0]
+
+    // Same song already on BANGER (any account) → don't store or fingerprint it twice.
+    {
+      const { data: all } = await supabase.from('bpro_tracks').select('title,artist').limit(20000)
+      const k = dupKey(title, artist)
+      if ((all || []).some((r: any) => dupKey(r.title, r.artist) === k)) {
+        return NextResponse.json({ ok: false, duplicate: true, error: 'Already on BANGER' }, { status: 409 })
+      }
+    }
 
     const { data: existingTrack, error: existingError } = await supabase
       .from('bpro_tracks')

@@ -1,0 +1,17 @@
+import { NextResponse } from "next/server";
+import { adminClient, userFromRequest } from "@/lib/server/notify";
+import { dupKey } from "@/lib/dupKey";
+
+export const runtime = "nodejs";
+
+/** Which of these {title, artist} are already on BANGER (any uploader)? */
+export async function POST(req: Request) {
+  const sb = adminClient();
+  const me = await userFromRequest(sb, req);
+  if (!me) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+  const body = await req.json().catch(() => ({}));
+  const items: { title: string; artist: string }[] = Array.isArray(body?.items) ? body.items.slice(0, 500) : [];
+  const { data } = await sb.from("bpro_tracks").select("title,artist").limit(20000);
+  const known = new Set((data || []).map((r: any) => dupKey(r.title, r.artist)));
+  return NextResponse.json({ exists: items.map((i) => known.has(dupKey(i.title, i.artist))) });
+}

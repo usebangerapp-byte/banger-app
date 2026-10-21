@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { authFetch } from "@/lib/authFetch";
 import { guessTrackName } from "@/lib/trackName";
+import { dupKey } from "@/lib/dupKey";
 import { ui, C, glass } from "@/lib/ui";
 
 type Item = {
   id: string; file: File; artist: string; title: string;
   state: "ready" | "prep" | "upload" | "register" | "done" | "error";
+  dup?: "banger" | "batch";   // already on BANGER, or twice in this batch → never uploaded
   pct: number; error?: string;
 };
 
@@ -146,22 +148,57 @@ export default function BulkUpload({ initialFiles }: { initialFiles?: File[] }) 
   async function runAll() {
     if (!rights) return;
     setRunning(true);
-    const queue = items.filter((i) => i.state !== "done" && i.title.trim() && i.artist.trim());
+    const queue = items.filter((i) => i.state !== "done" && !isDup(i) && i.title.trim() && i.artist.trim());
     let next = 0;
     const worker = async () => {
       while (next < queue.length) {
         const it = queue[next++];
         try { await processItem(it); }
-        catch (e: any) { patch(it.id, { state: "error", error: e?.message || "Error" }); }
+        catch (e: any) {
+          if (/already on banger/i.test(e?.message || "")) patch(it.id, { state: "ready", dup: "banger" });
+          else patch(it.id, { state: "error", error: e?.message || "Error" });
+        }
       }
     };
     await Promise.all(Array.from({ length: CONCURRENCY }, worker));
     setRunning(false);
   }
 
+  // Duplicates: ask the server which names already exist (any account), and flag
+  // repeats inside this batch. Flagged items are locked and skipped.
+  const [onBanger, setOnBanger] = useState<Set<string>>(new Set());
+  const keysSig = items.filter((i) => i.state !== "done").map((i) => dupKey(i.title, i.artist)).join("\n");
+  useEffect(() => {
+    const keys = Array.from(new Set(keysSig.split("\n").filter((k) => k && !k.startsWith("|") && !k.endsWith("|"))));
+    if (!keys.length) return;
+    const t = window.setTimeout(async () => {
+      const list = items.filter((i) => i.state !== "done");
+      const r = await authFetch("/api/bpro/exists", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: list.map((i) => ({ title: i.title, artist: i.artist })) }) }).catch(() => null);
+      const j = await r?.json().catch(() => null);
+      if (!j?.exists) return;
+      const s = new Set<string>();
+      list.forEach((i, idx) => { if (j.exists[idx]) s.add(dupKey(i.title, i.artist)); });
+      setOnBanger(s);
+    }, 450);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [keysSig]);
+  const seen = new Set<string>();
+  const dupOf = new Map<string, Item["dup"]>();
+  for (const i of items) {
+    if (i.state === "done") { seen.add(dupKey(i.title, i.artist)); continue; }
+    const k = dupKey(i.title, i.artist);
+    if (onBanger.has(k)) dupOf.set(i.id, "banger");
+    else if (seen.has(k)) dupOf.set(i.id, "batch");
+    seen.add(k);
+  }
+  const isDup = (i: Item) => i.dup || dupOf.get(i.id);
+  const dups = items.filter((i) => i.state !== "done" && isDup(i)).length;
+
   const done = items.filter((i) => i.state === "done").length;
-  const missing = items.filter((i) => i.state !== "done" && (!i.title.trim() || !i.artist.trim())).length;
-  const todo = items.filter((i) => i.state !== "done").length;
+  const missing = items.filter((i) => i.state !== "done" && !isDup(i) && (!i.title.trim() || !i.artist.trim())).length;
+  const todo = items.filter((i) => i.state !== "done" && !isDup(i)).length;
   const can = !running && rights && todo > 0 && missing === 0;
 
   return (
@@ -181,9 +218,9 @@ export default function BulkUpload({ initialFiles }: { initialFiles?: File[] }) 
         {/* Queue */}
         <section style={{ ...glass, borderRadius: 22, padding: "4px 14px", display: "grid", gridTemplateColumns: "minmax(0,1fr)" }}>
           {items.map((it, i) => (
-            <div key={it.id} style={{ display: "grid", gap: 6, padding: "12px 0", borderBottom: i === items.length - 1 ? "none" : `1px solid ${C.lineSoft}`, minWidth: 0 }}>
+            <div key={it.id} style={{ opacity: isDup(it) && it.state !== "done" ? 0.55 : 1, display: "grid", gap: 6, padding: "12px 0", borderBottom: i === items.length - 1 ? "none" : `1px solid ${C.lineSoft}`, minWidth: 0 }}>
               <div style={{ display: "flex", gap: 8, alignItems: "center", minWidth: 0 }}>
-                <input value={it.title} disabled={running || it.state === "done"} placeholder="Title"
+                <input value={it.title} disabled={running || it.state === "done" || !!isDup(it)} placeholder="Title"
                   onChange={(e) => patch(it.id, { title: e.target.value })}
                   style={{ ...ui.input, padding: "8px 12px", fontSize: 14, fontWeight: 600, flex: 1, minWidth: 0, borderColor: it.title.trim() ? C.glassBorder : C.danger }} />
                 {!running && it.state !== "done" && (
@@ -191,12 +228,13 @@ export default function BulkUpload({ initialFiles }: { initialFiles?: File[] }) 
                     style={{ background: "none", border: "none", color: C.text4, cursor: "pointer", fontSize: 16, padding: 4 }}>✕</button>
                 )}
               </div>
-              <input value={it.artist} disabled={running || it.state === "done"} placeholder="Artist"
+              <input value={it.artist} disabled={running || it.state === "done" || !!isDup(it)} placeholder="Artist"
                 onChange={(e) => patch(it.id, { artist: e.target.value })}
                 style={{ ...ui.input, padding: "8px 12px", fontSize: 13, borderColor: it.artist.trim() ? C.glassBorder : C.danger }} />
-              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: it.state === "error" ? C.danger : it.state === "done" ? C.rel : C.text3 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: isDup(it) && it.state !== "done" ? C.gold : it.state === "error" ? C.danger : it.state === "done" ? C.rel : C.text3 }}>
                 <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {it.state === "ready" ? `${(it.file.size / 1024 / 1024).toFixed(1)} MB · ready`
+                  {isDup(it) && it.state !== "done" ? (isDup(it) === "batch" ? "Duplicate in this batch · skipped" : "Already on BANGER · skipped")
+                    : it.state === "ready" ? `${(it.file.size / 1024 / 1024).toFixed(1)} MB · ready`
                     : it.state === "prep" ? "Preparing…"
                     : it.state === "upload" ? `Uploading… ${it.pct}%`
                     : it.state === "register" ? "Registering…"
@@ -235,10 +273,11 @@ export default function BulkUpload({ initialFiles }: { initialFiles?: File[] }) 
           </label>
         </section>
 
+        {dups > 0 && <div style={{ fontSize: 13, color: C.text3 }}>{dups} duplicate{dups > 1 ? "s" : ""} skipped.</div>}
         {missing > 0 && <div style={{ fontSize: 13, color: C.danger }}>Add the missing title / artist ({missing}).</div>}
-        {!running && todo === 0 && done > 0 ? (
+        {!running && todo === 0 && (done > 0 || dups > 0) ? (
           <div style={{ display: "grid", gap: 10 }}>
-            <div style={{ textAlign: "center", fontSize: 14, color: C.rel, fontWeight: 600 }}>All done ✓ ({done})</div>
+            {done > 0 && <div style={{ textAlign: "center", fontSize: 14, color: C.rel, fontWeight: 600 }}>All done ✓ ({done})</div>}
             <button type="button" onClick={() => router.push("/home")} style={ui.cta}>Go Scan</button>
             <button type="button" onClick={() => router.push("/promo")} style={{ ...ui.pill, width: "100%", padding: "13px 16px", fontSize: 15, color: C.gold, borderColor: "rgba(245,207,104,0.30)", background: "rgba(245,207,104,0.08)" }}>
               Send it to the BANGER team

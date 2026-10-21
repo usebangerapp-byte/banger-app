@@ -229,6 +229,10 @@ export default function UploadPage() {
     if (!canSubmit || !audioFile) return;
     setBusy(true); setError(""); setDone(false); setProgress(0.02); setPhase("cut"); setTick(0);
     try {
+      // Stop right away if this song is already on BANGER (no cutting, no upload).
+      const ex = await authFetch("/api/bpro/exists", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: [{ title: trackTitle.trim(), artist: artist.trim() }] }) }).then((r) => r.json()).catch(() => null);
+      if (ex?.exists?.[0]) throw new Error("This track already exists on BANGER — it's already scannable.");
       const total = durationSec ?? 0;
       setStep("Cutting track into segments…");
       const segments = total > SEGMENT_DURATION ? await buildSegments(audioFile, total) : [audioFile];
