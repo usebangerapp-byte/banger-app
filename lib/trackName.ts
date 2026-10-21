@@ -8,8 +8,8 @@ const VERSION_RE = new RegExp(`\\b(${VERSION_WORDS})\\b`, "i");
 
 // Bits producers leave in filenames that are not part of the name
 const JUNK = [
-  /\[(?:free\s*(?:dl|download)|out\s*now|premiere|master(?:ed)?|final|wip|demo|preview|clip|snippet|unmastered|promo)[^\]]*\]/gi,
-  /\((?:free\s*(?:dl|download)|out\s*now|premiere|master(?:ed)?|final|wip|demo|preview|clip|snippet|unmastered|promo)[^)]*\)/gi,
+  /\[(?![^\]]*\b(?:remix|rework|bootleg|vip|flip|refix)\b)(?:free\s*(?:dl|download)|out\s*now|premiere|master(?:ed)?|final|wip|demo|preview|clip|snippet|unmastered|promo)[^\]]*\]/gi,
+  /\((?![^)]*\b(?:remix|rework|bootleg|vip|flip|refix)\b)(?:free\s*(?:dl|download)|out\s*now|premiere|master(?:ed)?|final|wip|demo|preview|clip|snippet|unmastered|promo)[^)]*\)/gi,
   /\b(?:master(?:ed)?|unmastered|wip|v\d+|copy)\b\s*$/gi,
   /\b\d{2,3}\s?bpm\b/gi,
   /\b(?:[1-9]|1[0-2])[ab]\b(?=\s*$)/gi,                // Camelot key at the end (8A, 11B)
@@ -36,10 +36,22 @@ function smartCase(s: string) {
 }
 
 export function parseTrackFilename(filename: string): { artist: string; title: string } {
-  let base = filename.replace(/\.[a-z0-9]{2,5}$/i, "").replace(/_\d{1,2}\s*$/, "");
+  let base = filename.replace(/\.[a-z0-9]{2,5}$/i, "")
+    // leftover pseudo-extensions: "313 (Original Mix).x", "track.wav.mp3", ".part"…
+    .replace(/(?:\.(?:wav|mp3|aiff?|flac|m4a|ogg|alac|tmp|part|crdownload|[a-z]))+$/i, "")
+    .replace(/_\d{1,2}\s*$/, "");
   base = base.replace(/_/g, " ").replace(/\s*[–—]\s*/g, " - ");
-  base = base.replace(/^\s*(?:\d{1,3}[\s.\-)]+|[A-D][1-9]\s*[.\-)]\s*|[A-D][1-9]\s+(?=.+\s-\s))/, "");   // "01. ", "03 - ", "A1 "
-  for (let pass = 0; pass < 3; pass++) for (const re of JUNK) base = tidy(base.replace(re, " "));
+  base = base.replace(/^\s*(?:\d{1,3}[\s.\-)]+(?=[^\s(])|[A-D][1-9]\s*[.\-)]\s*|[A-D][1-9]\s+(?=.+\s-\s))/, "");   // "01. ", "03 - ", "A1 "
+  for (let pass = 0; pass < 3; pass++) {
+    for (const re of JUNK) base = tidy(base.replace(re, " "));
+    // "(DJ Master)", "(Final Master)", "[Bounce 2]"… = studio file notes, not part of the name
+    // (but never touch a real credit like "(Master X Remix)")
+    base = tidy(base.replace(/[\(\[]([^\)\]]*)[\)\]]/g, (m, inner: string) =>
+      /\b(?:master(?:ed)?|premaster|unmastered|final|wip|demo|bounce|mixdown|export|render|draft|ref|test)\b/i.test(inner) &&
+      !/\b(?:remix|rework|bootleg|vip|flip|refix|edit)\b/i.test(inner) ? " " : m));
+    // trailing "Final" / "Final 2" / "Final Version" (but keep titles like "The Final")
+    base = tidy(base.replace(/(?<!\b(?:the|my|your|a|so|grand|semi|last)\s)\bfinal(?:\s+(?:version|mix|master|edit))?(?:\s*v?\d+)?\s*$/i, " "));
+  }
   base = tidy(base);
 
   // "Artist - Title - X Remix"  →  title "Title (X Remix)"
