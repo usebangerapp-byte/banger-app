@@ -20,6 +20,7 @@ export async function GET(req: Request) {
   const artist = (url.searchParams.get("a") || "").slice(0, 80);
   const unreleased = url.searchParams.get("u") === "1";
   const woofer = `data:image/svg+xml;base64,${btoa(WOOFER)}`;
+  const bLogo = `${url.origin}/B-logo-sm.png`;
 
   return new ImageResponse(
     (
@@ -27,7 +28,11 @@ export async function GET(req: Request) {
         <div style={{ position: "absolute", top: 380, left: 40, width: 1000, height: 1000, borderRadius: 500, display: "flex",
           background: "radial-gradient(circle, rgba(226,173,46,0.35) 0%, rgba(226,173,46,0.08) 45%, rgba(0,0,0,0) 70%)" }} />
         <div style={{ display: "flex", marginTop: 170, fontSize: 46, letterSpacing: 22, color: "#fff", fontWeight: 700 }}>BANGER</div>
-        <img src={woofer} width={620} height={620} style={{ marginTop: 170 }} />
+        <div style={{ display: "flex", position: "relative", width: 620, height: 620, marginTop: 170, alignItems: "center", justifyContent: "center" }}>
+          <img src={woofer} width={620} height={620} style={{ position: "absolute", left: 0, top: 0 }} />
+          {/* the gold B on the dome, like in the app */}
+          <img src={bLogo} width={86} height={129} style={{ objectFit: "contain" }} />
+        </div>
         {unreleased && (
           <div style={{ display: "flex", marginTop: 110, padding: "14px 34px", borderRadius: 999, background: "rgba(245,207,104,0.16)", color: "#f5cf68", fontSize: 34, fontWeight: 700 }}>
             Unreleased

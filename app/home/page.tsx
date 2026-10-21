@@ -38,19 +38,49 @@ const PAGE_BG =
 
 
 
-/** Builds the 9:16 story image and opens the share sheet (Instagram, WhatsApp…). */
-async function shareStory(title: string, artist: string, unreleased: boolean) {
+/** Story image + (when a preview exists) the track's own 15-second preview → an MP4, so Instagram plays the real sound. */
+async function buildStoryVideo(image: Blob, snippetPath: string): Promise<File | null> {
+  try {
+    const sb = createSupabaseBrowser();
+    if (!sb) return null;
+    const clean = snippetPath.startsWith("snippets/") ? snippetPath : `snippets/${snippetPath}`;
+    const audioUrl = sb.storage.from("bpro_uploads").getPublicUrl(clean).data.publicUrl;
+    const audio = await (await fetch(audioUrl)).arrayBuffer();
+    const { FFmpeg } = await import("@ffmpeg/ffmpeg");
+    const ff = new FFmpeg();
+    await ff.load();
+    await ff.writeFile("story.png", new Uint8Array(await image.arrayBuffer()));
+    await ff.writeFile("preview.mp3", new Uint8Array(audio));
+    await ff.exec(["-loop", "1", "-framerate", "5", "-i", "story.png", "-i", "preview.mp3", "-t", "15",
+      "-vf", "scale=720:1280", "-c:v", "libx264", "-preset", "ultrafast", "-tune", "stillimage", "-pix_fmt", "yuv420p",
+      "-c:a", "aac", "-b:a", "160k", "-shortest", "-movflags", "+faststart", "story.mp4"]);
+    const out = await ff.readFile("story.mp4");
+    try { ff.terminate(); } catch {}
+    const buf = out instanceof Uint8Array ? out : new TextEncoder().encode(String(out));
+    return buf.byteLength > 1000 ? new File([buf.buffer as ArrayBuffer], "banger-story.mp4", { type: "video/mp4" }) : null;
+  } catch { return null; }
+}
+
+/** Builds the 9:16 story (image, or video with the preview sound) and opens the share sheet (Instagram, WhatsApp…). */
+async function shareStory(title: string, artist: string, unreleased: boolean, snippetPath?: string | null, onBusy?: (b: boolean) => void) {
   const url = `/api/story?t=${encodeURIComponent(title)}&a=${encodeURIComponent(artist && artist !== "(Released)" ? artist : "")}${unreleased ? "&u=1" : ""}`;
   try {
+    onBusy?.(true);
     const res = await fetch(url);
     const blob = await res.blob();
-    const file = new File([blob], "banger-story.png", { type: "image/png" });
+    let file = new File([blob], "banger-story.png", { type: "image/png" });
+    if (snippetPath) {
+      const video = await buildStoryVideo(blob, snippetPath);
+      if (video) file = video;
+    }
+    onBusy?.(false);
     const nav: any = navigator;
     if (nav.canShare && nav.canShare({ files: [file] })) {
       await nav.share({ files: [file], title: "BANGER" });
       return;
     }
   } catch (e: any) {
+    onBusy?.(false);
     if (e?.name === "AbortError") return;   // user closed the share sheet
   }
   window.open(url, "_blank");
@@ -70,6 +100,7 @@ export default function Home() {
   const [spotifyUrl, setSpotifyUrl] = useState<string | null>(null);
   const [snippetPath, setSnippetPath] = useState<string | null>(null);
   const [allowPreview, setAllowPreview] = useState<boolean | null>(null);
+  const [sharing, setSharing] = useState(false);
   const [subtitle, setSubtitle] = useState("");
   const [tag, setTag] = useState<Tag>("NOT FOUND");
 
@@ -553,10 +584,10 @@ const region = await getRegion();
               </div>
               {/* Share as a story (Instagram / WhatsApp) */}
               {tag !== "NOT FOUND" && <div style={{ display: "flex", justifyContent: "center", marginTop: 12 }}>
-                <button onClick={() => shareStory(title, subtitle, tag === "UNRELEASED")}
+                <button disabled={sharing} onClick={() => shareStory(title, subtitle, tag === "UNRELEASED", allowPreview !== false ? snippetPath : null, setSharing)}
                   style={{ ...ui.pillSmall, color: C.gold, background: "rgba(245,207,104,0.12)", borderColor: "rgba(245,207,104,0.30)" }}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 14v6h14v-6" /></svg>
-                  Share
+                  {sharing ? "Preparing…" : "Share"}
                 </button>
               </div>}
               {(spotifyUrl || beatportUrl) && (
