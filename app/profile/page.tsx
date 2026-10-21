@@ -174,7 +174,7 @@ export default function ProfilePageV2() {
   const [tab,      setTab]      = useState<"profile"|"messages"|"settings">("profile");
   const [showMoreTracks, setShowMoreTracks] = useState(false);
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
-  const [editing, setEditing] = useState<{ id: string; title: string; artist: string; busy?: boolean; error?: string } | null>(null);
+  const [renaming, setRenaming] = useState<{ id: string; title: string; artist: string; busy?: boolean; error?: string } | null>(null);
   const lastMsgTap = useRef<{ id: any; t: number }>({ id: null, t: 0 });
 
   // Double-tap a message you received to like it (tap twice again to remove)
@@ -699,27 +699,27 @@ export default function ProfilePageV2() {
           {tracks.length > 0 && (
             <Section title="My uploads">
               <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:4 }}>
-                {(showMoreTracks ? tracks : tracks.slice(0,3)).map((t) => editing?.id === t.id ? (
+                {(showMoreTracks ? tracks : tracks.slice(0,3)).map((t) => renaming?.id === t.id ? (
                   <div key={t.id} style={{ display:"grid", gap:8, padding:"14px 0", borderBottom:`1px solid ${C.lineSoft}` }}>
-                    <input value={editing.title} onChange={(e) => setEditing({ ...editing, title: e.target.value, error: "" })} placeholder="Title"
+                    <input value={renaming!.title} onChange={(e) => setRenaming({ ...renaming!, title: e.target.value, error: "" })} placeholder="Title"
                       style={{ ...ui.input, padding:"9px 12px", fontSize:14, fontWeight:600 }} />
-                    <input value={editing.artist} onChange={(e) => setEditing({ ...editing, artist: e.target.value, error: "" })} placeholder="Artist"
+                    <input value={renaming!.artist} onChange={(e) => setRenaming({ ...renaming!, artist: e.target.value, error: "" })} placeholder="Artist"
                       style={{ ...ui.input, padding:"9px 12px", fontSize:13 }} />
-                    {editing.error && <div style={{ fontSize:12, color:C.danger }}>{editing.error}</div>}
+                    {renaming!.error && <div style={{ fontSize:12, color:C.danger }}>{renaming!.error}</div>}
                     <div style={{ display:"flex", gap:8 }}>
-                      <button disabled={editing.busy || !editing.title.trim() || !editing.artist.trim()} onClick={async () => {
-                        setEditing({ ...editing, busy: true, error: "" });
+                      <button disabled={renaming!.busy || !renaming!.title.trim() || !renaming!.artist.trim()} onClick={async () => {
+                        setRenaming({ ...renaming!, busy: true, error: "" });
                         const res = await authFetch("/api/bpro/rename", { method:"POST", headers:{"Content-Type":"application/json"},
-                          body: JSON.stringify({ track_id: t.id, title: editing.title, artist: editing.artist }) }).catch(() => null);
+                          body: JSON.stringify({ track_id: t.id, title: renaming!.title, artist: renaming!.artist }) }).catch(() => null);
                         const j = await res?.json().catch(() => null);
                         if (res?.ok && j?.ok) {
-                          setTracks((prev: any[]) => prev.map((x: any) => x.id === t.id ? { ...x, title: editing.title.trim(), artist: editing.artist.trim() } : x));
-                          setEditing(null);
-                        } else setEditing({ ...editing, busy: false, error: j?.error || "Couldn't rename. Try again." });
+                          setTracks((prev: any[]) => prev.map((x: any) => x.id === t.id ? { ...x, title: renaming!.title.trim(), artist: renaming!.artist.trim() } : x));
+                          setRenaming(null);
+                        } else setRenaming({ ...renaming!, busy: false, error: j?.error || "Couldn't rename. Try again." });
                       }} style={{ ...ui.pillSmall, flex:1, justifyContent:"center", color:C.goldInk, background:C.goldGrad, border:"1px solid transparent" }}>
-                        {editing.busy ? "…" : "Save"}
+                        {renaming!.busy ? "…" : "Save"}
                       </button>
-                      <button onClick={() => setEditing(null)} style={{ ...ui.pillSmall, flex:1, justifyContent:"center" }}>Cancel</button>
+                      <button onClick={() => setRenaming(null)} style={{ ...ui.pillSmall, flex:1, justifyContent:"center" }}>Cancel</button>
                     </div>
                   </div>
                 ) : (
@@ -743,7 +743,7 @@ export default function ProfilePageV2() {
                     >
                       {t.is_released ? TAG_TEXT.rel : TAG_TEXT.unrel}
                     </button>
-                    <button onClick={() => { setConfirmDel(null); setEditing({ id: t.id, title: t.title || "", artist: t.artist || "" }); }} aria-label="Edit name"
+                    <button onClick={() => { setConfirmDel(null); setRenaming({ id: t.id, title: t.title || "", artist: t.artist || "" }); }} aria-label="Edit name"
                       style={{ background:"none", border:"none", padding:4, cursor:"pointer", color:C.text4, display:"flex", flexShrink:0 }}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                         <path d="M4 20h4L19 9l-4-4L4 16z" /><path d="M13 7l4 4" />
