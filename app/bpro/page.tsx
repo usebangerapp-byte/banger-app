@@ -286,6 +286,9 @@ export default function UploadPage() {
             <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em", marginTop: 8 }}>Your ID is live.</div>
             <div style={{ fontSize: 14, color: C.text2, lineHeight: 1.5 }}>Every BANGER scan can now recognise it.</div>
             <button type="button" onClick={() => router.push("/home")} style={{ ...ui.cta, marginTop: 14 }}>Go Scan</button>
+            <button type="button" onClick={() => router.push("/promo")} style={{ ...ui.pill, width: "100%", padding: "13px 16px", fontSize: 15, color: C.gold, borderColor: "rgba(245,207,104,0.30)", background: "rgba(245,207,104,0.08)" }}>
+              Send it to the BANGER team
+            </button>
           </section>
         )}
 

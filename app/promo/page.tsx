@@ -38,6 +38,10 @@ export default function PromoPage() {
   const [q, setQ] = useState("");
   const [results, setResults] = useState<Person[]>([]);
   const [picked, setPicked] = useState<Person[]>([]);
+  const [banger, setBanger] = useState<Person | null>(null);
+  useEffect(() => {
+    fetch("/api/promo/banger").then((r) => r.json()).then((j) => { if (j?.ok) setBanger({ id: j.id, display_name: j.display_name, avatar_url: j.avatar_url }); }).catch(() => {});
+  }, []);
   const [busy, setBusy] = useState(false);
   const [stage, setStage] = useState<"" | "prepare" | "compress" | "upload" | "send">("");
   const [pct, setPct] = useState(0);
@@ -200,6 +204,19 @@ export default function PromoPage() {
             </div>
           )}
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search a DJ…" style={{ ...ui.input, borderRadius: 999 }} />
+          {/* BANGER itself is always proposed: send your track to the BANGER team */}
+          {banger && banger.id !== me && !picked.some((p) => p.id === banger.id) && (
+            <button onClick={() => togglePerson(banger)}
+              style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 16, cursor: "pointer", fontFamily: "inherit",
+                textAlign: "left", color: "#fff", background: "rgba(245,207,104,0.08)", border: "1px solid rgba(245,207,104,0.28)" }}>
+              <Avatar name={banger.display_name} url={banger.avatar_url} />
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: "block", fontSize: 15, fontWeight: 600 }}>{banger.display_name}</span>
+                <span style={{ display: "block", fontSize: 12, color: C.text3 }}>Send your track to the BANGER team</span>
+              </span>
+              <span style={{ ...ui.pillSmall, color: C.gold, borderColor: "rgba(245,207,104,0.35)", background: "rgba(245,207,104,0.12)" }}>+ Add</span>
+            </button>
+          )}
           {results.length > 0 && (
             <div style={{ display: "grid" }}>
               {results.slice(0, 6).map((p) => {
