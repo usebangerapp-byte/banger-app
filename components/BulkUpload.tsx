@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { authFetch } from "@/lib/authFetch";
 import { guessTrackName } from "@/lib/trackName";
@@ -43,7 +43,7 @@ function putWithProgress(url: string, file: File, onPct: (p: number) => void): P
 }
 
 /** Several tracks at once: names guessed from each file, one shared status, 2 uploads in parallel. */
-export default function BulkUpload() {
+export default function BulkUpload({ initialFiles }: { initialFiles?: File[] }) {
   const [items, setItems] = useState<Item[]>([]);
   const [released, setReleased] = useState(false);
   const [allowPreview, setAllowPreview] = useState(true);
@@ -52,6 +52,15 @@ export default function BulkUpload() {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const ffRef = useRef<FFmpeg | null>(null);
   const ffLock = useRef<Promise<unknown>>(Promise.resolve());
+
+  // Files picked on the "One track" screen arrive here directly
+  const seeded = useRef(false);
+  useEffect(() => {
+    if (seeded.current || !initialFiles?.length) return;
+    seeded.current = true;
+    addFiles(initialFiles);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialFiles]);
 
   const patch = (id: string, p: Partial<Item>) => setItems((list) => list.map((it) => (it.id === id ? { ...it, ...p } : it)));
 

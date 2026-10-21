@@ -125,6 +125,7 @@ export default function UploadPage() {
 
   const [busy,       setBusy]       = useState(false);
   const [mode,       setMode]       = useState<"one" | "bulk">("one");
+  const [bulkFiles,  setBulkFiles]  = useState<File[]>([]);
   const [step,       setStep]       = useState("");
   const [error,      setError]      = useState("");
   const [done,       setDone]       = useState(false);
@@ -160,6 +161,11 @@ export default function UploadPage() {
   }
 
   function onPickAudio(e: React.ChangeEvent<HTMLInputElement>) {
+    // Several files picked → switch to the multi-track list automatically
+    if (e.target.files && e.target.files.length > 1) {
+      setBulkFiles(Array.from(e.target.files)); setMode("bulk");
+      return;
+    }
     const file = e.target.files?.[0];
     if (!file) return;
     setAudioFile(file); setError(""); setDone(false); setStep("");
@@ -176,9 +182,9 @@ export default function UploadPage() {
 
   function onDropFile(e: React.DragEvent) {
     e.preventDefault();
-    const file = e.dataTransfer.files?.[0];
-    if (!file) return;
-    onPickAudio({ target: { files: [file] } } as unknown as React.ChangeEvent<HTMLInputElement>);
+    const files = e.dataTransfer.files;
+    if (!files?.length) return;
+    onPickAudio({ target: { files } } as unknown as React.ChangeEvent<HTMLInputElement>);
   }
 
   async function loadFFmpeg() {
@@ -306,7 +312,7 @@ export default function UploadPage() {
           </div>
         )}
 
-        {!busy && !done && mode === "bulk" && <BulkUpload />}
+        {!busy && !done && mode === "bulk" && <BulkUpload initialFiles={bulkFiles} />}
 
         {!busy && !done && mode === "one" && (<>
 
@@ -321,6 +327,7 @@ export default function UploadPage() {
 
         <Card title="Audio">
           <input ref={audioInputRef} type="file"
+            multiple
             accept=".mp3,.wav,.aiff,.aif,.flac,.m4a,.aac,.ogg,.opus,.mp4,.mov,video/*,audio/*"
             onChange={onPickAudio} style={{ display: "none" }} />
           {!audioFile ? (
