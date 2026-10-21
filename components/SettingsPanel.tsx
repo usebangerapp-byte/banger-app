@@ -189,7 +189,7 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
         </section>
 
         {/* Admin only */}
-        {["chokrymusic@gmail.com"].includes(email.toLowerCase()) && (
+        {["chokrymusic@gmail.com", "usebangerapp@gmail.com"].includes(email.toLowerCase()) && (
           <section style={group}>
             <button onClick={() => { onClose(); window.location.href = "/admin"; }} style={{ ...linkRow, borderBottom: "none", color: C.gold }}>
               <span>Dashboard</span><span style={chev}>›</span>

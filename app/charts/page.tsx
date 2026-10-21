@@ -286,7 +286,7 @@ export default function ChartsPage() {
           const cleanTitle = artistText && lowerTitle.startsWith(lowerArtist + " - ") ? titleText.slice(artistText.length + 3).trim() : (titleText || displayLine);
           return (
             <div key={track.id} style={{ ...rowStyle, padding: "0 14px" }}>
-              <SharedTrackRow rank={index + 1} title={cleanTitle} artist={artistText} last />
+              <SharedTrackRow rank={index + 1} title={cleanTitle} artist={artistText} released={kind === "released"} last />
             </div>
           );
         })}

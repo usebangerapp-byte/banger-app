@@ -3,7 +3,7 @@ import { adminClient, userFromRequest } from "@/lib/server/notify";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const ADMINS = (process.env.ADMIN_EMAILS || "chokrymusic@gmail.com").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
+const ADMINS = (process.env.ADMIN_EMAILS || "chokrymusic@gmail.com,usebangerapp@gmail.com").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
 
 async function count(q: any) {
   const { count } = await q;

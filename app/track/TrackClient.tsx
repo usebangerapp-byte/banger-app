@@ -99,10 +99,12 @@ function TrackView() {
         {info?.snippet && <PreviewButton id={`track-${title}`} snippetPath={info.snippet} />}
         <a href={info?.spotify || `https://open.spotify.com/search/${q}`} target="_blank" rel="noreferrer" style={ui.pillSmall}><SpotifyLogo /> Spotify</a>
         <a href={info?.beatport || `https://www.beatport.com/search?q=${q}`} target="_blank" rel="noreferrer" style={ui.pillSmall}><BeatportLogo /> Beatport</a>
+{!info?.released && (
         <button onClick={toggleFollow} disabled={busy}
           style={following ? { ...ui.pillSmall, color: C.text3 } : { ...ui.pillSmall, color: C.gold, background: "rgba(245,207,104,0.12)", borderColor: "rgba(245,207,104,0.30)" }}>
           <Bell filled={following} />{following ? "Following" : "Follow"}
         </button>
+        )}
       </div>
     </section>
   );

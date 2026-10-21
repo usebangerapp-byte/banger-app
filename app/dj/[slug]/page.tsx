@@ -210,7 +210,7 @@ export default function DJProfilePage() {
           <div style={{ ...ui.section, paddingBottom: 4 }}>
             <div style={secTitle}>Tracks</div>
             {(showAllTracks ? tracks : tracks.slice(0, 3)).map(t => (
-              <SharedTrackRow key={t.id} title={t.title || "Untitled"} artist={t.artist} meta={t.is_released ? TAG_TEXT.rel : TAG_TEXT.unrel} />
+              <SharedTrackRow key={t.id} title={t.title || "Untitled"} artist={t.artist} released={!!t.is_released} meta={t.is_released ? TAG_TEXT.rel : TAG_TEXT.unrel} />
             ))}
             {tracks.length > 3 && (
               <button onClick={() => setShowAllTracks(v => !v)} style={moreBtn}>

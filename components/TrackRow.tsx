@@ -10,7 +10,7 @@ import MarqueeText from "@/components/MarqueeText";
 
 /* ── Shared data, loaded once per session ─────────────────────────── */
 
-type Meta = { snippet: string | null; releaseDate: string | null };
+type Meta = { snippet: string | null; releaseDate: string | null; released: boolean };
 let metaCache: Promise<Map<string, Meta>> | null = null;
 function loadMeta() {
   if (!metaCache) {
@@ -19,11 +19,11 @@ function loadMeta() {
       const sb = createSupabaseBrowser();
       if (!sb) return map;
       try {
-        const { data } = await sb.from("bpro_tracks").select("title,snippet_path,allow_preview,release_date").limit(1000);
+        const { data } = await sb.from("bpro_tracks").select("title,snippet_path,allow_preview,release_date,is_released").limit(1000);
         for (const t of (data || []) as any[]) {
           const k = trackKey(String(t.title || ""));
           if (!k || map.has(k)) continue;
-          map.set(k, { snippet: t.allow_preview === false ? null : t.snippet_path || null, releaseDate: t.release_date || null });
+          map.set(k, { snippet: t.allow_preview === false ? null : t.snippet_path || null, releaseDate: t.release_date || null, released: !!t.is_released });
         }
       } catch {}
       return map;
@@ -102,8 +102,9 @@ function fmtDate(d: string) {
  * One track, the same everywhere:
  * [rank] [▶ preview] [title / artist · meta / release date] [Follow over Info]
  */
-export default function TrackRow({ title, artist, rank, meta, last, onFollowChange, right }: {
+export default function TrackRow({ title, artist, rank, meta, last, onFollowChange, right, released }: {
   title: string; artist?: string | null; rank?: number; meta?: string; last?: boolean;
+  released?: boolean;        // released tracks can't be followed (nothing left to wait for)
   onFollowChange?: (following: boolean) => void;
   right?: ReactNode;   // extra control under Info (e.g. a status tag)
 }) {
@@ -145,12 +146,12 @@ export default function TrackRow({ title, artist, rank, meta, last, onFollowChan
         {sub && <div style={ui.rowSub}>{sub}</div>}
       </div>
       <div style={{ display: "grid", gap: 6, flexShrink: 0, width: 96 }}>
-        <button onClick={toggleFollow} disabled={busy}
+        {!(released ?? m?.released) && <button onClick={toggleFollow} disabled={busy}
           style={following
             ? { ...ui.pillSmall, justifyContent: "center", color: C.text3 }
             : { ...ui.pillSmall, justifyContent: "center", color: C.gold, background: "rgba(245,207,104,0.12)", borderColor: "rgba(245,207,104,0.30)" }}>
           {busy ? "…" : <><Bell filled={following} />{following ? "Following" : "Follow"}</>}
-        </button>
+        </button>}
         <Link href={trackHref(title, artist)} style={{ ...ui.pillSmall, justifyContent: "center" }}>Info</Link>
         {right}
       </div>

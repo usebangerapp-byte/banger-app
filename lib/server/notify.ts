@@ -201,4 +201,6 @@ export async function notifyTrackReleased(sb: SupabaseClient, title: string, art
       message: artist ? `${artist} — out now. Tap to listen.` : "Out now. Tap to listen.",
     });
   }
+  // The track is out: following it has no purpose any more → remove the follows
+  await sb.from("track_followers").delete().ilike("track_title", pattern);
 }

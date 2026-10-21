@@ -664,7 +664,7 @@ export default function ProfilePageV2() {
             <Section title="Recent scans">
               <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:2 }}>
                 {(showMoreScans ? scans : scans.slice(0,3)).map((s,i) => (
-                  <TrackRow key={i} title={s.track_title || "Unknown"} artist={s.track_subtitle}
+                  <TrackRow key={i} title={s.track_title || "Unknown"} artist={s.track_subtitle} released={s.result_type !== "recognized_unreleased"}
                     meta={s.result_type === "recognized_unreleased" ? TAG_TEXT.unrel : TAG_TEXT.rel} />
                 ))}
                 {scans.length > 3 && (
@@ -681,7 +681,7 @@ export default function ProfilePageV2() {
             <Section title="Followed tracks">
               <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:2 }}>
                 {(showMoreFollows ? follows : follows.slice(0,3)).map((f,i) => (
-                  <TrackRow key={f.track_title || i} title={f.track_title || "Unknown"} artist={f.track_subtitle}
+                  <TrackRow key={f.track_title || i} title={f.track_title || "Unknown"} artist={f.track_subtitle} released={!!f.is_released}
                     meta={f.is_released ? "Out now" : "Waiting"}
                     onFollowChange={(on) => { if (!on) setFollows((p: any[]) => p.filter((x: any) => x.track_title !== f.track_title)); }} />
                 ))}
