@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { authFetch } from "@/lib/authFetch";
 import { guessTrackName } from "@/lib/trackName";
@@ -44,6 +45,7 @@ function putWithProgress(url: string, file: File, onPct: (p: number) => void): P
 
 /** Several tracks at once: names guessed from each file, one shared status, 2 uploads in parallel. */
 export default function BulkUpload({ initialFiles }: { initialFiles?: File[] }) {
+  const router = useRouter();
   const [items, setItems] = useState<Item[]>([]);
   const [released, setReleased] = useState(false);
   const [allowPreview, setAllowPreview] = useState(true);
@@ -234,10 +236,21 @@ export default function BulkUpload({ initialFiles }: { initialFiles?: File[] }) 
         </section>
 
         {missing > 0 && <div style={{ fontSize: 13, color: C.danger }}>Add the missing title / artist ({missing}).</div>}
-        <button onClick={runAll} disabled={!can}
+        {!running && todo === 0 && done > 0 ? (
+          <div style={{ display: "grid", gap: 10 }}>
+            <div style={{ textAlign: "center", fontSize: 14, color: C.rel, fontWeight: 600 }}>All done ✓ ({done})</div>
+            <button type="button" onClick={() => router.push("/home")} style={ui.cta}>Go Scan</button>
+            <button type="button" onClick={() => router.push("/promo")} style={{ ...ui.pill, width: "100%", padding: "13px 16px", fontSize: 15, color: C.gold, borderColor: "rgba(245,207,104,0.30)", background: "rgba(245,207,104,0.08)" }}>
+              Send it to the BANGER team
+            </button>
+            <button type="button" onClick={() => window.location.reload()} style={{ ...ui.pill, width: "100%", padding: "13px 16px", fontSize: 15 }}>
+              Upload more
+            </button>
+          </div>
+        ) : <button onClick={runAll} disabled={!can}
           style={can ? ui.cta : { ...ui.cta, background: "rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.45)", boxShadow: "none", cursor: "not-allowed" }}>
           {running ? `Uploading… ${done}/${items.length}` : todo === 0 ? `All done ✓ (${done})` : `Upload ${todo} track${todo > 1 ? "s" : ""}`}
-        </button>
+        </button>}
       </>)}
     </div>
   );

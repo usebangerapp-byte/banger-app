@@ -15,6 +15,13 @@ const JUNK = [
   /\b(?:[1-9]|1[0-2])[ab]\b(?=\s*$)/gi,                // Camelot key at the end (8A, 11B)
   /\b[a-g](?:#|b)?\s?(?:maj|min|m)\b(?=\s*$)/gi,        // musical key at the end
   /\[[^\]]*\]/g,                                       // remaining [Label] / [Catalog]
+  /\s*\(\s*\d{1,2}\s*\)/g,                             // download duplicates: "(1)", "(2)"
+  /\s*\(\s*v\s?\d+(?:\.\d+)?\s*\)/gi,                   // "(v2)", "(V 3)"
+  /\bv\d+(?:\.\d+)?\b/gi,                               // "v2", "V3.1"
+  /\(\s*(?:copy|final|bounce|mixdown|export|render|ref|reference|draft)[^)]*\)/gi,
+  /\s+-\s+(?:copy|final|master(?:ed)?|bounce|mixdown|export)\s*\d*\s*$/gi,   // "… - copy", "… - master"
+  /\s+copy(?:\s*\d+)?\s*$/gi,                          // "… copy 2"
+  /(?<=\))\s+\d{1,2}\s*$/g,                               // "(Extended Mix) 1"
 ];
 
 function tidy(s: string) {
@@ -29,7 +36,7 @@ function smartCase(s: string) {
 }
 
 export function parseTrackFilename(filename: string): { artist: string; title: string } {
-  let base = filename.replace(/\.[a-z0-9]{2,5}$/i, "");
+  let base = filename.replace(/\.[a-z0-9]{2,5}$/i, "").replace(/_\d{1,2}\s*$/, "");
   base = base.replace(/_/g, " ").replace(/\s*[–—]\s*/g, " - ");
   base = base.replace(/^\s*(?:\d{1,3}[\s.\-)]+|[A-D][1-9]\s*[.\-)]\s*|[A-D][1-9]\s+(?=.+\s-\s))/, "");   // "01. ", "03 - ", "A1 "
   for (let pass = 0; pass < 3; pass++) for (const re of JUNK) base = tidy(base.replace(re, " "));
