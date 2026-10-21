@@ -66,6 +66,32 @@ function useTrackState(title: string) {
   return { meta, following: !!followSet?.has(key), key };
 }
 
+/** Small toast at the bottom of the screen (no state needed in the pages). */
+export function showToast(text: string) {
+  if (typeof document === "undefined") return;
+  const el = document.createElement("div");
+  el.textContent = text;
+  Object.assign(el.style, {
+    position: "fixed", left: "50%", bottom: "112px", transform: "translateX(-50%) translateY(8px)", zIndex: "999",
+    background: "rgba(30,30,30,0.9)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "999px",
+    padding: "11px 18px", fontSize: "14px", fontWeight: "600", color: "#fff", whiteSpace: "nowrap",
+    backdropFilter: "blur(24px)", opacity: "0", transition: "opacity .25s ease, transform .25s ease",
+    fontFamily: "inherit",
+  } as Partial<CSSStyleDeclaration>);
+  document.body.appendChild(el);
+  requestAnimationFrame(() => { el.style.opacity = "1"; el.style.transform = "translateX(-50%) translateY(0)"; });
+  window.setTimeout(() => { el.style.opacity = "0"; window.setTimeout(() => el.remove(), 300); }, 2200);
+}
+
+/** Bell icon used on every Follow button (= "notify me when it's out"). */
+export function Bell({ filled }: { filled?: boolean }) {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M6 16V11a6 6 0 0112 0v5l1.5 2h-15z" /><path d="M10 21h4" />
+    </svg>
+  );
+}
+
 function fmtDate(d: string) {
   const dt = new Date(d);
   if (Number.isNaN(dt.getTime())) return "";
@@ -98,6 +124,7 @@ export default function TrackRow({ title, artist, rank, meta, last, onFollowChan
         if (!followSet) followSet = new Set();
         if (next) followSet.add(key); else followSet.delete(key);
         emit();
+        if (next) showToast("We'll notify you the day it drops");
         onFollowChange?.(next);
       }
     } finally { setBusy(false); }
@@ -122,7 +149,7 @@ export default function TrackRow({ title, artist, rank, meta, last, onFollowChan
           style={following
             ? { ...ui.pillSmall, justifyContent: "center", color: C.text3 }
             : { ...ui.pillSmall, justifyContent: "center", color: C.gold, background: "rgba(245,207,104,0.12)", borderColor: "rgba(245,207,104,0.30)" }}>
-          {busy ? "…" : following ? "Following ✓" : "+ Follow"}
+          {busy ? "…" : <><Bell filled={following} />{following ? "Following" : "Follow"}</>}
         </button>
         <Link href={trackHref(title, artist)} style={{ ...ui.pillSmall, justifyContent: "center" }}>Info</Link>
         {right}

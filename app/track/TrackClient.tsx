@@ -8,6 +8,7 @@ import { ui, C, glass, tag, TAG_TEXT } from "@/lib/ui";
 import { PreviewButton, trackKey } from "@/lib/preview";
 import PageHeader from "@/components/PageHeader";
 import MarqueeText from "@/components/MarqueeText";
+import { Bell, showToast } from "@/components/TrackRow";
 
 function SpotifyLogo() {
   return (
@@ -68,7 +69,7 @@ function TrackView() {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: following ? "unfollow" : "follow", user_id: userId, track_title: title, track_subtitle: info?.artist || null }),
     }).catch(() => null);
-    if (res?.ok) setFollowing((v) => !v);
+    if (res?.ok) { if (!following) showToast("We'll notify you the day it drops"); setFollowing((v) => !v); }
     setBusy(false);
   }
 
@@ -100,7 +101,7 @@ function TrackView() {
         <a href={info?.beatport || `https://www.beatport.com/search?q=${q}`} target="_blank" rel="noreferrer" style={ui.pillSmall}><BeatportLogo /> Beatport</a>
         <button onClick={toggleFollow} disabled={busy}
           style={following ? { ...ui.pillSmall, color: C.text3 } : { ...ui.pillSmall, color: C.gold, background: "rgba(245,207,104,0.12)", borderColor: "rgba(245,207,104,0.30)" }}>
-          {following ? "Following ✓" : "+ Follow"}
+          <Bell filled={following} />{following ? "Following" : "Follow"}
         </button>
       </div>
     </section>
