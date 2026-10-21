@@ -9,6 +9,8 @@ import { isNativeApp, nativeHaptic } from "@/lib/native";
 import { startOAuth } from "@/lib/oauth";
 import { ui, C, glass, tag as tagStyle, TAG_TEXT } from "@/lib/ui";
 import MarqueeText from "@/components/MarqueeText";
+import { useTrackState, FollowButton } from "@/components/TrackRow";
+import { PreviewButton, trackHref } from "@/lib/preview";
 import WooferSVG from "@/components/WooferSVG";
 import Link from "next/link";
 import { getBrowserRole } from "@/lib/auth/getBrowserRole";
@@ -574,33 +576,55 @@ const region = await getRegion();
 
           {/* ── RESULT ── */}
           {title !== "—" && status === "idle" && (
-            <div style={scanStyles.resultBlock}>
-              <MarqueeText text={title} style={scanStyles.resultTitle} />
-              {subtitle ? <div style={scanStyles.resultSub}>{subtitle}</div> : null}
-              <div style={{ display: "flex", justifyContent: "center", marginTop: 12 }}>
-                <span style={tagStyle(tag === "UNRELEASED" ? "unrel" : tag === "RELEASED" ? "rel" : "neutral")}>
-                  {tag === "UNRELEASED" ? TAG_TEXT.unrel : tag === "RELEASED" ? TAG_TEXT.rel : tag}
-                </span>
-              </div>
-              {/* Share as a story (Instagram / WhatsApp) */}
-              {tag !== "NOT FOUND" && <div style={{ display: "flex", justifyContent: "center", marginTop: 12 }}>
-                <button disabled={sharing} onClick={() => shareStory(title, subtitle, tag === "UNRELEASED", allowPreview !== false ? snippetPath : null, setSharing)}
-                  style={{ ...ui.pillSmall, color: C.gold, background: "rgba(245,207,104,0.12)", borderColor: "rgba(245,207,104,0.30)" }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 14v6h14v-6" /></svg>
-                  {sharing ? "Preparing…" : "Share"}
-                </button>
-              </div>}
-              {(spotifyUrl || beatportUrl) && (
-                <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 10 }}>
-                  {spotifyUrl && <a href={spotifyUrl} target="_blank" rel="noreferrer" style={ui.pillSmall}>Spotify</a>}
-                  {beatportUrl && <a href={beatportUrl} target="_blank" rel="noreferrer" style={ui.pillSmall}>Beatport</a>}
-                </div>
-              )}
-            </div>
+            <ScanResult title={title} subtitle={subtitle} tag={tag}
+              snippet={allowPreview !== false ? snippetPath : null}
+              sharing={sharing}
+              onShare={(snip) => shareStory(title, subtitle, tag === "UNRELEASED", snip, setSharing)} />
           )}
         </div>{/* end center */}
 
       </div>{/* end phone */}
+    </div>
+  );
+}
+
+/** Scan result card: ▶ preview · title / artist / status, then Follow · Info · Share on one line. */
+function ScanResult({ title, subtitle, tag, snippet, sharing, onShare }: {
+  title: string; subtitle: string; tag: string; snippet: string | null; sharing: boolean;
+  onShare: (snippet: string | null) => void;
+}) {
+  const { meta } = useTrackState(title);
+  const preview = snippet || meta?.snippet || null;     // from the scan, or from the uploaded track
+  const found = tag !== "NOT FOUND";
+  const artist = subtitle && subtitle !== "(Released)" ? subtitle : "";
+  const pill: CSSProperties = { ...ui.pillSmall, flex: 1, justifyContent: "center", padding: "8px 10px" };
+  return (
+    <div style={{ ...scanStyles.resultBlock, textAlign: "left", display: "grid", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+        {found && (preview
+          ? <PreviewButton compact id={`scan-${title}`} snippetPath={preview} />
+          : <span aria-hidden style={{ width: 32, height: 32, borderRadius: "50%", border: "1px dashed rgba(255,255,255,0.12)", flexShrink: 0 }} />)}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <MarqueeText text={title} style={{ ...scanStyles.resultTitle, fontSize: 17 }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4, minWidth: 0 }}>
+            {artist && <span style={{ fontSize: 14, color: C.text2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{artist}</span>}
+            <span style={tagStyle(tag === "UNRELEASED" ? "unrel" : tag === "RELEASED" ? "rel" : "neutral")}>
+              {tag === "UNRELEASED" ? TAG_TEXT.unrel : tag === "RELEASED" ? TAG_TEXT.rel : "Not found"}
+            </span>
+          </div>
+        </div>
+      </div>
+      {found && (
+        <div style={{ display: "flex", gap: 8 }}>
+          {tag === "UNRELEASED" && <FollowButton title={title} artist={artist} style={{ flex: 1, padding: "8px 10px" }} />}
+          <Link href={trackHref(title, artist)} style={pill}>Info</Link>
+          <button disabled={sharing} onClick={() => onShare(preview)}
+            style={{ ...pill, color: C.gold, background: "rgba(245,207,104,0.12)", borderColor: "rgba(245,207,104,0.30)" }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 14v6h14v-6" /></svg>
+            {sharing ? "Preparing…" : "Share"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

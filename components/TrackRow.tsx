@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode, type CSSProperties } from "react";
 import Link from "next/link";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { authFetch } from "@/lib/authFetch";
@@ -51,7 +51,7 @@ function loadFollows() {
   return followLoad;
 }
 
-function useTrackState(title: string) {
+export function useTrackState(title: string) {
   const key = trackKey(title);
   const [meta, setMeta] = useState<Meta | null>(null);
   const [, force] = useState(0);
@@ -156,5 +156,38 @@ export default function TrackRow({ title, artist, rank, meta, last, onFollowChan
         {right}
       </div>
     </div>
+  );
+}
+
+
+/** The same Follow button as in every list (bell + toast), usable on its own. */
+export function FollowButton({ title, artist, style }: { title: string; artist?: string | null; style?: CSSProperties }) {
+  const { following, key } = useTrackState(title);
+  const [busy, setBusy] = useState(false);
+  async function toggle() {
+    if (busy) return;
+    const next = !following;
+    setBusy(true);
+    try {
+      const res = await authFetch("/api/follow-track", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: next ? "follow" : "unfollow", track_title: title, track_subtitle: artist || null }),
+      });
+      if (res.status === 401) { window.location.href = "/"; return; }
+      if (res.ok) {
+        if (!followSet) followSet = new Set();
+        if (next) followSet.add(key); else followSet.delete(key);
+        emit();
+        if (next) showToast("We'll notify you the day it drops");
+      }
+    } finally { setBusy(false); }
+  }
+  return (
+    <button onClick={toggle} disabled={busy}
+      style={{ ...(following
+        ? { ...ui.pillSmall, justifyContent: "center", color: C.text3 }
+        : { ...ui.pillSmall, justifyContent: "center", color: C.gold, background: "rgba(245,207,104,0.12)", borderColor: "rgba(245,207,104,0.30)" }), ...style }}>
+      {busy ? "…" : <><Bell filled={following} />{following ? "Following" : "Follow"}</>}
+    </button>
   );
 }
