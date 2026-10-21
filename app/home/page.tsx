@@ -64,28 +64,34 @@ async function buildStoryVideo(image: Blob, snippetPath: string): Promise<File |
 }
 
 /** Builds the 9:16 story (image, or video with the preview sound) and opens the share sheet (Instagram, WhatsApp…). */
-async function shareStory(title: string, artist: string, unreleased: boolean, snippetPath?: string | null, onBusy?: (b: boolean) => void) {
+/** Builds the story file (MP4 with the preview when there is one, else the PNG). */
+async function prepareStory(title: string, artist: string, unreleased: boolean, snippetPath?: string | null): Promise<File> {
   const url = `/api/story?t=${encodeURIComponent(title)}&a=${encodeURIComponent(artist && artist !== "(Released)" ? artist : "")}${unreleased ? "&u=1" : ""}`;
-  try {
-    onBusy?.(true);
-    const res = await fetch(url);
-    const blob = await res.blob();
-    let file = new File([blob], "banger-story.png", { type: "image/png" });
-    if (snippetPath) {
-      const video = await buildStoryVideo(blob, snippetPath);
-      if (video) file = video;
-    }
-    onBusy?.(false);
-    const nav: any = navigator;
-    if (nav.canShare && nav.canShare({ files: [file] })) {
-      await nav.share({ files: [file], title: "BANGER" });
-      return;
-    }
-  } catch (e: any) {
-    onBusy?.(false);
-    if (e?.name === "AbortError") return;   // user closed the share sheet
+  const blob = await (await fetch(url)).blob();
+  let file = new File([blob], "banger-story.png", { type: "image/png" });
+  if (snippetPath) {
+    const video = await buildStoryVideo(blob, snippetPath).catch(() => null);
+    if (video) file = video;
   }
-  window.open(url, "_blank");
+  return file;
+}
+
+/** "ok" | "cancel" | "needs-tap" (iOS: the tap expired while the video was being built) */
+async function shareFile(file: File): Promise<"ok" | "cancel" | "needs-tap"> {
+  const nav: any = navigator;
+  if (nav.canShare && nav.canShare({ files: [file] })) {
+    try { await nav.share({ files: [file], title: "BANGER" }); return "ok"; }
+    catch (e: any) {
+      if (e?.name === "AbortError") return "cancel";
+      if (e?.name === "NotAllowedError") return "needs-tap";
+    }
+  }
+  // No share sheet (desktop): download the file instead of leaving the app.
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(file); a.download = file.name;
+  document.body.appendChild(a); a.click(); a.remove();
+  window.setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+  return "ok";
 }
 
 export default function Home() {
@@ -102,7 +108,6 @@ export default function Home() {
   const [spotifyUrl, setSpotifyUrl] = useState<string | null>(null);
   const [snippetPath, setSnippetPath] = useState<string | null>(null);
   const [allowPreview, setAllowPreview] = useState<boolean | null>(null);
-  const [sharing, setSharing] = useState(false);
   const [subtitle, setSubtitle] = useState("");
   const [tag, setTag] = useState<Tag>("NOT FOUND");
 
@@ -576,10 +581,8 @@ const region = await getRegion();
 
           {/* ── RESULT ── */}
           {title !== "—" && status === "idle" && (
-            <ScanResult title={title} subtitle={subtitle} tag={tag}
-              snippet={allowPreview !== false ? snippetPath : null}
-              sharing={sharing}
-              onShare={(snip) => shareStory(title, subtitle, tag === "UNRELEASED", snip, setSharing)} />
+            <ScanResult key={title} title={title} subtitle={subtitle} tag={tag}
+              snippet={allowPreview !== false ? snippetPath : null} />
           )}
         </div>{/* end center */}
 
@@ -589,10 +592,35 @@ const region = await getRegion();
 }
 
 /** Scan result card: ▶ preview · title / artist / status, then Follow · Info · Share on one line. */
-function ScanResult({ title, subtitle, tag, snippet, sharing, onShare }: {
-  title: string; subtitle: string; tag: string; snippet: string | null; sharing: boolean;
-  onShare: (snippet: string | null) => void;
+function ScanResult({ title, subtitle, tag, snippet }: {
+  title: string; subtitle: string; tag: string; snippet: string | null;
 }) {
+  const [sharing, setSharing] = useState(false);
+  const [ready, setReady] = useState<File | null>(null);   // story already built → the tap shares instantly
+  const [needsTap, setNeedsTap] = useState(false);           // iOS: built too late for the first tap
+  const building = useRef<Promise<File> | null>(null);
+  const { meta: m0 } = useTrackState(title);
+  const pv = snippet || m0?.snippet || null;
+  // Build the story in the background as soon as the result shows, so Share opens the
+  // share sheet straight away (iOS only allows it right after a tap).
+  useEffect(() => {
+    if (tag === "NOT FOUND") return;
+    const t = window.setTimeout(() => {
+      building.current = prepareStory(title, subtitle, tag === "UNRELEASED", pv);
+      building.current.then(setReady).catch(() => {});
+    }, 600);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pv]);
+  async function onShare(preview: string | null) {
+    if (ready) { const r = await shareFile(ready); setNeedsTap(r === "needs-tap"); return; }
+    setSharing(true);
+    try {
+      const file = await (building.current || prepareStory(title, subtitle, tag === "UNRELEASED", preview));
+      setReady(file);
+      setNeedsTap((await shareFile(file)) === "needs-tap");
+    } catch {} finally { setSharing(false); }
+  }
   const { meta } = useTrackState(title);
   const preview = snippet || meta?.snippet || null;     // from the scan, or from the uploaded track
   const found = tag !== "NOT FOUND";
@@ -621,7 +649,7 @@ function ScanResult({ title, subtitle, tag, snippet, sharing, onShare }: {
           <button disabled={sharing} onClick={() => onShare(preview)}
             style={{ ...pill, color: C.gold, background: "rgba(245,207,104,0.12)", borderColor: "rgba(245,207,104,0.30)" }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 14v6h14v-6" /></svg>
-            {sharing ? "Preparing…" : "Share"}
+            {sharing ? "Preparing…" : needsTap ? "Tap to share" : "Share"}
           </button>
         </div>
       )}
