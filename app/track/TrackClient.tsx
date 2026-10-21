@@ -30,7 +30,7 @@ function TrackView() {
   const router = useRouter();
   const title = (params.get("t") || "").trim();
   const artistParam = (params.get("a") || "").trim();
-  const [info, setInfo] = useState<{ artist: string; snippet: string | null; released: boolean; beatport: string | null; spotify: string | null; releaseDate?: string | null } | null>(null);
+  const [info, setInfo] = useState<{ artist: string; snippet: string | null; released: boolean; beatport: string | null; spotify: string | null; releaseDate?: string | null; label?: string | null } | null>(null);
   const [userId, setUserId] = useState("");
   const [following, setFollowing] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -51,6 +51,15 @@ function TrackView() {
         spotify: null,
         releaseDate: row?.release_date || null,
       });
+      // Real release date + label from public catalogues (released tracks, or tracks we don't host).
+      const artistQ = artistParam || row?.artist || "";
+      if (artistQ && (!row || row.is_released)) {
+        fetch(`/api/track-info?t=${encodeURIComponent(title)}&a=${encodeURIComponent(artistQ)}`)
+          .then((r) => r.json()).then((x) => {
+            if (!x?.found) return;
+            setInfo((cur) => cur && ({ ...cur, released: true, releaseDate: x.releaseDate || cur.releaseDate, label: x.label || null }));
+          }).catch(() => {});
+      }
       const { data } = await sb.auth.getSession();
       const uid = data?.session?.user?.id || "";
       setUserId(uid);
@@ -91,6 +100,12 @@ function TrackView() {
                 <rect x="4" y="5" width="16" height="15" rx="2" /><path d="M4 10h16M9 3v4M15 3v4" />
               </svg>
               {new Date(info.releaseDate).toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" })}
+            </span>
+          )}
+          {info.label && (
+            <span style={{ ...tag("neutral"), display: "inline-flex", alignItems: "center", gap: 5, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true"><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="2.5" /></svg>
+              {info.label}
             </span>
           )}
         </div>
