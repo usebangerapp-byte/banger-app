@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { authFetch } from "@/lib/authFetch";
@@ -195,6 +195,13 @@ export default function BulkUpload({ initialFiles }: { initialFiles?: File[] }) 
   }
   const isDup = (i: Item) => i.dup || dupOf.get(i.id);
   const dups = items.filter((i) => i.state !== "done" && isDup(i)).length;
+  // Which rows sit in "Needs attention". Recomputed when the list / run / duplicate check
+  // changes — not on every keystroke, so a row doesn't jump away while you fix its name.
+  const errSig = items.filter((i) => i.state === "error").map((i) => i.id).join(",");
+  const badIds = useMemo(() => new Set(items.filter((i) => i.state !== "done" &&
+    (!!isDup(i) || !i.title.trim() || !i.artist.trim() || i.state === "error")).map((i) => i.id)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [items.length, running, onBanger, errSig]);
 
   const done = items.filter((i) => i.state === "done").length;
   const missing = items.filter((i) => i.state !== "done" && !isDup(i) && (!i.title.trim() || !i.artist.trim())).length;
@@ -215,10 +222,10 @@ export default function BulkUpload({ initialFiles }: { initialFiles?: File[] }) 
       </div>
 
       {items.length > 0 && (<>
-        {/* Queue */}
-        <section style={{ ...glass, borderRadius: 22, padding: "4px 14px", display: "grid", gridTemplateColumns: "minmax(0,1fr)" }}>
-          {items.map((it, i) => (
-            <div key={it.id} style={{ opacity: isDup(it) && it.state !== "done" ? 0.55 : 1, display: "grid", gap: 6, padding: "12px 0", borderBottom: i === items.length - 1 ? "none" : `1px solid ${C.lineSoft}`, minWidth: 0 }}>
+        {/* Queue: good tracks first, every track with a problem grouped at the bottom */}
+        {(() => {
+          const row = (it: Item, i: number, arr: Item[]) => (
+            <div key={it.id} style={{ opacity: isDup(it) && it.state !== "done" ? 0.55 : 1, display: "grid", gap: 6, padding: "12px 0", borderBottom: i === arr.length - 1 ? "none" : `1px solid ${C.lineSoft}`, minWidth: 0 }}>
               <div style={{ display: "flex", gap: 8, alignItems: "center", minWidth: 0 }}>
                 <input value={it.title} disabled={running || it.state === "done" || !!isDup(it)} placeholder="Title"
                   onChange={(e) => patch(it.id, { title: e.target.value })}
@@ -248,8 +255,29 @@ export default function BulkUpload({ initialFiles }: { initialFiles?: File[] }) 
                 </div>
               )}
             </div>
-          ))}
-        </section>
+          );
+          const good = items.filter((it) => !badIds.has(it.id));
+          const bad = items.filter((it) => badIds.has(it.id));
+          return (<>
+            {good.length > 0 && (
+              <section style={{ ...glass, borderRadius: 22, padding: "4px 14px", display: "grid", gridTemplateColumns: "minmax(0,1fr)" }}>
+                {good.map(row)}
+              </section>
+            )}
+            {bad.length > 0 && (<>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4 }}>
+                <div style={{ flex: 1, fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: C.gold }}>Needs attention ({bad.length})</div>
+                {!running && dups > 0 && (
+                  <button onClick={() => setItems((l) => l.filter((x) => x.state === "done" || !isDup(x)))}
+                    style={{ ...ui.pillSmall, color: C.text2 }}>Remove duplicates ({dups})</button>
+                )}
+              </div>
+              <section style={{ ...glass, borderRadius: 22, padding: "4px 14px", display: "grid", gridTemplateColumns: "minmax(0,1fr)", borderColor: "rgba(245,207,104,0.25)" }}>
+                {bad.map(row)}
+              </section>
+            </>)}
+          </>);
+        })()}
 
         {/* Shared settings */}
         <section style={{ ...glass, borderRadius: 22, padding: 16, display: "grid", gap: 12 }}>
