@@ -534,18 +534,12 @@ const region = await getRegion();
           </div>
           </div>
 
-          <div style={scanStyles.status}>
+          <div style={{ ...scanStyles.status, cursor: busy ? "default" : "pointer" }} onClick={() => { if (!busy) startListening(); }}>
             {status === "idle" ? "Tap to scan" : null}
             {status === "listening" ? "Listening…" : null}
             {status === "recognizing" ? "Identifying…" : null}
           </div>
 
-          {isProUser && status === "idle" && title === "—" && (
-            <Link href="/set" style={{ ...ui.pillSmall, color: C.gold, background: "rgba(245,207,104,0.10)", borderColor: "rgba(245,207,104,0.28)" }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h7" /><circle cx="18" cy="16" r="3" /></svg>
-              Set mode
-            </Link>
-          )}
 
           {/* ── RESULT ── */}
           {title !== "—" && status === "idle" && (
