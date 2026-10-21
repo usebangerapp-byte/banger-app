@@ -35,6 +35,22 @@ function smartCase(s: string) {
   return s.replace(/\b([a-z])([a-z']*)/g, (_, a: string, b: string) => a.toUpperCase() + b);
 }
 
+/**
+ * The name is only: song title + ONE version credit if there is one
+ * ("(Original Mix)", "(GOVI Remix)", "(Extended Mix)"…). Everything after it, and any
+ * other bracket / leftover (dots, "mp3", "v1", "final"…), is dropped.
+ */
+const CREDIT_RE = /\b(?:remix|mix|edit|rework|bootleg|vip|dub|refunk|refix|re-edit|flip|version|reprise|instrumental|acapella|extended|radio)\b/i;
+function strictTitle(t: string): string {
+  const m = t.match(/^([^\(\[]*)/);
+  const core = tidy((m?.[1] || t)
+    .replace(/(?:[\s.\-_,;:]+(?:mp3|wav|aiff?|flac|m4a|ogg|final|master(?:ed)?|v\d+))+\s*$/i, "")
+    .replace(/[\s.\-_,;:]+$/, ""));
+  const credit = (t.match(/[\(\[]([^\)\]]+)[\)\]]/g) || []).map((x) => x.slice(1, -1).trim()).find((x) => CREDIT_RE.test(x));
+  if (!core) return tidy(t);
+  return credit ? `${core} (${credit})` : core;
+}
+
 export function parseTrackFilename(filename: string): { artist: string; title: string } {
   let base = filename.replace(/\.[a-z0-9]{2,5}$/i, "")
     // leftover pseudo-extensions: "313 (Original Mix).x", "track.wav.mp3", ".part"…
@@ -78,6 +94,7 @@ export function parseTrackFilename(filename: string): { artist: string; title: s
     title = tidy(title.replace(feat[0], " "));
   }
 
+  title = strictTitle(title);
   return { artist: smartCase(tidy(artist)), title: smartCase(tidy(title)) };
 }
 
