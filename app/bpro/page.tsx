@@ -8,6 +8,7 @@ import { FFmpeg } from "@ffmpeg/ffmpeg";
 import PageHeader from "@/components/PageHeader";
 import { guessTrackName } from "@/lib/trackName";
 import { authFetch } from "@/lib/authFetch";
+import BulkUpload from "@/components/BulkUpload";
 import { ui, C, glass } from "@/lib/ui";
 
 const SEGMENT_DURATION = 25;
@@ -123,6 +124,7 @@ export default function UploadPage() {
   const [audioUrl,      setAudioUrl]      = useState("");
 
   const [busy,       setBusy]       = useState(false);
+  const [mode,       setMode]       = useState<"one" | "bulk">("one");
   const [step,       setStep]       = useState("");
   const [error,      setError]      = useState("");
   const [done,       setDone]       = useState(false);
@@ -292,7 +294,21 @@ export default function UploadPage() {
           </section>
         )}
 
-        {!busy && !done && (<>
+        {!busy && !done && (
+          <div style={{ ...glass, display: "grid", gridTemplateColumns: "1fr 1fr", padding: 4, borderRadius: 999 }}>
+            {(["one", "bulk"] as const).map((m) => (
+              <button key={m} onClick={() => setMode(m)}
+                style={{ padding: "9px 0", borderRadius: 999, border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 14,
+                  background: mode === m ? "rgba(255,255,255,0.16)" : "transparent", color: mode === m ? "#fff" : C.text3, fontWeight: mode === m ? 600 : 500 }}>
+                {m === "one" ? "One track" : "Several tracks"}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {!busy && !done && mode === "bulk" && <BulkUpload />}
+
+        {!busy && !done && mode === "one" && (<>
 
         <Card title="Track">
           <div style={{ display: "grid", gap: 10 }}>
