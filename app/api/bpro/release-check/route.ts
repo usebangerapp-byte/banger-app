@@ -20,12 +20,15 @@ async function checkMusicBrainz(title: string, artist: string) {
     const res = await fetch(url, { headers: { "User-Agent": MB_UA }, signal: AbortSignal.timeout(8000) });
     if (!res.ok) return { isReleased: false, mbid: null, releaseDate: null };
     const json = await res.json();
+    // Strict match only: same title AND the exact same artist name in the credits.
+    // (Loose "includes" matching flagged unreleased IDs as released, e.g. "WE SEE" by MICHAEL.)
+    const tNorm = norm(cleanTitle(title)); const aNorm = norm(firstArtist(artist));
+    if (!tNorm || !aNorm) return { isReleased: false, mbid: null, releaseDate: null };
     const match = (json?.recordings||[]).find((r: any) => {
-      if ((r.score||0) < 85) return false;
-      const rTitle   = norm(r.title||"");
-      const rArtists = (r["artist-credit"]||[]).map((a: any) => norm(a.name||a.artist?.name||"")).join(" ");
-      const tNorm = norm(cleanTitle(title)); const aNorm = norm(firstArtist(artist));
-      return (rTitle.includes(tNorm)||tNorm.includes(rTitle)) && (!aNorm||rArtists.includes(aNorm)||aNorm.includes(rArtists.split(" ")[0]));
+      if ((r.score||0) < 90) return false;
+      const rTitle = norm(cleanTitle(r.title||""));
+      const names = (r["artist-credit"]||[]).flatMap((a: any) => [norm(a.name||""), norm(a.artist?.name||"")]).filter(Boolean);
+      return rTitle === tNorm && names.includes(aNorm);
     });
     if (!match) return { isReleased: false, mbid: null, releaseDate: null };
     const releases = match.releases||[];
@@ -39,7 +42,7 @@ export async function GET() {
   const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
   const cutoff = new Date(Date.now() - 6*60*60*1000).toISOString();
   const { data: tracks, error } = await supabase.from("bpro_tracks")
-    .select("id, title, artist, release_status, release_checked_at")
+    .select("id, title, artist, release_status, release_checked_at, release_date, release_source")
     .not("release_status","eq","released")
     .or(`release_checked_at.is.null,release_checked_at.lt.${cutoff}`)
     .order("updated_at",{ascending:false}).limit(50);
@@ -50,14 +53,17 @@ export async function GET() {
     const title  = (track.title||"").trim();
     const artist = (track.artist||"").trim();
     if (!title) { results.push({ id: track.id, skipped: true }); continue; }
+    // The uploader gave a release date in the future → trust it, don't guess.
+    if (track.release_date && new Date(track.release_date).getTime() > Date.now()) { results.push({ id: track.id, skipped: "future date" }); continue; }
 
     await new Promise(r => setTimeout(r, 1100)); // rate limit MusicBrainz 1 req/s
 
     try {
       const { isReleased, mbid, releaseDate } = await checkMusicBrainz(title, artist);
       await supabase.from("bpro_tracks").update({
-        release_status: isReleased?"released":"unknown", is_released: isReleased,
-        release_checked_at: new Date().toISOString(), release_source: "musicbrainz",
+        release_checked_at: new Date().toISOString(),
+        // Never downgrade an uploader's choice to "unknown"; only flip when a strict match is found.
+        ...(isReleased ? { release_status: "released", is_released: true, release_source: "musicbrainz" } : {}),
         ...(releaseDate?{release_date:releaseDate}:{}),
         ...(isReleased?{beatport_url:`https://www.beatport.com/search?q=${encodeURIComponent(firstArtist(artist)+" "+cleanTitle(title))}`}:{}),
       }).eq("id",track.id);
