@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { notifyTrackReleased } from "@/lib/server/notify";
+import { notifyTrackReleased, notifyWeeklyIds } from "@/lib/server/notify";
 
 export const runtime = "nodejs";
 
@@ -45,7 +45,10 @@ export async function GET() {
       }
     }
 
-    return Response.json({ ok: true, updated });
+    // Friday IDs: the week's hottest unreleased IDs, to everyone
+    const weekly = await notifyWeeklyIds(supabase).catch(() => 0);
+
+    return Response.json({ ok: true, updated, weekly });
   } catch (e: any) {
     console.error(e);
     return Response.json(

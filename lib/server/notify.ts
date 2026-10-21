@@ -31,6 +31,7 @@ type Row = { user_id: string; type: string; message: string; track_title?: strin
 function linkFor(row: Row) {
   if (row.type === "message") return row.actor_id ? `/profile?tab=messages&with=${row.actor_id}` : "/profile?tab=messages";
   if (row.type === "follow" && row.actor_id) return `/dj/${row.actor_id}`;
+  if (row.type === "weekly_ids") return "/radar";
   if (row.type === "promo_listened" || row.type === "promo_liked" || row.type === "promo_downloaded") return "/promo";
   if (row.type === "track_released" && row.track_title) return `/track?t=${encodeURIComponent(row.track_title)}`;
   if (row.type === "track_released") return "/charts";
@@ -138,6 +139,43 @@ export async function notifyPromoDownloaded(sb: SupabaseClient, senderId: string
     user_id: senderId, type: "promo_downloaded", actor_id: dlId, track_title: name,
     message: `Downloaded "${trackTitle}" ⬇`,
   });
+}
+
+/**
+ * "Friday IDs": every Friday, everyone (with notifications on) gets the week's hottest unreleased IDs.
+ * Runs from the Friday cron; sends at most once every 3 days.
+ */
+export async function notifyWeeklyIds(sb: SupabaseClient): Promise<number> {
+  const since = new Date(Date.now() - 7 * 86400000).toISOString();
+  const { data: recent } = await sb.from("notifications").select("id").eq("type", "weekly_ids")
+    .gte("created_at", new Date(Date.now() - 3 * 86400000).toISOString()).limit(1);
+  if (recent?.length) return 0;
+
+  const { data: scans } = await sb.from("scan_events").select("track_title")
+    .eq("result_type", "recognized_unreleased").gte("created_at", since).limit(20000);
+  const tally = new Map<string, { title: string; n: number }>();
+  for (const s of (scans || []) as any[]) {
+    const t = String(s.track_title || "").trim();
+    if (!t || t.toLowerCase() === "unknown") continue;
+    const k = t.toLowerCase();
+    const cur = tally.get(k) || { title: t, n: 0 };
+    cur.n++; tally.set(k, cur);
+  }
+  const top = Array.from(tally.values()).sort((a, b) => b.n - a.n).slice(0, 3).map((x) => x.title);
+  if (!top.length) return 0;
+
+  const title = "Friday IDs 🔥";
+  const message = `Top this week: ${top.join(" · ")}`;
+  const { data: users } = await sb.from("profiles").select("id,notifs_enabled").limit(10000);
+  const ids = (users || []).filter((u: any) => u.notifs_enabled !== false).map((u: any) => u.id);
+  for (let i = 0; i < ids.length; i += 500) {
+    const rows = ids.slice(i, i + 500).map((user_id: string) => ({
+      user_id, type: "weekly_ids", track_title: title, title, message, body: message, read: false, count: 1,
+    }));
+    await sb.from("notifications").insert(rows);
+  }
+  for (const user_id of ids) await pushToUser(sb, user_id, { title, body: message, url: "/radar" }).catch(() => {});
+  return ids.length;
 }
 
 export const WELCOME_TITLE = "Welcome to BANGER 🎧";

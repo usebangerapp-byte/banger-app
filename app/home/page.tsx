@@ -38,6 +38,24 @@ const PAGE_BG =
 
 
 
+/** Builds the 9:16 story image and opens the share sheet (Instagram, WhatsApp…). */
+async function shareStory(title: string, artist: string, unreleased: boolean) {
+  const url = `/api/story?t=${encodeURIComponent(title)}&a=${encodeURIComponent(artist && artist !== "(Released)" ? artist : "")}${unreleased ? "&u=1" : ""}`;
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    const file = new File([blob], "banger-story.png", { type: "image/png" });
+    const nav: any = navigator;
+    if (nav.canShare && nav.canShare({ files: [file] })) {
+      await nav.share({ files: [file], title: "BANGER" });
+      return;
+    }
+  } catch (e: any) {
+    if (e?.name === "AbortError") return;   // user closed the share sheet
+  }
+  window.open(url, "_blank");
+}
+
 export default function Home() {
   const router = useRouter();
   const supabase = useMemo(() => createSupabaseBrowser(), []);
@@ -539,6 +557,14 @@ const region = await getRegion();
                   {tag === "UNRELEASED" ? TAG_TEXT.unrel : tag === "RELEASED" ? TAG_TEXT.rel : tag}
                 </span>
               </div>
+              {/* Share as a story (Instagram / WhatsApp) */}
+              {tag !== "NOT FOUND" && <div style={{ display: "flex", justifyContent: "center", marginTop: 12 }}>
+                <button onClick={() => shareStory(title, subtitle, tag === "UNRELEASED")}
+                  style={{ ...ui.pillSmall, color: C.gold, background: "rgba(245,207,104,0.12)", borderColor: "rgba(245,207,104,0.30)" }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 14v6h14v-6" /></svg>
+                  Share
+                </button>
+              </div>}
               {(spotifyUrl || beatportUrl) && (
                 <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 10 }}>
                   {spotifyUrl && <a href={spotifyUrl} target="_blank" rel="noreferrer" style={ui.pillSmall}>Spotify</a>}
