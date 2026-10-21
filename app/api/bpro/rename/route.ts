@@ -1,5 +1,6 @@
 import { adminClient, userFromRequest } from "@/lib/server/notify";
 import { dupKey } from "@/lib/dupKey";
+import { existingKeys, saveDupKey } from "@/lib/server/dups";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -46,14 +47,14 @@ export async function POST(req: Request) {
   if (track.title === title && track.artist === artist) return Response.json({ ok: true });
 
   // The new name can't be another song already on BANGER.
-  const { data: all } = await sb.from("bpro_tracks").select("id,title,artist").neq("id", track.id).limit(20000);
   const k = dupKey(title, artist);
-  if ((all || []).some((r: any) => dupKey(r.title, r.artist) === k)) {
+  if ((await existingKeys(sb, [k], track.id)).has(k)) {
     return Response.json({ ok: false, error: "Another track already has this name on BANGER" }, { status: 409 });
   }
 
   const { error } = await sb.from("bpro_tracks").update({ title, artist }).eq("id", track.id);
   if (error) return Response.json({ ok: false, error: error.message }, { status: 500 });
+  await saveDupKey(sb, track.id, title, artist);
 
   if (track.title !== title) {
     await sb.from("scan_events").update({ track_title: title, track_subtitle: artist }).eq("track_title", track.title);

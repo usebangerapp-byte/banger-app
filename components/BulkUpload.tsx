@@ -13,6 +13,7 @@ type Item = {
   state: "ready" | "prep" | "upload" | "register" | "done" | "error";
   dup?: "banger" | "batch";   // already on BANGER, or twice in this batch → never uploaded
   pct: number; error?: string;
+  outOn?: string | null;   // found already released in public catalogues → status fixed
 };
 
 const MAX_BYTES = 45 * 1024 * 1024;
@@ -127,6 +128,7 @@ export default function BulkUpload({ initialFiles }: { initialFiles?: File[] }) 
     const up = await authFetch("/api/bpro/upload", { method: "POST", body: fd });
     const upj = await up.json().catch(() => ({}));
     if (!up.ok || upj?.ok === false) throw new Error(upj?.error || "Upload failed");
+    if (upj?.auto_released) patch(it.id, { outOn: [upj.label, upj.release_date].filter(Boolean).join(" · ") || "" });
 
     // 3) the full track goes straight to storage, then to the recognition engine in one call
     const r1 = await authFetch("/api/bpro/source-url", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ext: full.name.split(".").pop() }) });
@@ -163,6 +165,30 @@ export default function BulkUpload({ initialFiles }: { initialFiles?: File[] }) 
     await Promise.all(Array.from({ length: CONCURRENCY }, worker));
     setRunning(false);
   }
+
+  // While uploading: warn before leaving the page, and keep the screen awake.
+  useEffect(() => {
+    if (!running) return;
+    const onLeave = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", onLeave);
+    // in-app links (bottom bar…) don't trigger beforeunload → ask before leaving
+    const onClick = (e: MouseEvent) => {
+      const link = (e.target as HTMLElement)?.closest?.("a[href]");
+      if (link && !window.confirm("Upload in progress. Leave this page and stop it?")) { e.preventDefault(); e.stopPropagation(); }
+    };
+    document.addEventListener("click", onClick, true);
+    let lock: any = null;
+    const grab = async () => { try { lock = await (navigator as any).wakeLock?.request("screen"); } catch {} };
+    const onVis = () => { if (document.visibilityState === "visible") grab(); };
+    grab();
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("beforeunload", onLeave);
+      document.removeEventListener("click", onClick, true);
+      document.removeEventListener("visibilitychange", onVis);
+      try { lock?.release?.(); } catch {}
+    };
+  }, [running]);
 
   // Duplicates: ask the server which names already exist (any account), and flag
   // repeats inside this batch. Flagged items are locked and skipped.
@@ -245,7 +271,7 @@ export default function BulkUpload({ initialFiles }: { initialFiles?: File[] }) 
                     : it.state === "prep" ? "Preparing…"
                     : it.state === "upload" ? `Uploading… ${it.pct}%`
                     : it.state === "register" ? "Registering…"
-                    : it.state === "done" ? "Done ✓ · now scannable"
+                    : it.state === "done" ? (it.outOn != null ? `Done ✓ · already out${it.outOn ? ` (${it.outOn})` : ""} → marked Released` : "Done ✓ · now scannable")
                     : it.error}
                 </span>
               </div>

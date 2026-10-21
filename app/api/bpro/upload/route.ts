@@ -5,6 +5,8 @@ import { userFromRequest } from '@/lib/server/notify'
 import { isPro } from '@/lib/server/pro'
 
 import { dupKey } from '@/lib/dupKey'
+import { existingKeys, saveDupKey } from '@/lib/server/dups'
+import { lookupRelease } from '@/lib/server/catalog'
 export const runtime = 'nodejs'
 export const maxDuration = 60
 export const dynamic = 'force-dynamic'
@@ -107,9 +109,8 @@ export async function POST(req: Request) {
 
     // Same song already on BANGER (any account) → don't store or fingerprint it twice.
     {
-      const { data: all } = await supabase.from('bpro_tracks').select('title,artist').limit(20000)
       const k = dupKey(title, artist)
-      if ((all || []).some((r: any) => dupKey(r.title, r.artist) === k)) {
+      if ((await existingKeys(supabase, [k])).has(k)) {
         return NextResponse.json({ ok: false, duplicate: true, error: 'Already on BANGER' }, { status: 409 })
       }
     }
@@ -175,9 +176,32 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: snippetError.message }, { status: 500 })
     }
 
+    await saveDupKey(supabase, savedTrack.id, title, artist)
+
+    // Uploaded as "unreleased" but already out (or announced) in public catalogues?
+    // → fix the status / date automatically (strict title + artist match).
+    let autoReleased = false, catalogDate: string | null = null, catalogLabel: string | null = null
+    if (!isReleased) {
+      const found = await Promise.race([
+        lookupRelease(title, artist).catch(() => null),
+        new Promise<null>((r) => setTimeout(() => r(null), 9000)),
+      ])
+      if (found?.releaseDate) {
+        catalogDate = found.releaseDate; catalogLabel = found.label
+        const out = new Date(found.releaseDate).getTime() <= Date.now()
+        await supabase.from('bpro_tracks').update(out
+          ? { is_released: true, release_status: 'released', release_source: 'catalog', release_date: found.releaseDate, release_checked_at: new Date().toISOString() }
+          : { release_date: found.releaseDate }
+        ).eq('id', savedTrack.id)
+        autoReleased = out
+      }
+    }
 
     return NextResponse.json({
       ok: true,
+      auto_released: autoReleased,
+      release_date: catalogDate,
+      label: catalogLabel,
       track: savedTrack,
       snippets_created: snippetRows.length,
       message: existingTrack ? 'Upload BPro mis à jour' : 'Upload BPro créé'
