@@ -29,7 +29,7 @@ function TrackView() {
   const router = useRouter();
   const title = (params.get("t") || "").trim();
   const artistParam = (params.get("a") || "").trim();
-  const [info, setInfo] = useState<{ artist: string; snippet: string | null; released: boolean; beatport: string | null; spotify: string | null } | null>(null);
+  const [info, setInfo] = useState<{ artist: string; snippet: string | null; released: boolean; beatport: string | null; spotify: string | null; releaseDate?: string | null } | null>(null);
   const [userId, setUserId] = useState("");
   const [following, setFollowing] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -39,7 +39,7 @@ function TrackView() {
     if (!sb || !title) { setInfo({ artist: artistParam, snippet: null, released: true, beatport: null, spotify: null }); return; }
     (async () => {
       const { data: rows } = await sb.from("bpro_tracks")
-        .select("title,artist,snippet_path,allow_preview,is_released,release_url").ilike("title", title).limit(5);
+        .select("title,artist,snippet_path,allow_preview,is_released,release_url,release_date").ilike("title", title).limit(5);
       const key = trackKey(title);
       const row: any = (rows || []).find((r: any) => trackKey(r.title || "") === key) || (rows || [])[0];
       setInfo({
@@ -48,6 +48,7 @@ function TrackView() {
         released: row ? !!row.is_released : true,
         beatport: row?.release_url || null,
         spotify: null,
+        releaseDate: row?.release_date || null,
       });
       const { data } = await sb.auth.getSession();
       const uid = data?.session?.user?.id || "";
@@ -83,6 +84,14 @@ function TrackView() {
       {info && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <span style={tag(info.released ? "rel" : "unrel")}>{info.released ? TAG_TEXT.rel : TAG_TEXT.unrel}</span>
+          {info.releaseDate && !Number.isNaN(new Date(info.releaseDate).getTime()) && (
+            <span style={{ ...tag("neutral"), display: "inline-flex", alignItems: "center", gap: 5 }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true">
+                <rect x="4" y="5" width="16" height="15" rx="2" /><path d="M4 10h16M9 3v4M15 3v4" />
+              </svg>
+              {new Date(info.releaseDate).toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" })}
+            </span>
+          )}
         </div>
       )}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
