@@ -10,11 +10,13 @@ import { ui, C, glass, FLAT } from "@/lib/ui";
 
 
 const SCENES = [
-  { icon: "radar", title: "The full Radar", text: "Every hot ID and Most wanted, not just the top 3." },
-  { icon: "chart", title: "The whole chart", text: "Top 100, released and unreleased, with search." },
+  { icon: "radar", title: "The full Radar", text: "Every Hot and Wanted ID, not just the top 3." },
+  { icon: "chart", title: "The Unreleased Top 100", text: "The whole chart, with search." },
   { icon: "bell", title: "Follow every ID", text: "Unlimited follows. The alert the day each one drops." },
+  { icon: "sets", title: "Full set tracklists", text: "Every track of every set, and help unlock the IDs." },
+  { icon: "tracklist", title: "Get my tracklist", text: "Live while you play, or from a YouTube / SoundCloud link." },
   { icon: "upload", title: "Your track in their crates", text: "Upload your unreleased music. Every BANGER scan can now name it." },
-  { icon: "send", title: "Demos that get answers", text: "Send private tracks to DJs. Get 🔥, feedback and requests." },
+  { icon: "send", title: "Demos that get answers", text: "Send private tracks to DJs, or to BANGER. Get 🔥, feedback and requests." },
   { icon: "stats", title: "See it travel", text: "Know how often your IDs get scanned, week after week." },
 ];
 
@@ -22,6 +24,8 @@ function SceneIcon({ name }: { name: string }) {
   const p: Record<string, React.ReactNode> = {
     chart: <path d="M5 20V10M12 20V4M19 20v-7" />,
     upload: <path d="M12 19V5M6 11l6-6 6 6" />,
+    sets: <><rect x="4" y="4" width="16" height="16" rx="3" /><path d="M8 9h8M8 13h8M8 17h5" /></>,
+    tracklist: <><path d="M4 6h16M4 12h10M4 18h7" /><circle cx="18" cy="16" r="3" /></>,
     stats: <><path d="M3 17l6-6 4 4 8-8" /><path d="M15 7h6v6" /></>,
     play: <path d="M8 5v14l11-7z" />,
     bolt: <path d="M13 2L4 14h7l-1 8 9-12h-7z" />,
@@ -173,7 +177,7 @@ export default function UpgradePage() {
         <section style={{ textAlign: "center", display: "grid", gap: 12, padding: "14px 4px 4px" }}>
           <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.15 }}>The scene moves fast.<br />Move first.</div>
           {cta}
-          <div style={{ fontSize: 12, color: C.text4, lineHeight: 1.5 }}>Free stays free: unlimited scans, the top 3 of the Radar and Charts, and 3 follows.</div>
+          <div style={{ fontSize: 12, color: C.text4, lineHeight: 1.5 }}>Free stays free: unlimited scans, the top 3 of the Radar and the Unreleased chart, the first tracks of every set, and 3 follows.</div>
         </section>
       </div>
     </main>

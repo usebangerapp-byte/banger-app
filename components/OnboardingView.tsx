@@ -10,7 +10,7 @@ type Plan = "public" | "pro";
 
 // --- À ajuster facilement ---
 const CONTACT_EMAIL = "contact@usebanger.com";
-const PRO_PRICE = "€9.99 / mo"; // placeholder
+const PRO_PRICE = "€9.99/month or €79/year · 7 days free";
 // ----------------------------
 
 const plans: {
@@ -29,7 +29,8 @@ const plans: {
     features: [
       "Unlimited scans",
       "Top 3 of the Radar",
-      "Top 3 of the Charts",
+      "Top 3 of the Unreleased chart",
+      "The first tracks of every set",
       "Follow up to 3 tracks, get notified on release",
       "Track previews",
       "Your profile & messages",
@@ -40,17 +41,17 @@ const plans: {
     key: "pro",
     name: "PRO",
     price: PRO_PRICE,
-    description: "Upload your unreleased tracks, control their release, and see exactly how your music moves.",
+    description: "For DJs and producers: the full scene, your full sets, and your music in every scan.",
     features: [
       "Everything in Free, plus:",
-      "The full Radar & Most wanted",
-      "The full Top 100 charts, with search",
+      "The full Radar: Hot & Wanted",
+      "The full Unreleased Top 100, with search",
       "Follow unlimited tracks",
-      "Upload your unreleased tracks — they become scannable",
-      "10-second preview of your tracks",
+      "Full set tracklists",
+      "Get my tracklist: live or from a link",
+      "Upload your unreleased tracks, they become scannable",
       "Release control & scan stats on your tracks",
-      "Send demos to DJs and get their feedback",
-      "Get my tracklist",
+      "Send demos to DJs and to BANGER",
     ],
     cta: "Go Pro",
   },
@@ -125,7 +126,7 @@ export default function OnboardingView() {
           <section key={plan.key} style={ui.section}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 0 0" }}>
               <span style={{ fontSize: 20, fontWeight: 700 }}>{plan.key === "pro" ? "Pro" : "Free"}</span>
-              <span style={plan.key === "pro" ? tag("pro") : tag("neutral")}>{plan.price}</span>
+              <span style={{ ...(plan.key === "pro" ? tag("pro") : tag("neutral")), whiteSpace: "normal", textAlign: "right", maxWidth: "65%", lineHeight: 1.3 }}>{plan.price}</span>
             </div>
             <p style={{ margin: "6px 0 6px", fontSize: 14, lineHeight: 1.5, color: C.text2 }}>{plan.description}</p>
             {plan.features.map((feature) => (

@@ -9,8 +9,8 @@ export type ProKind = "follow" | "radar" | "charts" | "sets";
 
 const COPY: Record<ProKind, { title: string; text: string }> = {
   follow: { title: "Follow every ID you find", text: "Free accounts follow 3 tracks. Go Pro to follow unlimited IDs and get notified the day they drop." },
-  radar:  { title: "See what the scene is scanning", text: "The full Radar and Most wanted are Pro." },
-  charts: { title: "Unlock the full Top 100", text: "Free shows the Top 3. Pro shows everything, with search." },
+  radar:  { title: "See what the scene is scanning", text: "The full Hot and Wanted lists are Pro." },
+  charts: { title: "Unlock the full Top 100", text: "Free shows the Top 3. Pro shows the whole Unreleased Top 100, with search." },
   sets:   { title: "Unlock the full tracklist", text: "Every track, every ID, from 0:00 to the end." },
 };
 
