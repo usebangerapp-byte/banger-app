@@ -10,12 +10,12 @@ import { ui, C, glass } from "@/lib/ui";
 
 
 const SCENES = [
-  { icon: "chart", title: "The whole underground chart", text: "Not just the top 3. Every ID moving through the scene, right now." },
+  { icon: "radar", title: "The full Radar", text: "Every hot ID and Most wanted, not just the top 3." },
+  { icon: "chart", title: "The whole chart", text: "Top 100, released and unreleased, with search." },
+  { icon: "bell", title: "Follow every ID", text: "Unlimited follows. The alert the day each one drops." },
   { icon: "upload", title: "Your track in their crates", text: "Upload your unreleased music. Every BANGER scan can now name it." },
+  { icon: "send", title: "Demos that get answers", text: "Send private tracks to DJs. Get 🔥, feedback and requests." },
   { icon: "stats", title: "See it travel", text: "Know how often your IDs get scanned, week after week." },
-  { icon: "play", title: "Let them taste it", text: "A 10-second preview before anyone else can buy it." },
-  { icon: "bolt", title: "Drop day, your call", text: "Flip to Released and everyone following the track gets the alert." },
-  { icon: "crown", title: "First in line", text: "Your tracks get priority in the charts when they're scanned." },
 ];
 
 function SceneIcon({ name }: { name: string }) {
@@ -26,6 +26,9 @@ function SceneIcon({ name }: { name: string }) {
     play: <path d="M8 5v14l11-7z" />,
     bolt: <path d="M13 2L4 14h7l-1 8 9-12h-7z" />,
     crown: <path d="M3 8l4 4 5-7 5 7 4-4-2 11H5z" />,
+    radar: <><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="4" /><path d="M12 12l6-6" /></>,
+    bell: <><path d="M6 16V11a6 6 0 0112 0v5l1.5 2h-15z" /><path d="M10 21h4" /></>,
+    send: <path d="M4 12l16-8-6 16-2.5-6.5L4 12z" />,
   };
   return (
     <span style={iconWrap}>
@@ -170,7 +173,7 @@ export default function UpgradePage() {
         <section style={{ textAlign: "center", display: "grid", gap: 12, padding: "14px 4px 4px" }}>
           <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.15 }}>The scene moves fast.<br />Move first.</div>
           {cta}
-          <div style={{ fontSize: 12, color: C.text4, lineHeight: 1.5 }}>Free stays free: unlimited scans, radar, released charts and the top 3 unreleased.</div>
+          <div style={{ fontSize: 12, color: C.text4, lineHeight: 1.5 }}>Free stays free: unlimited scans, the top 3 of the Radar and Charts, and 3 follows.</div>
         </section>
       </div>
     </main>

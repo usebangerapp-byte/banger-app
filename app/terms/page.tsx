@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 const CONTACT_EMAIL = "contact@usebanger.com";
-const UPDATED = "October 20, 2026";
+const UPDATED = "October 22, 2026";
 
 export default function TermsPage() {
   return (
@@ -46,33 +46,41 @@ export default function TermsPage() {
           </p>
           <ul style={s.ul}>
             <li><strong>Unlimited scans</strong></li>
-            <li>Live radar &amp; trends</li>
-            <li>Full released charts</li>
-            <li>Top 3 of the unreleased chart</li>
-            <li>Follow tracks and get notified when they are released</li>
+            <li>Top 3 of the Radar</li>
+            <li>Top 3 of the Charts</li>
+            <li>Follow up to 3 tracks and get notified when they are released</li>
+            <li>Track previews</li>
             <li>Your profile, followers and messages</li>
           </ul>
 
-          <h3 style={s.h3}>PRO plan — €9.99 / month</h3>
+          <h3 style={s.h3}>PRO plan — €9.99 / month or €79 / year</h3>
           <p>The PRO plan includes everything in the free plan, plus:</p>
           <ul style={s.ul}>
-            <li>The full unreleased chart</li>
+            <li>The full Radar &amp; Most wanted</li>
+            <li>The full Top 100 charts, with search</li>
+            <li>Follow unlimited tracks</li>
             <li>Upload your unreleased tracks so they can be identified</li>
             <li>An optional 10-second public preview of your tracks</li>
-            <li>Release control (switch a track from unreleased to released)</li>
-            <li>Scan statistics on your own tracks</li>
-            <li>Priority for your tracks in the charts</li>
+            <li>Release control (switch a track from unreleased to released) and scan statistics on your tracks</li>
+            <li>Send demos privately to DJs and receive their feedback</li>
+            <li>Set mode</li>
           </ul>
 
           <h3 style={s.h3}>Billing</h3>
           <p>
-            PRO subscriptions are billed monthly via <strong>Stripe</strong>. Payment is charged at
+            PRO subscriptions are billed monthly or yearly, depending on the plan you choose, via <strong>Stripe</strong>. Payment is charged at
             the start of each billing period. Subscriptions renew automatically unless cancelled at
             least 24 hours before the renewal date.
           </p>
           <p>
             On iOS, payment may alternatively be processed through Apple In-App Purchase, subject to
             Apple&apos;s terms.
+          </p>
+
+          <h3 style={s.h3}>Free trial</h3>
+          <p>
+            7 days free on your first subscription. A card is required. You&apos;re charged at the end of
+            the trial unless you cancel before. One trial per person.
           </p>
 
           <h3 style={s.h3}>Cancellation &amp; refunds</h3>
