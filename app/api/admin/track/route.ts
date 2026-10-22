@@ -73,11 +73,13 @@ export async function GET(req: Request) {
   const title = clean(new URL(req.url).searchParams.get("title"));
   const { data: rows } = await sb.from("bpro_tracks").select("id,title,artist,is_released,release_status").ilike("title", likeExact(title)).limit(1);
   const t: any = (rows || [])[0] || null;
+  const { count: realScans } = await sb.from("scan_events").select("id", { count: "exact", head: true })
+    .ilike("track_title", likeExact(title)).neq("result_type", "not_found");
   let ov: any = null;
   try { ov = (await sb.from("track_overrides").select("hidden,scans").eq("key", titleKey(title)).maybeSingle()).data; } catch {}
   return Response.json({
     ok: true, inBanger: !!t, artist: t?.artist || null,
     released: t ? (t.is_released === true || t.release_status === "released") : null,
-    hidden: !!ov?.hidden, scans: ov?.scans ?? null,
+    hidden: !!ov?.hidden, scans: ov?.scans ?? null, realScans: realScans ?? null,
   });
 }
