@@ -273,7 +273,7 @@ export default function ChartsPage() {
 
   function renderTrackList(list: any[], kind: "unreleased" | "released") {
     return (
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 0 }}>
         {list.map((track, index) => {
           const canPreview =
             kind === "released"
@@ -292,10 +292,9 @@ export default function ChartsPage() {
           // Same row as everywhere: ▶ · title/artist · Follow over Info
           const cleanTitle = artistText && lowerTitle.startsWith(lowerArtist + " - ") ? titleText.slice(artistText.length + 3).trim() : (titleText || displayLine);
           return (
-            <div key={track.id} style={{ ...rowStyle, padding: "0 14px" }}>
-              <SharedTrackRow rank={index + 1} title={cleanTitle} artist={artistText} released={kind === "released"} last
-                meta={`${Number(track.scan_count || 0)} scan${Number(track.scan_count || 0) === 1 ? "" : "s"}`} />
-            </div>
+            <SharedTrackRow key={track.id} bigRank rank={index + 1} title={cleanTitle} artist={artistText} released={kind === "released"}
+              last={index === list.length - 1 && !(unreleasedLocked && lockedCount > 0)}
+              meta={`${Number(track.scan_count || 0)} scan${Number(track.scan_count || 0) === 1 ? "" : "s"}`} />
           );
         })}
       </div>
@@ -309,7 +308,7 @@ export default function ChartsPage() {
       `}</style>
 
       <div style={ui.shell}>
-        <PageHeader title="Charts" sub="What the scene is playing right now." code="Top 100" />
+        <PageHeader title="Charts" sub="What the scene is playing right now." code="Unreleased · Top 100" />
 
         {loading ? (
           <div style={cardStyle}>Loading…</div>
@@ -317,7 +316,7 @@ export default function ChartsPage() {
           <div style={cardStyle}>{error}</div>
         ) : (
           <section style={cardStyle}>
-            <div style={{ position: "sticky", top: "calc(56px + env(safe-area-inset-top))", zIndex: 5, padding: "8px 0", margin: "0 -4px", paddingLeft: 4, paddingRight: 4, background: "rgba(0,0,0,0.35)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderRadius: 18 }}>
+            <div style={{ position: "sticky", top: "calc(56px + env(safe-area-inset-top))", zIndex: 5, padding: "8px 0", margin: "0 -4px", paddingLeft: 4, paddingRight: 4, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderRadius: 0 }}>
               {/* Released chart hidden for now: the Top 100 is the unreleased one */}
               <div style={{ display: "grid", gap: 8 }}>
                 <input
@@ -350,9 +349,9 @@ export default function ChartsPage() {
                   {renderTrackList(visibleRows, activeChart)}
 
                   {unreleasedLocked && lockedCount > 0 && (
-                    <div style={{ ...rowStyle, padding: "0 14px", marginTop: 10 }}>
+                    <div>
                       {Array.from({ length: Math.min(3, lockedCount) }).map((_, i, arr) => (
-                        <LockedRow key={i} rank={FREE_UNRELEASED_LIMIT + i + 1} kind="charts" last={i === arr.length - 1} />
+                        <LockedRow bigRank key={i} rank={FREE_UNRELEASED_LIMIT + i + 1} kind="charts" last={i === arr.length - 1} />
                       ))}
                       {lockedCount > 3 && (
                         <button onClick={() => openPro("charts")} style={{ ...showMoreBtn, color: C.gold, padding: "12px 0" }}>{`+${lockedCount - 3} more with Pro`}</button>
@@ -440,7 +439,7 @@ const showMoreBtn: React.CSSProperties = { ...ui.more };
 
 const showLessBtn: React.CSSProperties = { ...ui.more };
 
-const searchInputStyle: React.CSSProperties = { ...ui.input };
+const searchInputStyle: React.CSSProperties = { ...ui.input, width: "100%", boxSizing: "border-box", borderRadius: 999, padding: "12px 16px" };
 
 const tabBtn: React.CSSProperties = { padding: "9px 0", borderRadius: 999, border: "none", background: "transparent", color: C.text3, fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" };
 
