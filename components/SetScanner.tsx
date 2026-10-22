@@ -63,9 +63,20 @@ async function sharpen(file: File): Promise<Blob | File> {
     c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
     const g = c.getContext("2d")!; g.drawImage(img, 0, 0, c.width, c.height);
     const d = g.getImageData(0, 0, c.width, c.height), px = d.data;
-    for (let i = 0; i < px.length; i += 4) {
+    // grey levels, then: dark screenshot (white text on black) → inverted; contrast stretched (no hard cut,
+    // a hard black/white cut was erasing light-blue timestamps and whole lines)
+    const n = px.length / 4, grey = new Uint8ClampedArray(n);
+    let sum = 0, lo = 255, hi = 0;
+    for (let i = 0, j = 0; i < px.length; i += 4, j++) {
       const y = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
-      const v = y < 170 ? 0 : 255;                 // light grey / blue text → black, background → white
+      grey[j] = y; sum += y;
+    }
+    const dark = sum / n < 110;
+    for (let j = 0; j < n; j++) { const v = dark ? 255 - grey[j] : grey[j]; grey[j] = v; if (v < lo) lo = v; if (v > hi) hi = v; }
+    const span = Math.max(1, hi - lo);
+    for (let i = 0, j = 0; i < px.length; i += 4, j++) {
+      let v = ((grey[j] - lo) / span) * 255;
+      v = v < 200 ? v * 0.75 : v;                 // push text darker, keep the background white
       px[i] = px[i + 1] = px[i + 2] = v;
     }
     g.putImageData(d, 0, 0);
@@ -76,9 +87,10 @@ async function sharpen(file: File): Promise<Blob | File> {
 /** OCR text → "mm:ss Artist - Title" lines. Fixes "10.4121" (lost colon), "12 51:25 …" (number left in), stray dashes and dots. */
 export function cleanOcr(text: string): string[] {
   const out: string[] = [];
-  for (let raw of text.split(/\r?\n/)) {
+  for (const raw of text.split(/\r?\n/)) {
     let l = raw.replace(/[|“”]/g, "").replace(/\s+/g, " ").trim();
     if (!l) continue;
+    const numbered = /^\d{1,3}\s*[.,)]\s*\S+\s+\S+/.test(l);   // "9. 36:37 Jackie…" even if the rest is badly read
     l = l.replace(/^\d{1,3}\s*[.,)]\s*/, "");                      // "10. " / "10."
     l = l.replace(/^(\d{1,3})\s+(?=\d{1,2}[:.]\d{2})/, "");           // "12 51:25" → "51:25"
     l = l.replace(/^(\d{1,2})[.,;](\d{2})[.,;:](\d{2})\b/, "$1:$2:$3"); // "1.04.22"
@@ -91,7 +103,7 @@ export function cleanOcr(text: string): string[] {
     for (let k = 0; k < 3; k++) l = l.replace(/(?:\s+[^\sA-Za-z0-9À-ÿ()]+|\s+[a-z]\W*)+$/, "").replace(/[\s.,;:=_\-–—~]+$/, "").trim();
     const hasTime = /^\d{1,2}:\d{2}/.test(l);
     // keep lines with a time, or that look like "Artist - Title" (the time was unreadable)
-    if (hasTime || / - \S/.test(l)) out.push(l);
+    if (hasTime || / - \S/.test(l) || numbered) out.push(l);
   }
   return out;
 }
