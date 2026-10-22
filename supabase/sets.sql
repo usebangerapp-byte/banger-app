@@ -62,3 +62,7 @@ alter table setlist_tracks add column if not exists release_checked_at timestamp
 alter table setlist_suggestions add column if not exists source text default 'user';   -- user | scan
 alter table setlist_suggestions add column if not exists heard int;                     -- scan: heard 1× or 2×
 alter table setlist_suggestions alter column track_id drop not null;
+
+-- Followed tracks: release status (profile Follows / Out now)
+alter table track_followers add column if not exists released boolean;
+alter table track_followers add column if not exists release_checked_at timestamptz;

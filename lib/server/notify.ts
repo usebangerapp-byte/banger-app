@@ -213,6 +213,7 @@ export async function notifyTrackReleased(sb: SupabaseClient, title: string, art
       message: artist ? `${artist} — out now. Tap to listen.` : "Out now. Tap to listen.",
     });
   }
-  // The track is out: following it has no purpose any more → remove the follows
-  await sb.from("track_followers").delete().ilike("track_title", pattern);
+  // The track is out: the follows stay (they show in the profile under "Out now"), marked as released
+  const { error: upErr } = await sb.from("track_followers").update({ released: true, release_checked_at: new Date().toISOString() }).ilike("track_title", pattern);
+  if (upErr) await sb.from("track_followers").delete().ilike("track_title", pattern);   // columns not created yet
 }
