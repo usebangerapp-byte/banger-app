@@ -594,11 +594,15 @@ export default function Home() {
           </div>
           </div>
 
-          <div style={{ ...scanStyles.status, cursor: busy ? "default" : "pointer" }} onClick={() => { if (!busy) startListening(); }}>
+          {/* A real button with a big touch area, above the woofer's glow layers */}
+          <button type="button" onClick={() => { if (!busy) startListening(); }} disabled={busy}
+            style={{ ...scanStyles.status, position: "relative", zIndex: 5, background: "none", border: "none",
+              padding: "14px 40px", margin: "-14px auto", fontFamily: "inherit", cursor: busy ? "default" : "pointer",
+              touchAction: "manipulation", WebkitTapHighlightColor: "transparent", color: "#fff" }}>
             {status === "idle" ? "Tap to scan" : null}
             {status === "listening" ? "Listening…" : null}
             {status === "recognizing" ? "Identifying…" : null}
-          </div>
+          </button>
 
 
           {/* ── RESULT ── */}
