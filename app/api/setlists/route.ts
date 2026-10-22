@@ -1,6 +1,6 @@
 import { adminClient } from "@/lib/server/notify";
 import { adminFromRequest } from "@/lib/server/admin";
-import { parseTracklist, youtubeId } from "@/lib/setlists";
+import { parseTracklist, youtubeId, isNoName } from "@/lib/setlists";
 import { titleKey } from "@/lib/titleKey";
 
 export const runtime = "nodejs";
@@ -32,7 +32,7 @@ export async function GET(req: Request) {
     ok: true,
     sets: (sets || []).map((s: any) => {
       const t = (tracks || []).filter((x: any) => x.setlist_id === s.id);
-      return { ...s, total: t.length, known: t.filter((x: any) => x.title).length, asks: (asks || []).filter((a: any) => a.setlist_id === s.id).length };
+      return { ...s, total: t.length, known: t.filter((x: any) => x.title && !isNoName(x.title)).length, asks: (asks || []).filter((a: any) => a.setlist_id === s.id).length };
     }),
   });
 }

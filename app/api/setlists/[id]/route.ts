@@ -4,7 +4,7 @@ import { ADMIN_EMAILS } from "@/lib/admins";
 import { dupKey } from "@/lib/dupKey";
 import { FREE } from "@/lib/plan";
 import { lookupRelease } from "@/lib/server/catalog";
-import { youtubeId } from "@/lib/setlists";
+import { youtubeId, cleanNames, isNoName } from "@/lib/setlists";
 import { checkSetTracks } from "@/lib/server/setRelease";
 import { titleKey } from "@/lib/titleKey";
 export const maxDuration = 60;
@@ -28,7 +28,7 @@ async function checkUnlocked(sb: any, setId: string) {
   const { data: set } = await sb.from("setlists").select("id,title,venue,unlocked_at").eq("id", setId).maybeSingle();
   if (!set || set.unlocked_at) return;
   const { data: tracks } = await sb.from("setlist_tracks").select("title").eq("setlist_id", setId);
-  if (!tracks?.length || tracks.some((t: any) => !t.title)) return;
+  if (!tracks?.length || tracks.some((t: any) => isNoName(t.title))) return;
   await sb.from("setlists").update({ unlocked_at: new Date().toISOString() }).eq("id", setId);
   const { data: fol } = await sb.from("setlist_reactions").select("user_id").eq("setlist_id", setId).eq("kind", "follow");
   const name = set.venue ? `${set.title} · ${set.venue}` : set.title;
@@ -64,7 +64,7 @@ async function load(sb: any, id: string, user: any) {
   const sug = ((sug0 || []) as any[]).filter((s) => admin || s.source !== "scan");
   const r = (reacts || []) as any[];
   const fires = r.filter((x) => x.kind === "fire" && x.at_sec != null).map((x) => x.at_sec as number);
-  const list = (tracks || []) as any[];
+  const list = ((tracks || []) as any[]).map((t) => (t.title && isNoName(t.title) ? { ...t, title: null, artist: null } : t));
   const out = list.map((t, i) => {
     const end = list[i + 1]?.start_sec ?? Infinity;
     const groups = new Map<string, any>();
@@ -169,7 +169,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
     if (b.action === "suggest") {
       const title = clean(b.title), artist = clean(b.artist);
-      if (!title || !artist) return Response.json({ ok: false, error: "Title and artist are required" }, { status: 400 });
+      if (!title || !artist || isNoName(title)) return Response.json({ ok: false, error: "Title and artist are required" }, { status: 400 });
       const { data: t } = await sb.from("setlist_tracks").select("id,title").eq("id", b.track_id).eq("setlist_id", id).maybeSingle();
       if (!t || t.title) return Response.json({ ok: false, error: "This track is already named" }, { status: 400 });
 
@@ -217,7 +217,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         if (!s?.length) return Response.json({ ok: false, error: "Suggestion not found" }, { status: 404 });
         title = s[0].title; artist = s[0].artist; namedBy = [...new Set(s.filter((x: any) => x.source !== "scan").map((x: any) => x.user_id))] as string[];
       }
-      if (!title) return Response.json({ ok: false, error: "Title required" }, { status: 400 });
+      if (!title || isNoName(title)) return Response.json({ ok: false, error: "Title required" }, { status: 400 });
       await sb.from("setlist_tracks").update({ title, artist: artist || null, named_by: namedBy, validated_at: new Date().toISOString() }).eq("id", t.id);
       await sb.from("setlist_suggestions").update({ status: "accepted" }).eq("track_id", t.id).eq("key", dupKey(title, artist)).eq("status", "open");
       await sb.from("setlist_suggestions").update({ status: "closed" }).eq("track_id", t.id).eq("status", "open");
@@ -230,8 +230,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       // The scan never names an ID by itself: what it heard is stored as a proposal for an admin to check.
       const rows = (Array.isArray(b.rows) ? b.rows : []).slice(0, 400).map((r: any) => ({
         start_sec: r.start_sec == null || !isFinite(Number(r.start_sec)) ? null : Math.max(0, Math.floor(Number(r.start_sec))),
-        title: clean(r.title) || null, artist: clean(r.artist) || null,
-        scan: !clean(r.title) && clean(r.scan_title) ? { title: clean(r.scan_title), artist: clean(r.scan_artist), heard: Math.min(9, Math.max(1, Number(r.scan_heard) || 1)) } : null,
+        ...cleanNames(clean(r.title), clean(r.artist)),
+        scan: isNoName(clean(r.title)) && clean(r.scan_title) && !isNoName(clean(r.scan_title)) ? { title: clean(r.scan_title), artist: clean(r.scan_artist), heard: Math.min(9, Math.max(1, Number(r.scan_heard) || 1)) } : null,
       })).sort((x: any, y: any) => (x.start_sec ?? 0) - (y.start_sec ?? 0));
       const { data: old } = await sb.from("setlist_tracks").select("id,start_sec,title,artist,named_by,validated_at").eq("setlist_id", id);
       const keep = new Map<string, any>();
@@ -284,7 +284,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       if (!t) return Response.json({ ok: false, error: "Track not found" }, { status: 404 });
       if (b.action === "delete_track") await sb.from("setlist_tracks").delete().eq("id", t.id);
       else {
-        const title = clean(b.title) || null, artist = clean(b.artist) || null;
+        const { title, artist } = cleanNames(clean(b.title), clean(b.artist));
         const start = b.start_sec == null || !isFinite(Number(b.start_sec)) ? null : Math.max(0, Math.floor(Number(b.start_sec)));
         const renamed = (title || "") !== (t.title || "") || (artist || "") !== (t.artist || "");
         await sb.from("setlist_tracks").update({

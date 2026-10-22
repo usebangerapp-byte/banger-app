@@ -21,6 +21,25 @@ export function parseTime(t: string): number | null {
   return p.reduce((acc, n) => acc * 60 + n, 0);
 }
 
+/**
+ * A name that says "we don't know": ID, ID - ID, Unknown, Untitled, TBA, ?, Track ID…
+ * Such a row is a missing track (an ID), not a named one.
+ */
+const NO_NAME = /^(?:ids?|id\s*\d+|track\s*id|unknown(?:\s*(?:artist|track|title))?|untitled|unreleased|tba|tbc|n\/?a|none|\?+|[-–—_.]+)$/i;
+export function isNoName(s: string | null | undefined) {
+  const v = String(s ?? "").replace(/[()\[\]"'“”]/g, " ").replace(/\s+/g, " ").trim();
+  if (!v) return true;
+  if (NO_NAME.test(v)) return true;
+  // "ID - ID", "Unknown - Unknown", "ID (ID Remix)", "ID ID"
+  return v.split(/\s+[-–—]\s+|\s+/).every((w) => NO_NAME.test(w) || /^(?:remix|edit|mix|vip|dub|bootleg|rework)$/i.test(w));
+}
+/** Title + artist as stored: an unknown title makes the whole row an ID. */
+export function cleanNames(title: string | null | undefined, artist: string | null | undefined) {
+  const t = isNoName(title) ? null : String(title).trim();
+  if (!t) return { title: null, artist: null };
+  return { title: t, artist: isNoName(artist) ? null : String(artist).trim() };
+}
+
 /** "0:00 Artist - Title" / "34:10 ID" / "1:02:30 Artist – Title (X Remix)" → rows */
 export function parseTracklist(text: string) {
   const rows: { start_sec: number | null; title: string | null; artist: string | null }[] = [];
@@ -31,12 +50,10 @@ export function parseTracklist(text: string) {
     const start_sec = m ? parseTime(m[1]) : null;
     // "(Unreleased)", "[FREE DL]"… are notes, not part of the name
     const rest = (m ? m[2] : line).replace(/\s*[\(\[](?:unreleased|forthcoming|free\s*(?:dl|download)|out\s*now|soon)[\)\]]\s*/gi, " ").trim();
-    if (!rest || /^id$|^id\s*[-–—]\s*id$|^\?+$|^unknown$/i.test(rest)) { rows.push({ start_sec, title: null, artist: null }); continue; }
+    if (isNoName(rest)) { rows.push({ start_sec, title: null, artist: null }); continue; }
     const parts = rest.split(/\s+[-–—]\s+/);
-    if (parts.length >= 2) {
-      const artist = parts[0].trim(), title = parts.slice(1).join(" - ").trim();
-      rows.push({ start_sec, artist: /^id$/i.test(artist) ? null : artist, title: /^id$/i.test(title) ? null : title });
-    } else rows.push({ start_sec, artist: null, title: rest });
+    if (parts.length >= 2) rows.push({ start_sec, ...cleanNames(parts.slice(1).join(" - "), parts[0]) });
+    else rows.push({ start_sec, artist: null, title: rest });
   }
   return rows;
 }
