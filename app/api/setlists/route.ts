@@ -26,13 +26,16 @@ export async function GET(req: Request) {
     .eq("published", true).order("created_at", { ascending: false }).limit(100);
   if (error) return Response.json({ ok: false, error: /relation|does not exist/i.test(error.message) ? "Run the Sets SQL first" : error.message, sets: [] }, { status: 500 });
   const ids = (sets || []).map((s: any) => s.id);
-  const { data: tracks } = ids.length ? await sb.from("setlist_tracks").select("id,setlist_id,title").in("setlist_id", ids) : { data: [] as any[] };
+  const { data: tracks } = ids.length ? await sb.from("setlist_tracks").select("id,setlist_id,title,artist").in("setlist_id", ids) : { data: [] as any[] };
   const { data: asks } = ids.length ? await sb.from("setlist_reactions").select("setlist_id").eq("kind", "ask").in("setlist_id", ids) : { data: [] as any[] };
   return Response.json({
     ok: true,
     sets: (sets || []).map((s: any) => {
       const t = (tracks || []).filter((x: any) => x.setlist_id === s.id);
-      return { ...s, total: t.length, known: t.filter((x: any) => x.title && !isNoName(x.title)).length, asks: (asks || []).filter((a: any) => a.setlist_id === s.id).length };
+      const named = t.filter((x: any) => x.title && !isNoName(x.title));
+      return { ...s, total: t.length, known: named.length, asks: (asks || []).filter((a: any) => a.setlist_id === s.id).length,
+        // what the search bar looks through: the tracks played (artists + titles)
+        played: named.map((x: any) => `${x.artist || ""} ${x.title}`.trim()) };
     }),
   });
 }
