@@ -29,7 +29,8 @@ export function parseTracklist(text: string) {
     if (!line) continue;
     const m = line.match(/^\[?(\d{1,2}:\d{2}(?::\d{2})?)\]?\s*[-–—]?\s*(.*)$/);
     const start_sec = m ? parseTime(m[1]) : null;
-    const rest = (m ? m[2] : line).trim();
+    // "(Unreleased)", "[FREE DL]"… are notes, not part of the name
+    const rest = (m ? m[2] : line).replace(/\s*[\(\[](?:unreleased|forthcoming|free\s*(?:dl|download)|out\s*now|soon)[\)\]]\s*/gi, " ").trim();
     if (!rest || /^id$|^id\s*[-–—]\s*id$|^\?+$|^unknown$/i.test(rest)) { rows.push({ start_sec, title: null, artist: null }); continue; }
     const parts = rest.split(/\s+[-–—]\s+/);
     if (parts.length >= 2) {
