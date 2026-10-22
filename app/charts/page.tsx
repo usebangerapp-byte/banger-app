@@ -318,24 +318,7 @@ export default function ChartsPage() {
         ) : (
           <section style={cardStyle}>
             <div style={{ position: "sticky", top: "calc(56px + env(safe-area-inset-top))", zIndex: 5, padding: "8px 0", margin: "0 -4px", paddingLeft: 4, paddingRight: 4, background: "rgba(0,0,0,0.35)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderRadius: 18 }}>
-              <div style={segment}>
-                <button
-                  type="button"
-                  onClick={() => switchChart("unreleased")}
-                  style={activeChart === "unreleased" ? activeTabBtn : tabBtn}
-                >
-                  Unreleased
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => switchChart("released")}
-                  style={activeChart === "released" ? activeTabBtn : tabBtn}
-                >
-                  Released
-                </button>
-              </div>
-
+              {/* Released chart hidden for now: the Top 100 is the unreleased one */}
               <div style={{ display: "grid", gap: 8 }}>
                 <input
                   value={search}

@@ -650,6 +650,15 @@ function ScanResult({ title, subtitle, tag, snippet }: {
   }
   const { meta } = useTrackState(title);
   const preview = snippet || meta?.snippet || null;     // from the scan, or from the uploaded track
+  // Unreleased + in the Top 100 → "#12 in the Unreleased Charts", discreet
+  const [rank, setRank] = useState<number | null>(null);
+  useEffect(() => {
+    if (tag !== "UNRELEASED") return;
+    let alive = true;
+    fetch(`/api/charts?rank=${encodeURIComponent(title)}`, { cache: "no-store" }).then((r) => r.json())
+      .then((j) => { if (alive && typeof j?.rank === "number") setRank(j.rank); }).catch(() => {});
+    return () => { alive = false; };
+  }, [title, tag]);
   const found = tag !== "NOT FOUND";
   const artist = subtitle && subtitle !== "(Released)" ? subtitle : "";
   const pill: CSSProperties = { ...ui.pillSmall, flex: 1, justifyContent: "center", padding: "8px 10px" };
@@ -667,6 +676,11 @@ function ScanResult({ title, subtitle, tag, snippet }: {
               {tag === "UNRELEASED" ? TAG_TEXT.unrel : tag === "RELEASED" ? TAG_TEXT.rel : "Not found"}
             </span>
           </div>
+          {rank && (
+            <Link href="/charts" style={{ display: "inline-block", marginTop: 6, fontSize: 12, fontWeight: 600, color: C.gold, textDecoration: "none", opacity: 0.85 }}>
+              #{rank} in the Unreleased Charts ›
+            </Link>
+          )}
         </div>
       </div>
       {found && (

@@ -113,9 +113,9 @@ export default function RadarPage() {
             <span style={{ flex: 1, fontSize: 22, fontWeight: 800, letterSpacing: "-0.01em" }}>Charts</span>
             <span style={{ fontSize: 13, fontWeight: 700, color: C.gold, padding: "6px 12px", borderRadius: 999, background: "rgba(0,0,0,0.35)", border: "1px solid rgba(245,207,104,0.35)" }}>Top 100 ›</span>
           </div>
-          {(chartTop.unrel || chartTop.rel) && (
+          {chartTop.unrel && (
             <div style={{ display: "grid", gap: 6 }}>
-              {([["Unreleased", chartTop.unrel, C.gold], ["Released", chartTop.rel, C.rel]] as const).filter(([, t]) => t).map(([label, t, color]) => (
+              {([["Unreleased", chartTop.unrel, C.gold]] as const).filter(([, t]) => t).map(([label, t, color]) => (
                 <div key={label} style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, fontSize: 14 }}>
                   <span style={{ fontSize: 11, fontWeight: 700, color, width: 78, flexShrink: 0 }}>#1 {label}</span>
                   <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 600 }}>
@@ -131,34 +131,27 @@ export default function RadarPage() {
           <div style={ui.empty}>Loading…</div>
         ) : (<>
 
-          {/* 1 — HOT RIGHT NOW */}
+          {/* 1 — HOT RIGHT NOW: this week's most scanned, one list (#1 then the rest) */}
           <section style={ui.section}>
             <div style={ui.label}>Hot right now</div>
-            {data.hot ? (
-              <SharedTrackRow rank={1} title={data.hot.track_title} artist={data.hot.track_subtitle || ""}
-                meta={`${data.hot.scans} scan${data.hot.scans === 1 ? "" : "s"}`} last />
-            ) : (
+            {!data.hot && data.trending.length === 0 ? (
               <div style={ui.empty}>Nothing scanned this week yet. Be first.</div>
-            )}
-          </section>
-
-          {/* 2 — TRENDING THIS WEEK */}
-          <section style={ui.section}>
-            <div style={ui.label}>Trending this week</div>
-            {data.trending.length === 0 ? (
-              <div style={ui.empty}>Nothing yet.</div>
             ) : (<>
-              {(locked ? data.trending.slice(0, 5) : showMoreTrending ? data.trending : data.trending.slice(0, 3)).map((t, i, arr) => t.locked
+              {data.hot && (
+                <SharedTrackRow rank={1} title={data.hot.track_title} artist={data.hot.track_subtitle || ""}
+                  meta={`${data.hot.scans} scan${data.hot.scans === 1 ? "" : "s"}`} last={data.trending.length === 0} />
+              )}
+              {(locked ? data.trending.slice(0, 5) : showMoreTrending ? data.trending : data.trending.slice(0, 4)).map((t, i, arr) => t.locked
                 ? <LockedRow key={i} rank={i + 2} kind="radar" last={i === arr.length - 1} />
                 : <SharedTrackRow key={i} rank={i + 2} title={t.track_title} artist={t.track_subtitle || ""}
-                  meta={`${t.scans} scan${t.scans === 1 ? "" : "s"}`} last={!(data.trending.length > 3) && i === Math.min(3, data.trending.length) - 1} />
+                  meta={`${t.scans} scan${t.scans === 1 ? "" : "s"}`} last={i === arr.length - 1 && !(data.trending.length > 4)} />
               )}
               {locked && data.trending.length > 5 && (
                 <button onClick={() => openPro("radar")} style={{ ...ui.more, color: C.gold }}>{`+${data.trending.length - 5} more with Pro`}</button>
               )}
-              {!locked && data.trending.length > 3 && (
+              {!locked && data.trending.length > 4 && (
                 <button onClick={() => setShowMoreTrending(v => !v)} style={ui.more}>
-                  {showMoreTrending ? "Show less" : `Show ${data.trending.length - 3} more`}
+                  {showMoreTrending ? "Show less" : `Show ${data.trending.length - 4} more`}
                 </button>
               )}
             </>)}

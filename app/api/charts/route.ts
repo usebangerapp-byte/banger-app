@@ -98,6 +98,13 @@ export async function GET(req: Request) {
   const res = await compute()
   if (res.status !== 200) return res
   const rows: any[] = await res.json()
+  // Position of one track in the Unreleased chart (shown under a scan result): ?rank=<title>
+  const rankOf = new URL(req.url).searchParams.get("rank")
+  if (rankOf) {
+    const unrel = rows.filter((r) => r.result_type === "recognized_unreleased").slice(0, 100)
+    const i = unrel.findIndex((r) => titleKey(r.track_title || "") === titleKey(rankOf))
+    return Response.json({ rank: i >= 0 ? i + 1 : null }, { headers: { "Cache-Control": "no-store" } })
+  }
   const sb = adminClient()
   const me = await userFromRequest(sb, req).catch(() => null)
   const pro = me ? await isPro(sb, me.id) : false
