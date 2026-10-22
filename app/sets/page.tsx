@@ -31,6 +31,15 @@ export default function SetsPage() {
         <PageHeader title="Sets" code={isAdmin ? <Link href="/sets/new" style={{ color: C.gold, textDecoration: "none" }}>+ Add a set</Link> : undefined} />
         {isAdmin && <Link href="/sets/review" style={{ ...ui.pill, justifyContent: "center", color: C.gold, borderColor: "rgba(245,207,104,0.35)", textDecoration: "none" }}>🔎 Review IDs</Link>}
 
+        {/* Set mode (Pro): record the tracklist of your own set — lives with the Sets */}
+        <Link href="/set" style={{ ...glass, borderRadius: 20, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, textDecoration: "none", color: "#fff" }}>
+          <span style={{ width: 36, height: 36, borderRadius: 12, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(245,207,104,0.12)", border: "1px solid rgba(245,207,104,0.25)" }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.gold} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h7" /><circle cx="18" cy="16" r="3" /></svg>
+          </span>
+          <span style={{ flex: 1, fontSize: 15, fontWeight: 600 }}>Set mode</span>
+          <span style={{ color: C.text4 }}>›</span>
+        </Link>
+
         <div style={{ ...glass, display: "grid", gridTemplateColumns: "1fr 1fr", padding: 4, borderRadius: 999 }}>
           {(["unlocking", "unlocked"] as const).map((t) => (
             <button key={t} onClick={() => setTab(t)} style={{ height: 40, borderRadius: 999, border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 15,

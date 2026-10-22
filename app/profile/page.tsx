@@ -582,12 +582,11 @@ export default function ProfilePageV2() {
             )}
           </section>}
 
-          {/* ── STUDIO (Pro): send a demo · Set mode ── */}
+          {/* ── STUDIO (Pro): send a demo (Set mode lives in the Sets tab) ── */}
           {tab==="studio" && !loading && role === "pro" && (
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(2, minmax(0,1fr))", gap:10 }}>
+            <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:10 }}>
               {[
                 { href:"/promo", label:"Send a demo", icon:<path d="M4 12l16-8-6 16-2.5-6.5L4 12z" /> },
-                { href:"/set", label:"Set mode", icon:<><path d="M4 6h16M4 12h10M4 18h7" /><circle cx="18" cy="16" r="3" /></> },
               ].map((t) => (
                 <button key={t.href} onClick={() => router.push(t.href)}
                   style={{ ...glass, borderRadius:20, padding:"14px 16px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", color:"#fff", fontFamily:"inherit", textAlign:"left" }}>
