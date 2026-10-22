@@ -10,6 +10,7 @@ import { getBrowserRole } from "@/lib/auth/getBrowserRole";
 import PageHeader from "@/components/PageHeader";
 import { PeopleSearch, PeopleSheet } from "@/components/People";
 import { ui, C, glass, tag, TAG_TEXT } from "@/lib/ui";
+import { promoSummary } from "@/lib/feedback";
 import MarqueeText from "@/components/MarqueeText";
 import TrackRow from "@/components/TrackRow";
 import { usePreviewIndex, PreviewButton, trackKey, trackHref } from "@/lib/preview";
@@ -169,6 +170,7 @@ export default function ProfilePageV2() {
   const [tracks,   setTracks]   = useState<any[]>([]);
   const [sparkData,setSparkData]= useState<number[]>([]);
   const [topScan,  setTopScan]  = useState<{ title: string; subtitle?: string; n: number } | null>(null);
+  const [promoLine, setPromoLine] = useState<string | null>(null);
   const [proStats, setProStats] = useState<{ uploadScans7d: number; topUpload: { title: string; scans: number } | null } | null>(null);
   const [shared,   setShared]   = useState(false);
   const [tab,      setTab]      = useState<"profile"|"messages"|"settings">("profile");
@@ -354,6 +356,10 @@ export default function ProfilePageV2() {
     if (role !== "pro" || !userId) return;
     authFetch("/api/profile/stats").then(r => r.json())
       .then(j => { if (j?.ok) setProStats({ uploadScans7d: j.uploadScans7d || 0, topUpload: j.topUpload || null }); })
+      .catch(() => {});
+    // Promo feedback, all promos together ("5 DJs · 3 listened · 🔥 2 …")
+    authFetch("/api/promo/list").then(r => r.json())
+      .then(j => { const all = (j?.promos || []).flatMap((p: any) => p.recipients || []); if (all.length) setPromoLine(promoSummary(all)); })
       .catch(() => {});
   }, [role, userId]);
 
@@ -650,6 +656,13 @@ export default function ProfilePageV2() {
                 </div>
                 <div style={{ fontSize:12, color:C.text4 }}>last 7 days</div>
               </div>
+              {promoLine && (
+                <button onClick={() => router.push("/promo")} style={{ ...weekLine, width:"100%", background:"none", border:"none", borderTop: (weekLine as any).borderTop, paddingLeft:0, paddingRight:0, paddingBottom:0, cursor:"pointer", color:"#fff", fontFamily:"inherit", textAlign:"left" }}>
+                  <span style={{ color:C.gold, flexShrink:0 }}>Promos</span>
+                  <span style={{ flex:1, minWidth:0, fontSize:13, color:C.text2 }}>{promoLine}</span>
+                  <span style={{ color:C.text4, flexShrink:0 }}>›</span>
+                </button>
+              )}
               {proStats.topUpload && (
                 <div style={weekLine}>
                   <span style={{ color:C.gold, flexShrink:0 }}>Top</span>

@@ -33,6 +33,7 @@ export async function GET(req: Request) {
         name: byId.get(r.recipient_id)?.display_name || "DJ",
         avatar: byId.get(r.recipient_id)?.avatar_url || null,
         listened_at: r.listened_at, plays: r.plays || 0, liked: !!(r as any).liked_at, downloaded: !!(r as any).downloaded_at,
+        verdict: (r as any).verdict || null, tags: (r as any).feedback_tags || [], note: (r as any).feedback_note || null,
       })),
     })),
   });

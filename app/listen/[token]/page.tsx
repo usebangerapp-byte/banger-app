@@ -5,11 +5,13 @@ import { useParams, useRouter } from "next/navigation";
 import { authFetch } from "@/lib/authFetch";
 import { ui, C, glass } from "@/lib/ui";
 import PageHeader from "@/components/PageHeader";
+import { VERDICTS, TAGS_SOUND, TAGS_ASK, type Verdict } from "@/lib/feedback";
 
 type Promo = {
   title: string; artist: string | null; note: string | null; url: string | null;
   sender: { id: string; name: string; avatar: string | null };
   liked?: boolean; isRecipient?: boolean;
+  feedback?: { verdict: Verdict; tags: string[]; note: string } | null;
 };
 
 export default function ListenPage() {
@@ -26,6 +28,23 @@ export default function ListenPage() {
   const [liked, setLiked] = useState(false);
   const [burst, setBurst] = useState(0);
   const lastTap = useRef(0);
+  const [verdict, setVerdict] = useState<Verdict | null>(null);
+  const [tags, setTags] = useState<string[]>([]);
+  const [note, setNote] = useState("");
+  const [fbBusy, setFbBusy] = useState(false);
+  const [fbSent, setFbSent] = useState(false);
+  const [fbError, setFbError] = useState("");
+
+  async function sendFeedback() {
+    if (!verdict) return;
+    setFbBusy(true); setFbError("");
+    const r = await authFetch("/api/promo/listen", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, action: "feedback", verdict, tags, note }) }).catch(() => null);
+    const j = await r?.json().catch(() => null);
+    if (r?.ok && j?.ok) setFbSent(true); else setFbError(j?.error || "Couldn't send. Try again.");
+    setFbBusy(false);
+  }
+  const toggleTag = (t: string) => { setFbSent(false); setTags((l) => l.includes(t) ? l.filter((x) => x !== t) : [...l, t]); };
 
   useEffect(() => {
     (async () => {
@@ -35,6 +54,7 @@ export default function ListenPage() {
       if (res.status === 401) { setNeedsLogin(true); return; }
       if (!res.ok || !j.ok) { setError(j.error || "Link not available"); return; }
       setPromo(j); setLiked(!!j.liked);
+      if (j.feedback) { setVerdict(j.feedback.verdict); setTags(j.feedback.tags || []); setNote(j.feedback.note || ""); setFbSent(true); }
     })();
   }, [token]);
 
@@ -153,6 +173,49 @@ export default function ListenPage() {
                 onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => setPlaying(false)}
                 onTimeUpdate={(e) => setPos(e.currentTarget.currentTime)} onLoadedMetadata={(e) => setDur(e.currentTarget.duration || 0)} />
             )}
+          </section>
+        )}
+
+        {/* ── Feedback to the producer (recipient only) ── */}
+        {promo?.isRecipient && (
+          <section style={{ ...glass, borderRadius: 24, padding: "18px 16px", display: "grid", gap: 14 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: C.text3 }}>Your feedback</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 8 }}>
+              {(Object.keys(VERDICTS) as Verdict[]).map((v) => {
+                const on = verdict === v;
+                return (
+                  <button key={v} onClick={() => { setVerdict(v); setFbSent(false); }}
+                    style={{ display: "grid", gap: 4, justifyItems: "center", padding: "12px 6px", borderRadius: 18, cursor: "pointer", fontFamily: "inherit",
+                      border: on ? "1px solid transparent" : `1px solid ${C.glassBorder}`,
+                      background: on ? C.goldGrad : "rgba(255,255,255,0.05)", color: on ? C.goldInk : "#fff" }}>
+                    <span style={{ fontSize: 24, lineHeight: 1 }}>{VERDICTS[v].emoji}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700 }}>{VERDICTS[v].label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {[TAGS_SOUND, TAGS_ASK].map((group, gi) => (
+              <div key={gi} style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {group.map((t) => {
+                  const on = tags.includes(t);
+                  return (
+                    <button key={t} onClick={() => toggleTag(t)}
+                      style={{ ...ui.pillSmall, padding: "7px 12px", fontSize: 13,
+                        color: on ? C.gold : C.text2, background: on ? "rgba(245,207,104,0.14)" : "rgba(255,255,255,0.05)",
+                        borderColor: on ? "rgba(245,207,104,0.40)" : C.glassBorder }}>
+                      {t}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+            <textarea value={note} onChange={(e) => { setNote(e.target.value); setFbSent(false); }} rows={2} maxLength={600}
+              placeholder="Add a note (optional)" style={{ ...ui.input, resize: "vertical", minHeight: 60, fontFamily: "inherit" }} />
+            {fbError && <div style={{ fontSize: 13, color: C.danger }}>{fbError}</div>}
+            <button onClick={sendFeedback} disabled={!verdict || fbBusy || fbSent}
+              style={verdict && !fbSent ? ui.cta : { ...ui.cta, background: "rgba(255,255,255,0.10)", color: fbSent ? C.rel : "rgba(255,255,255,0.45)", boxShadow: "none" }}>
+              {fbBusy ? "Sending…" : fbSent ? "Feedback sent ✓" : "Send feedback"}
+            </button>
           </section>
         )}
       </div>

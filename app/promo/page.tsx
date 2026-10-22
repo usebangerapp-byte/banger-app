@@ -7,6 +7,7 @@ import { getBrowserRole } from "@/lib/auth/getBrowserRole";
 import { authFetch } from "@/lib/authFetch";
 import { ui, C, glass } from "@/lib/ui";
 import PageHeader from "@/components/PageHeader";
+import { VERDICTS, promoSummary, type Verdict } from "@/lib/feedback";
 import MarqueeText from "@/components/MarqueeText";
 import { guessTrackName } from "@/lib/trackName";
 import { FFmpeg } from "@ffmpeg/ffmpeg";
@@ -16,7 +17,7 @@ const MAX_BYTES = 48 * 1024 * 1024; // storage limit is 50 MB per file
 type Person = { id: string; display_name: string; avatar_url?: string | null };
 type Sent = {
   id: string; title: string; artist: string | null; created_at: string;
-  recipients: { id: string; name: string; avatar: string | null; listened_at: string | null; plays: number; liked?: boolean; downloaded?: boolean }[];
+  recipients: { id: string; name: string; avatar: string | null; listened_at: string | null; plays: number; liked?: boolean; downloaded?: boolean; verdict?: Verdict | null; tags?: string[]; note?: string | null }[];
 };
 
 function Avatar({ name, url, size = 32 }: { name: string; url?: string | null; size?: number }) {
@@ -275,16 +276,17 @@ export default function PromoPage() {
                   <div onClick={() => setOpenId(open ? null : p.id)} style={{ ...ui.row, borderBottom: "none", cursor: "pointer" }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <MarqueeText text={p.artist ? `${p.artist} - ${p.title}` : p.title} style={ui.rowTitle} />
-                      <div style={ui.rowSub}>{new Date(p.created_at).toLocaleDateString([], { day: "numeric", month: "short" })}</div>
+                      <div style={{ ...ui.rowSub, whiteSpace: "normal" }}>
+                        {new Date(p.created_at).toLocaleDateString([], { day: "numeric", month: "short" })} · <span style={{ color: heard ? C.gold : C.text3, fontWeight: 600 }}>{promoSummary(p.recipients)}</span>
+                      </div>
                     </div>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: heard ? C.gold : C.text3, flexShrink: 0 }}>
-                      {heard}/{p.recipients.length} listened{p.recipients.some((r) => r.liked) ? ` · ♥ ${p.recipients.filter((r) => r.liked).length}` : ""}
-                    </span>
+                    <span style={{ color: C.text4, flexShrink: 0, fontSize: 18 }}>{open ? "⌃" : "⌄"}</span>
                   </div>
                   {open && (
                     <div style={{ display: "grid", gap: 8, padding: "0 0 14px" }}>
                       {p.recipients.map((r) => (
-                        <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div key={r.id} style={{ display: "grid", gap: 6 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           <Avatar name={r.name} url={r.avatar} size={28} />
                           <span style={{ flex: 1, minWidth: 0, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
                           {r.downloaded && <span style={{ color: C.text2, fontSize: 13, flexShrink: 0 }} aria-label="Downloaded">⬇</span>}
@@ -292,6 +294,15 @@ export default function PromoPage() {
                           <span style={{ fontSize: 12, color: r.listened_at ? C.rel : C.text4, flexShrink: 0 }}>
                             {r.listened_at ? `Listened${r.plays > 1 ? ` · ${r.plays}×` : ""}` : "Not yet"}
                           </span>
+                          {r.verdict && <span title={VERDICTS[r.verdict].label} style={{ fontSize: 16, flexShrink: 0 }}>{VERDICTS[r.verdict].emoji}</span>}
+                        </div>
+                        {(r.verdict || r.tags?.length || r.note) && (
+                          <div style={{ margin: "-2px 0 4px 38px", display: "grid", gap: 4 }}>
+                            {r.verdict && <div style={{ fontSize: 13, fontWeight: 600 }}>{VERDICTS[r.verdict].emoji} {VERDICTS[r.verdict].label}</div>}
+                            {!!r.tags?.length && <div style={{ fontSize: 12, color: C.text2 }}>{r.tags.join(" · ")}</div>}
+                            {r.note && <div style={{ fontSize: 13, color: C.text2, fontStyle: "italic" }}>“{r.note}”</div>}
+                          </div>
+                        )}
                         </div>
                       ))}
                     </div>
