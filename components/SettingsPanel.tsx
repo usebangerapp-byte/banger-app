@@ -43,13 +43,17 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
     return () => { document.body.style.overflow = prev; };
   }, []);
 
+  // Saved through the server (the browser can't write this column): revert the switch if it fails.
   async function toggleNotifs() {
     const next = !notifsEnabled;
-    setNotifsEnabled(next);
-    const sb = createSupabaseBrowser();
-    if (sb && userId) await sb.from("profiles").update({ notifs_enabled: next }).eq("id", userId);
+    setNotifsEnabled(next); setNotifsError("");
+    const res = await authFetch("/api/profile/update", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notifs_enabled: next }) }).catch(() => null);
+    const j = await res?.json().catch(() => null);
+    if (!res?.ok || !j?.ok) { setNotifsEnabled(!next); setNotifsError(j?.error || "Couldn't save. Try again."); }
   }
 
+  const [notifsError, setNotifsError] = useState("");
   async function saveUsername() {
     const v = nameDraft.trim().replace(/\s+/g, " ");
     if (v.length < 2 || v.length > 24) { setNameMsg("2 to 24 characters."); return; }
@@ -122,6 +126,7 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
             <div>
               <div style={rowTitle}>Notifications</div>
               <div style={rowSub}>Messages, followers, releases</div>
+              {notifsError && <div style={{ ...rowSub, color: C.danger }}>{notifsError}</div>}
             </div>
             <button onClick={toggleNotifs} role="switch" aria-checked={notifsEnabled} aria-label="Notifications" style={{
               width: 51, height: 31, borderRadius: 16, border: "none", cursor: "pointer", flexShrink: 0,

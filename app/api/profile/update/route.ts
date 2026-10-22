@@ -8,14 +8,15 @@ export async function POST(req: Request) {
   const me = await userFromRequest(sb, req);
   if (!me) return Response.json({ ok: false, error: "Not signed in" }, { status: 401 });
   const user_id = me.id;
-  const { display_name, bio, genre, instagram, soundcloud } = body;
+  const { display_name, bio, genre, instagram, soundcloud, notifs_enabled } = body;
   const update: any = {};
   if (display_name !== undefined) update.display_name = display_name;
   if (bio         !== undefined) update.bio          = bio;
   if (genre       !== undefined) update.genre        = genre;
   if (instagram   !== undefined) update.instagram    = instagram;
   if (soundcloud  !== undefined) update.soundcloud   = soundcloud;
+  if (typeof notifs_enabled === "boolean") update.notifs_enabled = notifs_enabled;
   const { error } = await sb.from("profiles").update(update).eq("id", user_id);
-  if (error) return Response.json({ ok: false, error: error.message }, { status: 500 });
+  if (error) return Response.json({ ok: false, error: /notifs_enabled/.test(error.message) ? "Run the notifications SQL first" : error.message }, { status: 500 });
   return Response.json({ ok: true });
 }

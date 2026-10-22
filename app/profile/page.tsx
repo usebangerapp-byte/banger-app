@@ -128,9 +128,9 @@ function AudioPlayer({ src, name }: { src: string; name: string }) {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children, id }: { title: string; children: React.ReactNode; id?: string }) {
   return (
-    <section style={sectionStyle}>
+    <section id={id} style={{ ...sectionStyle, scrollMarginTop: 80 }}>
       <div style={sectionTitleStyle}>{title}</div>
       {children}
     </section>
@@ -557,7 +557,8 @@ export default function ProfilePageV2() {
               <span><b style={statNum}>{scans.length}</b> scan{scans.length === 1 ? "" : "s"}</span>
               <button onClick={() => setPeopleList("followers")} style={statBtn}><b style={statNum}>{profile?.follower_count||0}</b> follower{(profile?.follower_count||0) === 1 ? "" : "s"}</button>
               <button onClick={() => setPeopleList("following")} style={statBtn}><b style={statNum}>{profile?.following_count||0}</b> following</button>
-              <span><b style={statNum}>{follows.length}</b> follow{follows.length === 1 ? "" : "s"}</span>
+              <button onClick={() => { setShowMoreFollows(true); setTimeout(() => document.getElementById("followed-tracks")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50); }}
+                style={statBtn}><b style={statNum}>{follows.length}</b> follow{follows.length === 1 ? "" : "s"}</button>
             </div>
 
             {/* Actions — one aligned row */}
@@ -692,7 +693,7 @@ export default function ProfilePageV2() {
 
           {/* ── FOLLOWS LIST ── */}
           {follows.length > 0 && (
-            <Section title="Followed tracks">
+            <Section title="Followed tracks" id="followed-tracks">
               <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:2 }}>
                 {(showMoreFollows ? follows : follows.slice(0,3)).map((f,i) => (
                   <TrackRow key={f.track_title || i} title={f.track_title || "Unknown"} artist={f.track_subtitle} released={!!f.is_released}
