@@ -167,6 +167,7 @@ export async function POST(req: Request) {
     const country = clean(incoming.get("country"));
     const region = clean(incoming.get("region"));
     const noLog = clean(incoming.get("no_log")) === "1"; // Set mode logs each track once itself
+    const early = clean(incoming.get("early")) === "1";  // first quick try of a scan
 
 
     if (!(file instanceof File)) {
@@ -266,7 +267,7 @@ export async function POST(req: Request) {
 
 
     // Insert non-bloquant
-    if (!noLog) supabase.from("scan_events").insert(row).then(({ error }) => {
+    if (!noLog && !(early && effectiveResultType === "not_found")) supabase.from("scan_events").insert(row).then(({ error }) => {
       if (error) console.error("scan_events insert failed", error);
     });
 

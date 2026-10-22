@@ -297,12 +297,15 @@ export default function Home() {
       vib(12);  // tap léger au démarrage
       setStatus("listening");
 
+      // Raw microphone: the phone's voice filters (echo cancellation, noise suppression,
+      // auto gain) treat loud music as "noise" and wipe it out — that's what broke scans in bars.
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+          channelCount: 1,
+        } as MediaTrackConstraints,
       });
       streamRef.current = stream;
 
@@ -328,15 +331,14 @@ export default function Home() {
         streamRef.current = null;
 
         stopMeters();
+        if (earlyTimer) window.clearTimeout(earlyTimer);
+        if (earlyHit) { setStatus("idle"); return; }   // the quick try already found it
         vib([6, 30, 6]);  // pulse subtil : analyse en cours
         setStatus("recognizing");
 
         try {
           const blob = new Blob(chunksRef.current, { type: mime });
-          const fd = new FormData();
-          fd.append("audio", blob, "sample.webm");
-
-const region = await getRegion();
+          const region = await getRegion();
           const data = await recognizeAudio(blob, mime, region);
 
           const mapped = mapRecognizeResult(data);
@@ -378,8 +380,28 @@ const region = await getRegion();
         setStatus("idle");
       };
 
-      mr.start();
-      timerRef.current = window.setTimeout(() => stopRecording(), 10_000);
+      // Two tries in one scan: a quick one after 6 s (most tracks are found here), and if
+      // nothing matched, a longer one with 12 s of audio — more signal for noisy rooms.
+      let earlyHit = false;
+      const earlyTimer = window.setTimeout(async () => {
+        try {
+          if (mr.state === "inactive" || !chunksRef.current.length) return;
+          const blob = new Blob(chunksRef.current.slice(), { type: mime });
+          const data = await recognizeAudio(blob, mime, await getRegion(), { early: true });
+          const mapped = mapRecognizeResult(data);
+          if (!mapped.success || mr.state === "inactive") return;
+          earlyHit = true;
+          setTitle(mapped.title); setSubtitle(mapped.subtitle); setTag(mapped.tag);
+          setBeatportUrl(mapped.beatportUrl); setSpotifyUrl(mapped.spotifyUrl);
+          setSnippetPath(mapped.snippetPath); setAllowPreview(mapped.allowPreview);
+          setSuccess(true);
+          vib([18, 60, 18, 60, 80]);
+          stopRecording();
+        } catch {}
+      }, 6_000);
+
+      mr.start(1000);   // 1 s chunks so the quick try can read what's recorded so far
+      timerRef.current = window.setTimeout(() => stopRecording(), 12_000);
     } catch {
       stopMeters();
       setStatus("idle");
