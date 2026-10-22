@@ -9,6 +9,7 @@ import SharedTrackRow from "@/components/TrackRow"
 import Link from "next/link"
 import { usePreviewIndex, PreviewButton, trackKey, trackHref } from "@/lib/preview"
 import { ui, C } from "@/lib/ui"
+import { fmtTitle, fmtArtist } from "@/lib/format"
 import { LockedRow, openPro } from "@/components/ProSheet"
 
 type RadarTrack = { track_title: string; track_subtitle?: string; scans: number; locked?: boolean }
@@ -26,6 +27,15 @@ export default function RadarPage() {
   const [followLoading, setFollowLoading] = useState<Set<string>>(new Set())
   const [toast, setToast] = useState<string | null>(null)
   const previews = usePreviewIndex()
+  // #1 of each chart for the Charts card
+  const [chartTop, setChartTop] = useState<{ rel?: { title: string; artist: string }; unrel?: { title: string; artist: string } }>({})
+  useEffect(() => {
+    authFetch("/api/charts", { cache: "no-store" }).then(r => r.json()).then((rows) => {
+      const list = Array.isArray(rows) ? rows.filter((r: any) => !r.locked && r.track_title && r.track_title !== "Unknown") : []
+      const rel = list.find((r: any) => r.result_type === "recognized_world"), unrel = list.find((r: any) => r.result_type === "recognized_unreleased")
+      setChartTop({ rel: rel && { title: rel.track_title, artist: rel.track_subtitle || "" }, unrel: unrel && { title: unrel.track_title, artist: unrel.track_subtitle || "" } })
+    }).catch(() => {})
+  }, [])
   const locked = data.trending.some((t) => t.locked) || data.mostWanted.some((t) => t.locked)
 
   useEffect(() => {
@@ -92,11 +102,29 @@ export default function RadarPage() {
 
       <div style={ui.shell}>
         <PageHeader title="Radar" sub="What the scene is scanning right now." />
-        <Link href="/charts" style={{ ...ui.section, display: "flex", alignItems: "center", gap: 12, textDecoration: "none", color: "#fff", padding: "14px 18px" }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={C.gold} strokeWidth={2} strokeLinecap="round" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7" /></svg>
-          <span style={{ flex: 1, fontSize: 16, fontWeight: 600 }}>Charts</span>
-          <span style={{ fontSize: 13, color: C.text3 }}>Top 100</span>
-          <span style={{ color: C.text4 }}>›</span>
+        {/* Charts — the doorway to the Top 100, shown big with today's #1s */}
+        <Link href="/charts" style={{ position: "relative", overflow: "hidden", display: "grid", gap: 12, textDecoration: "none", color: "#fff", padding: "18px 18px 16px",
+          borderRadius: 24, border: "1px solid rgba(245,207,104,0.45)", boxShadow: "0 0 32px rgba(245,207,104,0.18), inset 0 1px 0 rgba(255,235,160,0.15)",
+          background: "linear-gradient(140deg, rgba(245,207,104,0.22), rgba(200,140,40,0.08) 45%, rgba(20,20,20,0.6))" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ width: 44, height: 44, borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", background: C.goldGrad, boxShadow: "0 6px 18px rgba(200,140,15,0.35)" }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={C.goldInk} strokeWidth={2.4} strokeLinecap="round" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7" /></svg>
+            </span>
+            <span style={{ flex: 1, fontSize: 22, fontWeight: 800, letterSpacing: "-0.01em" }}>Charts</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: C.gold, padding: "6px 12px", borderRadius: 999, background: "rgba(0,0,0,0.35)", border: "1px solid rgba(245,207,104,0.35)" }}>Top 100 ›</span>
+          </div>
+          {(chartTop.unrel || chartTop.rel) && (
+            <div style={{ display: "grid", gap: 6 }}>
+              {([["Unreleased", chartTop.unrel, C.gold], ["Released", chartTop.rel, C.rel]] as const).filter(([, t]) => t).map(([label, t, color]) => (
+                <div key={label} style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, fontSize: 14 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color, width: 78, flexShrink: 0 }}>#1 {label}</span>
+                  <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 600 }}>
+                    {fmtTitle(t!.title)}{t!.artist ? <span style={{ color: C.text2, fontWeight: 500 }}> · {fmtArtist(t!.artist)}</span> : null}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </Link>
 
         {loading ? (

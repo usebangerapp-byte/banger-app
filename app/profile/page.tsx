@@ -498,7 +498,7 @@ export default function ProfilePageV2() {
     <main style={pageStyle}>
       <div style={shellStyle}>
 
-        <PageHeader title="Profile" sub="Your scans, follows and messages."
+        <PageHeader title="Profile"
           code={<span style={{ color: role==="pro" ? C.gold : undefined }}>{role==="pro" ? "PRO" : "Free"}</span>} />
 
         <div style={tabBarStyle}>
@@ -511,15 +511,15 @@ export default function ProfilePageV2() {
 
         {(tab==="profile" || tab==="studio") && (<>
 
-          {/* ── IDENTITY ── */}
-          {tab==="profile" && <section style={{ ...glass, borderRadius:24, padding:18, display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:16, minWidth:0 }}>
+          {/* ── IDENTITY: avatar + stats side by side, name, links, actions — compact ── */}
+          {tab==="profile" && <section style={{ ...glass, borderRadius:24, padding:"16px 16px 14px", display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:12, minWidth:0 }}>
+            <input ref={avatarInputRef} type="file" accept="image/*" style={{ display:"none" }}
+              onChange={e => { const f = e.target.files?.[0]; if (f) uploadAvatar(f); e.target.value=""; }} />
 
-            <div style={{ display:"flex", alignItems:"center", gap:16, minWidth:0 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:14, minWidth:0 }}>
               {/* Avatar — tap to change the photo */}
-              <input ref={avatarInputRef} type="file" accept="image/*" style={{ display:"none" }}
-                onChange={e => { const f = e.target.files?.[0]; if (f) uploadAvatar(f); e.target.value=""; }} />
               <div onClick={() => avatarInputRef.current?.click()}
-                style={{ ...avatarStyle, ...(role==="pro" ? { border:"2px solid #e9b844", boxShadow:"0 0 16px rgba(245,207,104,0.35)" } : {}), cursor:"pointer", position:"relative", overflow:"hidden", flexShrink:0 }}>
+                style={{ ...avatarStyle, width:74, height:74, fontSize:24, ...(role==="pro" ? { border:"2px solid #e9b844", boxShadow:"0 0 18px rgba(245,207,104,0.35)" } : {}), cursor:"pointer", position:"relative", overflow:"hidden", flexShrink:0 }}>
                 {avatarUrl
                   ? <img src={avatarUrl} alt="avatar" style={{ width:"100%", height:"100%", objectFit:"cover", borderRadius:"50%" }} />
                   : <span>{name.charAt(0).toUpperCase()}</span>}
@@ -527,70 +527,59 @@ export default function ProfilePageV2() {
                   <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.6)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11 }}>…</div>
                 )}
               </div>
-
-              <div style={{ flex:1, minWidth:0, display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:6 }}>
-                <div style={{ fontSize:21, fontWeight:700, letterSpacing:"-0.02em", lineHeight:1.2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>
-                  {name}
-                </div>
-                {profile?.genre && <div style={{ fontSize:13, color:C.text3 }}>{profile.genre}</div>}
-                {(profile?.instagram || profile?.soundcloud) && (
-                  <div style={{ display:"flex", gap:8, flexWrap:"wrap" as const, marginTop:2 }}>
-                    {profile?.instagram && (
-                      <a href={`https://instagram.com/${profile.instagram.replace("@","")}`} target="_blank" rel="noreferrer" style={ui.pillSmall}>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ flexShrink:0 }}>
-                          <rect x="2" y="2" width="20" height="20" rx="5" ry="5" stroke="currentColor" strokeWidth="2"/>
-                          <circle cx="12" cy="12" r="4.5" stroke="currentColor" strokeWidth="2"/>
-                          <circle cx="17.5" cy="6.5" r="1.2" fill="currentColor"/>
-                        </svg>
-                        {profile.instagram.replace("@","")}
-                      </a>
-                    )}
-                    {profile?.soundcloud && (
-                      <a href={`https://soundcloud.com/${profile.soundcloud.replace("@","")}`} target="_blank" rel="noreferrer" style={ui.pillSmall}>
-                        <svg width="15" height="10" viewBox="0 0 30 20" fill="currentColor" aria-hidden="true" style={{ flexShrink:0 }}>
-                          <path d="M0 13.5c0 2 1.6 3.5 3.5 3.5H22c2.8 0 5-2.2 5-5 0-2.6-2-4.8-4.5-5-.3-4-3.7-7-7.8-6.4C13.3.8 12 2.5 12 4.5v9H0v0z" opacity="0.9"/>
-                          <rect x="2" y="10" width="1.5" height="6" rx="0.75"/>
-                          <rect x="5" y="8" width="1.5" height="8" rx="0.75"/>
-                          <rect x="8" y="9" width="1.5" height="7" rx="0.75"/>
-                        </svg>
-                        {profile.soundcloud.replace("@","")}
-                      </a>
-                    )}
-                  </div>
-                )}
+              {/* Stats in columns — followers / following / follows open their list */}
+              <div style={{ flex:1, minWidth:0, display:"grid", gridTemplateColumns:"repeat(4, minmax(0,1fr))", gap:2, textAlign:"center" }}>
+                {[
+                  { n: scans.length, l: "Scans", on: undefined as undefined | (() => void) },
+                  { n: profile?.follower_count||0, l: "Followers", on: () => setPeopleList("followers") },
+                  { n: profile?.following_count||0, l: "Following", on: () => setPeopleList("following") },
+                  { n: follows.length, l: "Follows", on: () => { setShowMoreFollows(true); setTimeout(() => document.getElementById("followed-tracks")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50); } },
+                ].map((x) => (
+                  <button key={x.l} onClick={x.on} disabled={!x.on} style={{ ...statBtn, display:"grid", gap:2, cursor: x.on ? "pointer" : "default", minWidth:0 }}>
+                    <span style={{ fontSize:19, fontWeight:800, color:"#fff", lineHeight:1.1 }}>{x.n}</span>
+                    <span style={{ fontSize:11, color:C.text3, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{x.l}</span>
+                  </button>
+                ))}
               </div>
+            </div>
+
+            <div style={{ display:"grid", gap:4, minWidth:0 }}>
+              <div style={{ display:"flex", alignItems:"baseline", gap:8, minWidth:0 }}>
+                <span style={{ fontSize:18, fontWeight:800, letterSpacing:"-0.01em", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", minWidth:0 }}>{name}</span>
+                {profile?.genre && <span style={{ fontSize:13, color:C.text3, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>{profile.genre}</span>}
+              </div>
+              {profile?.bio && <div style={{ fontSize:14, color:C.text2, lineHeight:1.5 }}>{profile.bio}</div>}
+              {(profile?.instagram || profile?.soundcloud) && (
+                <div style={{ display:"flex", gap:14, flexWrap:"wrap" as const, fontSize:13 }}>
+                  {profile?.instagram && (
+                    <a href={`https://instagram.com/${profile.instagram.replace("@","")}`} target="_blank" rel="noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:6, color:C.text2, textDecoration:"none" }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5" stroke="currentColor" strokeWidth="2"/><circle cx="12" cy="12" r="4.5" stroke="currentColor" strokeWidth="2"/><circle cx="17.5" cy="6.5" r="1.2" fill="currentColor"/></svg>
+                      {profile.instagram.replace("@","")}
+                    </a>
+                  )}
+                  {profile?.soundcloud && (
+                    <a href={`https://soundcloud.com/${profile.soundcloud.replace("@","")}`} target="_blank" rel="noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:6, color:C.text2, textDecoration:"none" }}>
+                      <svg width="15" height="10" viewBox="0 0 30 20" fill="currentColor" aria-hidden="true"><path d="M0 13.5c0 2 1.6 3.5 3.5 3.5H22c2.8 0 5-2.2 5-5 0-2.6-2-4.8-4.5-5-.3-4-3.7-7-7.8-6.4C13.3.8 12 2.5 12 4.5v9H0v0z" opacity="0.9"/></svg>
+                      {profile.soundcloud.replace("@","")}
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Actions — one row, same height */}
+            <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr) minmax(0,1fr) 40px", gap:8 }}>
+              <button onClick={() => setEditing(v=>!v)} style={{ ...ui.pill, justifyContent:"center", padding:"9px 10px", fontSize:14 }}>{editing ? "Cancel" : "Edit profile"}</button>
+              <button onClick={shareProfile} style={{ ...ui.pill, justifyContent:"center", padding:"9px 10px", fontSize:14 }}>{shared ? "Link copied ✓" : "Share"}</button>
               <button onClick={() => setShowSearch(v => !v)} aria-label="Find people"
-                style={{ width:36, height:36, borderRadius:"50%", flexShrink:0, alignSelf:"flex-start", cursor:"pointer",
-                  border:`1px solid ${showSearch ? "rgba(245,207,104,0.4)" : C.glassBorder}`, background: showSearch ? "rgba(245,207,104,0.12)" : "rgba(255,255,255,0.06)",
-                  color: showSearch ? C.gold : C.text2, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                style={{ height:40, borderRadius:999, cursor:"pointer", border:`1px solid ${showSearch ? "rgba(245,207,104,0.4)" : C.glassBorder}`,
+                  background: showSearch ? "rgba(245,207,104,0.12)" : "rgba(255,255,255,0.06)", color: showSearch ? C.gold : C.text2, display:"flex", alignItems:"center", justifyContent:"center" }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
               </button>
             </div>
-
-            {profile?.bio && (
-              <div style={{ fontSize:14, color:C.text2, lineHeight:1.55 }}>
-                {profile.bio}
-              </div>
+            {!loading && role !== "pro" && (
+              <button onClick={() => router.push("/upgrade")} style={{ ...ui.pillSolid, justifyContent:"center", width:"100%", padding:"11px" }}>Go Pro</button>
             )}
-
-            {/* Stats — followers / following open the list */}
-            <div style={statsLine}>
-              <span><b style={statNum}>{scans.length}</b> scan{scans.length === 1 ? "" : "s"}</span>
-              <button onClick={() => setPeopleList("followers")} style={statBtn}><b style={statNum}>{profile?.follower_count||0}</b> follower{(profile?.follower_count||0) === 1 ? "" : "s"}</button>
-              <button onClick={() => setPeopleList("following")} style={statBtn}><b style={statNum}>{profile?.following_count||0}</b> following</button>
-              <button onClick={() => { setShowMoreFollows(true); setTimeout(() => document.getElementById("followed-tracks")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50); }}
-                style={statBtn}><b style={statNum}>{follows.length}</b> follow{follows.length === 1 ? "" : "s"}</button>
-            </div>
-
-            {/* Actions — one aligned row */}
-            <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" as const }}>
-              <button onClick={() => setEditing(v=>!v)} style={ui.pill}>{editing ? "Cancel" : "Edit profile"}</button>
-              <button onClick={shareProfile} style={ui.pill}>{shared ? "Link copied ✓" : "Share"}</button>
-              {!loading && role !== "pro" && (
-                <button onClick={() => router.push("/upgrade")} style={{ ...ui.pillSolid, marginLeft:"auto" }}>Go Pro</button>
-              )}
-
-            </div>
           </section>}
 
           {/* ── STUDIO (Pro): send a demo · Set mode ── */}
