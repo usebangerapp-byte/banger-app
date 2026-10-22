@@ -171,16 +171,11 @@ export default function ProfilePageV2() {
   const [tracks,   setTracks]   = useState<any[]>([]);
   const [sparkData,setSparkData]= useState<number[]>([]);
   const [topScan,  setTopScan]  = useState<{ title: string; subtitle?: string; n: number } | null>(null);
-  const [promoLine, setPromoLine] = useState<string | null>(null);
-  const [proStats, setProStats] = useState<{ uploadScans7d: number; topUpload: { title: string; scans: number } | null } | null>(null);
   const [shared,   setShared]   = useState(false);
   const [tab,      setTab]      = useState<"profile"|"messages">("profile");
   // The lists under the profile card: one at a time
-  const [list,     setList]     = useState<"scans"|"follows"|"uploads">("scans");
+  const [list,     setList]     = useState<"scans"|"follows"|"released">("scans");
   const [showSearch, setShowSearch] = useState(false);
-  const [showMoreTracks, setShowMoreTracks] = useState(false);
-  const [confirmDel, setConfirmDel] = useState<string | null>(null);
-  const [renaming, setRenaming] = useState<{ id: string; title: string; artist: string; busy?: boolean; error?: string } | null>(null);
   const lastMsgTap = useRef<{ id: any; t: number }>({ id: null, t: 0 });
 
   // Double-tap a message you received to like it (tap twice again to remove)
@@ -213,7 +208,7 @@ export default function ProfilePageV2() {
       const w = sp.get("with");
       if (w) { setTab("messages"); setActiveConv(w); setPendingName(sp.get("name") || ""); }
       if (sp.get("edit") === "1") setEditing(true);
-      const l = sp.get("list"); if (l === "scans" || l === "follows" || l === "uploads") setList(l);
+      const l = sp.get("list"); if (l === "scans" || l === "follows" || l === "released") setList(l);
     } catch {}
     // the ✉️ button in the top bar, when already on this page
     const open = () => { setTab("messages"); setActiveConv(null); };
@@ -360,18 +355,6 @@ export default function ProfilePageV2() {
 
   useEffect(() => { msgEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
-  // PRO: how your uploaded IDs were scanned this week
-  useEffect(() => {
-    if (role !== "pro" || !userId) return;
-    authFetch("/api/profile/stats").then(r => r.json())
-      .then(j => { if (j?.ok) setProStats({ uploadScans7d: j.uploadScans7d || 0, topUpload: j.topUpload || null }); })
-      .catch(() => {});
-    // Promo feedback, all promos together ("5 DJs · 3 listened · 🔥 2 …")
-    authFetch("/api/promo/list").then(r => r.json())
-      .then(j => { const all = (j?.promos || []).flatMap((p: any) => p.recipients || []); if (all.length) setPromoLine(promoSummary(all)); })
-      .catch(() => {});
-  }, [role, userId]);
-
   async function shareProfile() {
     const url = `https://usebanger.com/dj/${userId}`;
     try {
@@ -467,8 +450,10 @@ export default function ProfilePageV2() {
   }
 
   const name     = profile?.display_name || profile?.email?.split("@")[0] || "You";
-  const showUploads = role === "pro" || tracks.length > 0;
-  function openList(l: "scans"|"follows"|"uploads") {
+  // Followed tracks: still waiting (Follows) / came out (Released)
+  const waiting = follows.filter((f: any) => !f.is_released);
+  const out = follows.filter((f: any) => !!f.is_released);
+  function openList(l: "scans"|"follows"|"released") {
     setList(l);
     setTimeout(() => document.getElementById("lists")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   }
@@ -603,10 +588,10 @@ export default function ProfilePageV2() {
           )}
 
           {/* ── MY LISTS: Scans · Follows · Uploads, one at a time ── */}
-          <div id="lists" style={{ display:"grid", gridTemplateColumns: showUploads ? "repeat(3, minmax(0,1fr))" : "repeat(2, minmax(0,1fr))", gap:8, scrollMarginTop:72 }}>
-            {(showUploads ? (["scans","follows","uploads"] as const) : (["scans","follows"] as const)).map((l) => {
+          <div id="lists" style={{ display:"grid", gridTemplateColumns:"repeat(3, minmax(0,1fr))", gap:8, scrollMarginTop:72 }}>
+            {(["scans","follows","released"] as const).map((l) => {
               const on = list === l;
-              const n = l==="scans" ? scans.length : l==="follows" ? follows.length : tracks.length;
+              const n = l==="scans" ? scans.length : l==="follows" ? waiting.length : out.length;
               return (
                 <button key={l} onClick={() => setList(l)} aria-pressed={on}
                   style={{ display:"grid", gap:2, justifyItems:"center", padding:"10px 6px", borderRadius:16, cursor:"pointer", fontFamily:"inherit",
@@ -614,56 +599,11 @@ export default function ProfilePageV2() {
                     background: on ? "rgba(245,207,104,0.14)" : "rgba(255,255,255,0.06)",
                     boxShadow: on ? "0 0 16px rgba(245,207,104,0.18)" : "inset 0 1px 0 rgba(255,255,255,0.06)" }}>
                   <span style={{ fontSize:18, fontWeight:800, color: on ? C.gold : "#fff", lineHeight:1.1 }}>{n}</span>
-                  <span style={{ fontSize:12, fontWeight:600, color: on ? C.gold : C.text2 }}>{l==="scans" ? "Scans" : l==="follows" ? "Follows" : "Uploads"}</span>
+                  <span style={{ fontSize:12, fontWeight:600, color: on ? C.gold : C.text2 }}>{l==="scans" ? "Scans" : l==="follows" ? "Follows" : "Released"}</span>
                 </button>
               );
             })}
           </div>
-
-          {/* ── STUDIO (Pro): send a demo (Set mode lives in the Sets tab) ── */}
-          {list==="uploads" && !loading && role === "pro" && (
-            <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:10 }}>
-              {[
-                { href:"/promo", label:"Send a demo", icon:<path d="M4 12l16-8-6 16-2.5-6.5L4 12z" /> },
-              ].map((t) => (
-                <button key={t.href} onClick={() => router.push(t.href)}
-                  style={{ ...glass, borderRadius:20, padding:"14px 16px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", color:"#fff", fontFamily:"inherit", textAlign:"left" }}>
-                  <span style={{ width:36, height:36, borderRadius:12, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center",
-                    background:"rgba(245,207,104,0.12)", border:"1px solid rgba(245,207,104,0.25)" }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.gold} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{t.icon}</svg>
-                  </span>
-                  <span style={{ fontSize:15, fontWeight:600 }}>{t.label}</span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* ── YOUR TRACKS (Pro): how often others scanned my uploads ── */}
-          {list==="uploads" && proStats && (
-            <div style={weekCard}>
-              <div style={{ ...sectionTitleStyle, padding:"0 0 10px" }}>Your tracks</div>
-              <div style={{ display:"grid", gap:4, paddingTop:14 }}>
-                <div style={{ fontSize:26, fontWeight:700, letterSpacing:"-0.02em", lineHeight:1 }}>
-                  {proStats.uploadScans7d} <span style={{ fontSize:14, fontWeight:500, color:C.text3 }}>scan{proStats.uploadScans7d === 1 ? "" : "s"}</span>
-                </div>
-                <div style={{ fontSize:12, color:C.text4 }}>last 7 days</div>
-              </div>
-              {promoLine && (
-                <button onClick={() => router.push("/promo")} style={{ ...weekLine, width:"100%", background:"none", border:"none", borderTop: (weekLine as any).borderTop, paddingLeft:0, paddingRight:0, paddingBottom:0, cursor:"pointer", color:"#fff", fontFamily:"inherit", textAlign:"left" }}>
-                  <span style={{ color:C.gold, flexShrink:0 }}>Demos</span>
-                  <span style={{ flex:1, minWidth:0, fontSize:13, color:C.text2 }}>{promoLine}</span>
-                  <span style={{ color:C.text4, flexShrink:0 }}>›</span>
-                </button>
-              )}
-              {proStats.topUpload && (
-                <div style={weekLine}>
-                  <span style={{ color:C.gold, flexShrink:0 }}>Top</span>
-                  <span style={{ flex:1, minWidth:0 }}><MarqueeText text={proStats.topUpload.title} style={{ fontWeight:600 }} /></span>
-                  <span style={{ color:C.text3, flexShrink:0 }}>{proStats.topUpload.scans}×</span>
-                </div>
-              )}
-            </div>
-          )}
 
           {/* ── SCANS LIST ── */}
           {list==="scans" && scans.length === 0 && <div style={emptyStyle}>No scans yet.</div>}
@@ -683,105 +623,27 @@ export default function ProfilePageV2() {
             </Section>
           )}
 
-          {/* ── FOLLOWS LIST ── */}
-          {list==="follows" && follows.length === 0 && <div style={emptyStyle}>No followed tracks yet.</div>}
-          {list==="follows" && follows.length > 0 && (
-            <Section title="Followed tracks" id="followed-tracks">
-              <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:2 }}>
-                {(showMoreFollows ? follows : follows.slice(0,10)).map((f,i) => (
-                  <TrackRow key={f.track_title || i} title={f.track_title || "Unknown"} artist={f.track_subtitle} released={!!f.is_released}
-                    status={f.is_released ? "rel" : "unrel"}
-                    onFollowChange={(on) => { if (!on) setFollows((p: any[]) => p.filter((x: any) => x.track_title !== f.track_title)); }} />
-                ))}
-                {follows.length > 10 && (
-                  <button onClick={()=>setShowMoreFollows(v=>!v)} style={showMoreBtn}>
-                    {showMoreFollows ? "Show less" : `Show ${follows.length-10} more`}
-                  </button>
-                )}
-              </div>
-            </Section>
-          )}
-
-          {/* ── MES TRACKS (en dernier) ── */}
-          {list==="uploads" && tracks.length === 0 && <div style={emptyStyle}>No uploads yet.</div>}
-          {list==="uploads" && tracks.length > 0 && (
-            <Section title="My uploads">
-              <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:4 }}>
-                {(showMoreTracks ? tracks : tracks.slice(0,10)).map((t) => renaming?.id === t.id ? (
-                  <div key={t.id} style={{ display:"grid", gap:8, padding:"14px 0", borderBottom:`1px solid ${C.lineSoft}` }}>
-                    <input value={renaming!.title} onChange={(e) => setRenaming({ ...renaming!, title: e.target.value, error: "" })} placeholder="Title"
-                      style={{ ...ui.input, padding:"9px 12px", fontSize:14, fontWeight:600 }} />
-                    <input value={renaming!.artist} onChange={(e) => setRenaming({ ...renaming!, artist: e.target.value, error: "" })} placeholder="Artist"
-                      style={{ ...ui.input, padding:"9px 12px", fontSize:13 }} />
-                    {renaming!.error && <div style={{ fontSize:12, color:C.danger }}>{renaming!.error}</div>}
-                    <div style={{ display:"flex", gap:8 }}>
-                      <button disabled={renaming!.busy || !renaming!.title.trim() || !renaming!.artist.trim()} onClick={async () => {
-                        setRenaming({ ...renaming!, busy: true, error: "" });
-                        const res = await authFetch("/api/bpro/rename", { method:"POST", headers:{"Content-Type":"application/json"},
-                          body: JSON.stringify({ track_id: t.id, title: renaming!.title, artist: renaming!.artist }) }).catch(() => null);
-                        const j = await res?.json().catch(() => null);
-                        if (res?.ok && j?.ok) {
-                          setTracks((prev: any[]) => prev.map((x: any) => x.id === t.id ? { ...x, title: renaming!.title.trim(), artist: renaming!.artist.trim() } : x));
-                          setRenaming(null);
-                        } else setRenaming({ ...renaming!, busy: false, error: j?.error || "Couldn't rename. Try again." });
-                      }} style={{ ...ui.pillSmall, flex:1, justifyContent:"center", color:C.goldInk, background:C.goldGrad, border:"1px solid transparent" }}>
-                        {renaming!.busy ? "…" : "Save"}
-                      </button>
-                      <button onClick={() => setRenaming(null)} style={{ ...ui.pillSmall, flex:1, justifyContent:"center" }}>Cancel</button>
-                    </div>
-                  </div>
-                ) : (
-                  <div key={t.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"16px 0", borderBottom:`1px solid ${C.lineSoft}` }}>
-                    <div style={{ flex:1, minWidth:0, overflow:"hidden" }}>
-                      <MarqueeText text={fmtTitle(t.title) || "Untitled"} style={ui.rowTitle} />
-                      <Link href={trackHref(t.title || "", t.artist)} style={{ ...ui.rowSub, display:"block", textDecoration:"none" }}>{t.artist ? fmtArtist(t.artist) : "Open"} <span style={{ color:C.gold }}>›</span></Link>
-                    </div>
-                    <button
-                      onClick={async () => {
-                        const newVal = !t.is_released;
-                        setTracks((prev: any[]) => prev.map((x: any) => x.id === t.id ? { ...x, is_released: newVal, release_status: newVal ? "released" : "unreleased" } : x));
-                        try {
-                          const res = await authFetch("/api/bpro/set-release", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ track_id: t.id, is_released: newVal }) });
-                          if (!res.ok) throw new Error("failed");
-                        } catch {
-                          setTracks((prev: any[]) => prev.map((x: any) => x.id === t.id ? { ...x, is_released: !newVal, release_status: !newVal ? "released" : "unreleased" } : x));
-                        }
-                      }}
-                      style={{ ...tag(t.is_released ? "rel" : "unrel"), border:"none", cursor:"pointer" }}
-                    >
-                      {t.is_released ? TAG_TEXT.rel : TAG_TEXT.unrel}
+          {/* ── FOLLOWS (still waiting) · RELEASED (followed tracks that came out) ── */}
+          {(list==="follows" || list==="released") && (() => {
+            const rows = list==="follows" ? waiting : out;
+            if (!rows.length) return <div style={emptyStyle}>{list==="follows" ? "No followed tracks waiting." : "None of your followed tracks is out yet."}</div>;
+            return (
+              <Section title={list==="follows" ? "Waiting for release" : "Out now"} id="followed-tracks">
+                <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:2 }}>
+                  {(showMoreFollows ? rows : rows.slice(0,10)).map((f: any, i: number) => (
+                    <TrackRow key={f.track_title || i} title={f.track_title || "Unknown"} artist={f.track_subtitle} released={!!f.is_released}
+                      status={f.is_released ? "rel" : "unrel"}
+                      onFollowChange={(on) => { if (!on) setFollows((p: any[]) => p.filter((x: any) => x.track_title !== f.track_title)); }} />
+                  ))}
+                  {rows.length > 10 && (
+                    <button onClick={()=>setShowMoreFollows(v=>!v)} style={showMoreBtn}>
+                      {showMoreFollows ? "Show less" : `Show ${rows.length-10} more`}
                     </button>
-                    <button onClick={() => { setConfirmDel(null); setRenaming({ id: t.id, title: t.title || "", artist: t.artist || "" }); }} aria-label="Edit name"
-                      style={{ background:"none", border:"none", padding:4, cursor:"pointer", color:C.text4, display:"flex", flexShrink:0 }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <path d="M4 20h4L19 9l-4-4L4 16z" /><path d="M13 7l4 4" />
-                      </svg>
-                    </button>
-                    {confirmDel === t.id ? (
-                      <button onClick={async () => {
-                        setConfirmDel(null);
-                        const res = await authFetch("/api/bpro/delete", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ track_id: t.id }) }).catch(() => null);
-                        if (res?.ok) setTracks((prev: any[]) => prev.filter((x: any) => x.id !== t.id));
-                        else alert("Couldn't delete this upload. Try again.");
-                      }} style={{ ...tag("neutral"), border:"none", cursor:"pointer", background:"#e5484d", color:"#fff" }}>Delete</button>
-                    ) : (
-                      <button onClick={() => setConfirmDel(t.id)} aria-label="Delete upload"
-                        style={{ background:"none", border:"none", padding:4, cursor:"pointer", color:C.text4, display:"flex", flexShrink:0 }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                          <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />
-                        </svg>
-                      </button>
-                    )}
-                  </div>
-                ))}
-                {tracks.length > 10 && (
-                  <button onClick={()=>setShowMoreTracks(v=>!v)} style={showMoreBtn}>
-                    {showMoreTracks ? "Show less" : `Show ${tracks.length-10} more`}
-                  </button>
-                )}
-              </div>
-            </Section>
-          )}
+                  )}
+                </div>
+              </Section>
+            );
+          })()}
 
         </>)}
 

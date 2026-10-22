@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import MyUploads from "@/components/MyUploads";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { getBrowserRole } from "@/lib/auth/getBrowserRole";
@@ -92,6 +93,11 @@ export default function UploadPage() {
 
   const [uploaderEmail, setUploaderEmail] = useState("");
   const [roleReady,     setRoleReady]     = useState(false);
+  // Upload a track · or see / manage the ones already uploaded
+  const [view, setView] = useState<"upload" | "mine">(() => {
+    try { return new URLSearchParams(window.location.search).get("view") === "mine" ? "mine" : "upload"; } catch { return "upload"; }
+  });
+  const [mineCount, setMineCount] = useState<number | null>(null);
 
   useEffect(() => {
     if (!supabase) return;
@@ -295,6 +301,24 @@ export default function UploadPage() {
 
         <PageHeader title="Upload" sub="Register your track for scanning." />
 
+        {!busy && !done && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 8 }}>
+            {(["upload", "mine"] as const).map((v) => {
+              const on = view === v;
+              return (
+                <button key={v} onClick={() => setView(v)} aria-pressed={on}
+                  style={{ padding: "12px 6px", borderRadius: 16, cursor: "pointer", fontFamily: "inherit", fontSize: 15, fontWeight: 700,
+                    border: `1px solid ${on ? "rgba(245,207,104,0.55)" : C.glassBorder}`,
+                    background: on ? "rgba(245,207,104,0.14)" : "rgba(255,255,255,0.06)", color: on ? C.gold : "#fff" }}>
+                  {v === "upload" ? "New upload" : `My tracks${mineCount != null ? ` · ${mineCount}` : ""}`}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {/* kept mounted so the count shows on the button */}
+        <div style={{ display: view === "mine" && !busy && !done ? "block" : "none" }}><MyUploads pro onCount={setMineCount} /></div>
+
         {busy && <ForgeView progress={progress} phase={phase} tick={tick} />}
 
         {done && !busy && (
@@ -311,7 +335,7 @@ export default function UploadPage() {
           </section>
         )}
 
-        {!busy && !done && (
+        {!busy && !done && view === "upload" && (
           <div style={{ ...glass, display: "grid", gridTemplateColumns: "1fr 1fr", padding: 4, borderRadius: 999 }}>
             {(["one", "bulk"] as const).map((m) => (
               <button key={m} onClick={() => setMode(m)}
@@ -323,9 +347,9 @@ export default function UploadPage() {
           </div>
         )}
 
-        {!busy && !done && mode === "bulk" && <BulkUpload initialFiles={bulkFiles} />}
+        {!busy && !done && view === "upload" && mode === "bulk" && <BulkUpload initialFiles={bulkFiles} />}
 
-        {!busy && !done && mode === "one" && (<>
+        {!busy && !done && view === "upload" && mode === "one" && (<>
 
         <Card title="Track">
           <div style={{ display: "grid", gap: 10 }}>
