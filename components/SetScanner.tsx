@@ -112,7 +112,7 @@ export default function SetScanner({ player, duration, initial, sourceUrl, onSav
   player: React.MutableRefObject<any>; duration: number; initial: DraftRow[]; sourceUrl: string;
   onSave: (rows: DraftRow[]) => Promise<boolean>; onClose: () => void;
 }) {
-  const [mode, setMode] = useState<"idle" | "fast" | "live">("idle");
+  const [mode, setMode] = useState<"idle" | "fast" | "live" | "ids">("idle");
   const [samples, setSamples] = useState<Sample[]>([]);
   const [rows, setRows] = useState<DraftRow[]>(initial);
   const [status, setStatus] = useState("");
@@ -192,7 +192,7 @@ export default function SetScanner({ player, duration, initial, sourceUrl, onSav
     } catch { setSamples((l) => [...l, { t: Math.floor(t), title: null, artist: null }]); }
   }
 
-  async function start(m: "fast" | "live") {
+  async function start(m: "fast" | "live" | "ids") {
     const p = player.current;
     if (!p?.getCurrentTime) { setStatus("The player isn't ready yet."); return; }
     try {
@@ -201,7 +201,27 @@ export default function SetScanner({ player, duration, initial, sourceUrl, onSav
     stop.current = false; setMode(m); setSamples([]); base.current = rows.filter((r) => r.title || r.id);
     try { p.unMute?.(); p.setVolume?.(100); } catch {}
     const end = duration || p.getDuration?.() || 0;
-    if (m === "fast") {
+    if (m === "ids") {
+      // Only the unknown moments: 2 listens in the middle of each ID (away from the transitions)
+      const starts = rows.map((r) => parseTime(r.start)).map((v) => (v == null ? null : v));
+      const spots: number[] = [];
+      rows.forEach((r, i) => {
+        const a = starts[i]; if (!r.id || a == null) return;
+        const nextStart = starts.slice(i + 1).find((x) => x != null) ?? (end || a + 300);
+        const len = Math.max(30, nextStart - a);
+        spots.push(Math.floor(a + len * 0.3), Math.floor(a + len * 0.65));
+      });
+      if (!spots.length) setStatus("No ID with a time in the tracklist.");
+      for (let k = 0; k < spots.length && !stop.current; k++) {
+        const pos = spots[k];
+        setStatus(`ID ${Math.floor(k / 2) + 1}/${spots.length / 2} · jumping to ${fmtTime(pos)}…`);
+        try { p.seekTo(pos, true); p.playVideo(); } catch {}
+        await new Promise((r) => setTimeout(r, SETTLE_MS));
+        if (stop.current) break;
+        setStatus(`ID ${Math.floor(k / 2) + 1}/${spots.length / 2} · listening at ${fmtTime(pos)}…`);
+        await sample(p.getCurrentTime?.() ?? pos);
+      }
+    } else if (m === "fast") {
       for (let pos = 0; pos < end - 5 && !stop.current; pos += STEP_SEC) {
         setStatus(`Jumping to ${fmtTime(pos)}…`);
         try { p.seekTo(pos, true); p.playVideo(); } catch {}
@@ -251,6 +271,9 @@ export default function SetScanner({ player, duration, initial, sourceUrl, onSav
       <div style={{ fontSize: 13, color: C.text2, lineHeight: 1.5 }}>Then scan to fill the missing ones: turn the video sound up, BANGER listens through the microphone. Scan results only fill the IDs.</div>
       {!scanning ? (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          {rows.some((r) => r.id && parseTime(r.start) != null) && (
+            <button onClick={() => start("ids")} style={{ ...ui.cta, gridColumn: "1 / -1", padding: "12px 8px", fontSize: 14 }}>🎯 Scan IDs only ({rows.filter((r) => r.id && parseTime(r.start) != null).length})</button>
+          )}
           <button onClick={() => start("fast")} style={{ ...ui.cta, padding: "12px 8px", fontSize: 14 }}>⚡ Fast scan</button>
           <button onClick={() => start("live")} style={{ ...ui.pill, justifyContent: "center", padding: "12px 8px", fontSize: 14 }}>▶ Live scan</button>
         </div>
