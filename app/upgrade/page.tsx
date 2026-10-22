@@ -111,12 +111,12 @@ export default function UpgradePage() {
       ))}
     </div>
   );
-  const priceLine = plan === "yearly" ? "7 days free, then €79/year. Cancel anytime." : "7 days free, then €9.99/month. Cancel anytime.";
+  const priceLine = plan === "yearly" ? "3 days free, then €79/year. Cancel anytime." : "3 days free, then €9.99/month. Cancel anytime.";
   const cta = isPro ? (
     <div style={alreadyPro}>You&apos;re Pro ✦ Enjoy the vault.</div>
   ) : (
     <button style={{ ...ui.cta, opacity: loading ? 0.6 : 1 }} onClick={handleUpgrade} disabled={loading}>
-      {loading ? "Redirecting…" : authed ? "Start 7-day free trial" : "Sign in to go Pro"}
+      {loading ? "Redirecting…" : authed ? "Start 3-day free trial" : "Sign in to go Pro"}
     </button>
   );
 

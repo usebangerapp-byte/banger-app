@@ -79,7 +79,7 @@ export default function TermsPage() {
 
           <h3 style={s.h3}>Free trial</h3>
           <p>
-            7 days free on your first subscription. A card is required. You&apos;re charged at the end of
+            3 days free on your first subscription. A card is required. You&apos;re charged at the end of
             the trial unless you cancel before. One trial per person.
           </p>
 

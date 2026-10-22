@@ -41,8 +41,8 @@ export function ProSheetHost() {
         </span>
         <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: "-0.02em" }}>{c.title}</div>
         <div style={{ fontSize: 15, color: C.text2, lineHeight: 1.5, maxWidth: 360 }}>{c.text}</div>
-        <button onClick={() => { setKind(null); router.push(`/upgrade?from=${kind}`); }} style={{ ...ui.cta, width: "100%", marginTop: 6 }}>Start 7-day free trial</button>
-        <div style={{ fontSize: 12, color: C.text3 }}>7 days free, then €9.99/month. Cancel anytime.</div>
+        <button onClick={() => { setKind(null); router.push(`/upgrade?from=${kind}`); }} style={{ ...ui.cta, width: "100%", marginTop: 6 }}>Start 3-day free trial</button>
+        <div style={{ fontSize: 12, color: C.text3 }}>3 days free, then €9.99/month. Cancel anytime.</div>
         <button onClick={() => setKind(null)} style={{ background: "none", border: "none", color: C.text3, fontSize: 14, cursor: "pointer", fontFamily: "inherit", padding: 6 }}>Not now</button>
       </div>
     </div>,

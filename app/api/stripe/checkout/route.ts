@@ -24,7 +24,7 @@ export async function POST(req: Request) {
   const yearly = body?.plan === "yearly" && !!process.env.STRIPE_PRICE_ID_YEARLY;
   const price = yearly ? process.env.STRIPE_PRICE_ID_YEARLY! : process.env.STRIPE_PRICE_ID!;
 
-  // 7-day free trial — only for people who never had a subscription
+  // 3-day free trial — only for people who never had a subscription
   const { data: prof } = await supabase.from("profiles")
     .select("stripe_customer_id,stripe_subscription_id").eq("id", user.id).maybeSingle();
   const firstTime = !prof?.stripe_subscription_id;
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
       allow_promotion_codes: true,
       subscription_data: {
         metadata: { user_id: user.id },
-        ...(firstTime ? { trial_period_days: 7 } : {}),
+        ...(firstTime ? { trial_period_days: 3 } : {}),
       },
     });
 

@@ -10,7 +10,7 @@ type Plan = "public" | "pro";
 
 // --- À ajuster facilement ---
 const CONTACT_EMAIL = "contact@usebanger.com";
-const PRO_PRICE = "€9.99/month or €79/year · 7 days free";
+const PRO_PRICE = "€9.99/month or €79/year · 3 days free";
 // ----------------------------
 
 const plans: {
