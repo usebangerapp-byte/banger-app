@@ -52,6 +52,16 @@ export default function TopBar() {
     return fetch(url, { ...init, headers: { ...(init?.headers || {}), "Content-Type": "application/json", Authorization: `Bearer ${token}` } });
   }, []);
 
+  const [msgCount, setMsgCount] = useState(0);
+  const loadMsgs = useCallback(async () => {
+    try {
+      const res = await authedFetch("/api/messages/list?unread=1", { cache: "no-store" });
+      const j = await res?.json().catch(() => null);
+      if (typeof j?.unread === "number") setMsgCount(j.unread);
+    } catch {}
+  }, [authedFetch]);
+  useEffect(() => { loadMsgs(); const t = window.setInterval(loadMsgs, 30000); return () => window.clearInterval(t); }, [pathname, loadMsgs]);
+
   const loadNotifs = useCallback(async () => {
     try {
       const res = await authedFetch("/api/notifications", { cache: "no-store" });
@@ -124,11 +134,28 @@ export default function TopBar() {
           </svg>
         </button>
 
-        {/* Logo center */}
-        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {/* Logo center (absolute: stays centred whatever is on each side) */}
+        <span style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", pointerEvents: "none", display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 15, fontWeight: 700, letterSpacing: "0.24em", color: "#fff" }}>BANGER</span>
         </span>
 
+        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {/* Messages — right, next to the bell */}
+        <button aria-label="Messages" onClick={() => {
+          setShowNotifs(false); setShowSettings(false);
+          if (pathname === "/profile") window.dispatchEvent(new Event("banger:messages"));
+          else window.location.href = "/profile?tab=messages";
+        }} style={{ ...iconBtn, position: "relative" }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>
+          </svg>
+          {msgCount > 0 && (
+            <span style={{ position:"absolute", top:-3, right:-3, minWidth:17, height:17, padding:"0 4px", boxSizing:"border-box", borderRadius:999,
+              background:"#e5484d", color:"#fff", fontSize:10, fontWeight:800, display:"flex", alignItems:"center", justifyContent:"center" }}>
+              {msgCount > 9 ? "9+" : msgCount}
+            </span>
+          )}
+        </button>
         {/* Notifications — right */}
         <button onClick={() => {
           const opening = !showNotifs;
@@ -151,6 +178,7 @@ export default function TopBar() {
             </span>
           )}
         </button>
+        </span>
       </div>
 
       {/* Spacer so content doesn't hide under TopBar */}

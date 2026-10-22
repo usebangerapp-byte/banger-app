@@ -175,7 +175,9 @@ export default function ProfilePageV2() {
   const [promoLine, setPromoLine] = useState<string | null>(null);
   const [proStats, setProStats] = useState<{ uploadScans7d: number; topUpload: { title: string; scans: number } | null } | null>(null);
   const [shared,   setShared]   = useState(false);
-  const [tab,      setTab]      = useState<"profile"|"studio"|"messages"|"settings">("profile");
+  const [tab,      setTab]      = useState<"profile"|"messages">("profile");
+  // The lists under the profile card: one at a time
+  const [list,     setList]     = useState<"scans"|"follows"|"uploads">("scans");
   const [showSearch, setShowSearch] = useState(false);
   const [showMoreTracks, setShowMoreTracks] = useState(false);
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
@@ -212,7 +214,12 @@ export default function ProfilePageV2() {
       const w = sp.get("with");
       if (w) { setTab("messages"); setActiveConv(w); setPendingName(sp.get("name") || ""); }
       if (sp.get("edit") === "1") setEditing(true);
+      const l = sp.get("list"); if (l === "scans" || l === "follows" || l === "uploads") setList(l);
     } catch {}
+    // the ✉️ button in the top bar, when already on this page
+    const open = () => { setTab("messages"); setActiveConv(null); };
+    window.addEventListener("banger:messages", open);
+    return () => window.removeEventListener("banger:messages", open);
   }, []);
   const [msgInput, setMsgInput] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -298,7 +305,7 @@ export default function ProfilePageV2() {
         if (email) {
           const { data: bpro } = await supabase.from("bpro_tracks")
             .select("id,title,artist,release_status,is_released")
-            .eq("uploader_email", email).order("created_at", { ascending: false }).limit(20);
+            .eq("uploader_email", email).order("created_at", { ascending: false }).limit(200);
           if (mounted) setTracks(bpro || []);
         }
       } finally { if (mounted) setLoading(false); }
@@ -473,6 +480,11 @@ export default function ProfilePageV2() {
   }
 
   const name     = profile?.display_name || profile?.email?.split("@")[0] || "You";
+  const showUploads = role === "pro" || tracks.length > 0;
+  function openList(l: "scans"|"follows"|"uploads") {
+    setList(l);
+    setTimeout(() => document.getElementById("lists")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  }
   const shareUrl = `https://usebanger.com/dj/${userId}`;
 
   if (loading) return (
@@ -498,21 +510,15 @@ export default function ProfilePageV2() {
     <main style={pageStyle}>
       <div style={shellStyle}>
 
-        <PageHeader title="Profile"
-          code={<span style={{ color: role==="pro" ? C.gold : undefined }}>{role==="pro" ? "PRO" : "Free"}</span>} />
+        <PageHeader title={tab==="messages" ? "Messages" : "Profile"}
+          code={tab==="messages"
+            ? <button onClick={() => { setTab("profile"); setActiveConv(null); try { window.history.replaceState(null, "", "/profile"); } catch {} }} style={{ ...backBtn, fontSize:13 }}>Profile ›</button>
+            : <span style={{ color: role==="pro" ? C.gold : undefined }}>{role==="pro" ? "PRO" : "Free"}</span>} />
 
-        <div style={tabBarStyle}>
-          {(role === "pro" ? (["profile","studio","messages"] as const) : (["profile","messages"] as const)).map(t => (
-            <button key={t} onClick={() => setTab(t)} style={{ ...tabBtn, ...(tab===t?tabActive:{}) }}>
-              {t==="profile" ? "Activity" : t==="studio" ? "Studio" : `Messages${convs.reduce((a,c)=>a+c.unread,0)>0?` · ${convs.reduce((a,c)=>a+c.unread,0)}`:""}`}
-            </button>
-          ))}
-        </div>
-
-        {(tab==="profile" || tab==="studio") && (<>
+        {tab==="profile" && (<>
 
           {/* ── IDENTITY: avatar + stats side by side, name, links, actions — compact ── */}
-          {tab==="profile" && <section style={{ ...glass, borderRadius:24, padding:"16px 16px 14px", display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:12, minWidth:0 }}>
+          <section style={{ ...glass, borderRadius:24, padding:"16px 16px 14px", display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:12, minWidth:0 }}>
             <input ref={avatarInputRef} type="file" accept="image/*" style={{ display:"none" }}
               onChange={e => { const f = e.target.files?.[0]; if (f) uploadAvatar(f); e.target.value=""; }} />
 
@@ -530,10 +536,10 @@ export default function ProfilePageV2() {
               {/* Stats in columns — followers / following / follows open their list */}
               <div style={{ flex:1, minWidth:0, display:"grid", gridTemplateColumns:"repeat(4, minmax(0,1fr))", gap:2, textAlign:"center" }}>
                 {[
-                  { n: scans.length, l: "Scans", on: undefined as undefined | (() => void) },
+                  { n: scans.length, l: "Scans", on: () => openList("scans") },
                   { n: profile?.follower_count||0, l: "Followers", on: () => setPeopleList("followers") },
                   { n: profile?.following_count||0, l: "Following", on: () => setPeopleList("following") },
-                  { n: follows.length, l: "Follows", on: () => { setShowMoreFollows(true); setTimeout(() => document.getElementById("followed-tracks")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50); } },
+                  { n: follows.length, l: "Follows", on: () => openList("follows") },
                 ].map((x) => (
                   <button key={x.l} onClick={x.on} disabled={!x.on} style={{ ...statBtn, display:"grid", gap:2, cursor: x.on ? "pointer" : "default", minWidth:0 }}>
                     <span style={{ fontSize:19, fontWeight:800, color:"#fff", lineHeight:1.1 }}>{x.n}</span>
@@ -580,33 +586,15 @@ export default function ProfilePageV2() {
             {!loading && role !== "pro" && (
               <button onClick={() => router.push("/upgrade")} style={{ ...ui.pillSolid, justifyContent:"center", width:"100%", padding:"11px" }}>Go Pro</button>
             )}
-          </section>}
-
-          {/* ── STUDIO (Pro): send a demo (Set mode lives in the Sets tab) ── */}
-          {tab==="studio" && !loading && role === "pro" && (
-            <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:10 }}>
-              {[
-                { href:"/promo", label:"Send a demo", icon:<path d="M4 12l16-8-6 16-2.5-6.5L4 12z" /> },
-              ].map((t) => (
-                <button key={t.href} onClick={() => router.push(t.href)}
-                  style={{ ...glass, borderRadius:20, padding:"14px 16px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", color:"#fff", fontFamily:"inherit", textAlign:"left" }}>
-                  <span style={{ width:36, height:36, borderRadius:12, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center",
-                    background:"rgba(245,207,104,0.12)", border:"1px solid rgba(245,207,104,0.25)" }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.gold} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{t.icon}</svg>
-                  </span>
-                  <span style={{ fontSize:15, fontWeight:600 }}>{t.label}</span>
-                </button>
-              ))}
-            </div>
-          )}
+          </section>
 
           {/* ── FIND PEOPLE (discreet) ── */}
-          {tab==="profile" && showSearch && <PeopleSearch selfId={userId} />}
+          {showSearch && <PeopleSearch selfId={userId} />}
           {peopleList && userId && (
             <PeopleSheet userId={userId} list={peopleList} onClose={() => setPeopleList(null)} />
           )}
 
-          {tab==="profile" && editing && (
+          {editing && (
             <Section title="Edit profile">
               <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:10 }}>
                 {[{label:"Display name",value:editName,set:setEditName,ph:"DJ Banger"},
@@ -628,7 +616,7 @@ export default function ProfilePageV2() {
           )}
 
           {/* ── JUST DROPPED: tracks I followed that came out (last 30 days) — only when there are some ── */}
-          {tab==="profile" && dropped.length > 0 && (
+          {dropped.length > 0 && (
             <Section title="Just dropped">
               <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)" }}>
                 {dropped.map((d, i) => (
@@ -639,8 +627,35 @@ export default function ProfilePageV2() {
             </Section>
           )}
 
+          {/* ── STUDIO (Pro): send a demo (Set mode lives in the Sets tab) ── */}
+          {!loading && role === "pro" && (
+            <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:10 }}>
+              {[
+                { href:"/promo", label:"Send a demo", icon:<path d="M4 12l16-8-6 16-2.5-6.5L4 12z" /> },
+              ].map((t) => (
+                <button key={t.href} onClick={() => router.push(t.href)}
+                  style={{ ...glass, borderRadius:20, padding:"14px 16px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", color:"#fff", fontFamily:"inherit", textAlign:"left" }}>
+                  <span style={{ width:36, height:36, borderRadius:12, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center",
+                    background:"rgba(245,207,104,0.12)", border:"1px solid rgba(245,207,104,0.25)" }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.gold} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{t.icon}</svg>
+                  </span>
+                  <span style={{ fontSize:15, fontWeight:600 }}>{t.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* ── MY LISTS: Scans · Follows · Uploads, one at a time ── */}
+          <div id="lists" style={{ ...tabBarStyle, gridTemplateColumns: showUploads ? "1fr 1fr 1fr" : "1fr 1fr", scrollMarginTop:72 }}>
+            {(showUploads ? (["scans","follows","uploads"] as const) : (["scans","follows"] as const)).map((l) => (
+              <button key={l} onClick={() => setList(l)} style={{ ...tabBtn, ...(list===l?tabActive:{}) }}>
+                {l==="scans" ? `Scans · ${scans.length}` : l==="follows" ? `Follows · ${follows.length}` : `Uploads · ${tracks.length}`}
+              </button>
+            ))}
+          </div>
+
           {/* ── YOUR TRACKS (Pro): how often others scanned my uploads ── */}
-          {tab==="studio" && proStats && (
+          {list==="uploads" && proStats && (
             <div style={weekCard}>
               <div style={{ ...sectionTitleStyle, padding:"0 0 10px" }}>Your tracks</div>
               <div style={{ display:"grid", gap:4, paddingTop:14 }}>
@@ -667,16 +682,17 @@ export default function ProfilePageV2() {
           )}
 
           {/* ── SCANS LIST ── */}
-          {tab==="profile" && scans.length > 0 && (
+          {list==="scans" && scans.length === 0 && <div style={emptyStyle}>No scans yet.</div>}
+          {list==="scans" && scans.length > 0 && (
             <Section title="Recent scans">
               <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:2 }}>
-                {(showMoreScans ? scans : scans.slice(0,3)).map((s,i) => (
+                {(showMoreScans ? scans : scans.slice(0,10)).map((s,i) => (
                   <TrackRow key={i} title={s.track_title || "Unknown"} artist={s.track_subtitle} released={s.result_type !== "recognized_unreleased"}
                     status={s.result_type === "recognized_unreleased" ? "unrel" : "rel"} />
                 ))}
-                {scans.length > 3 && (
+                {scans.length > 10 && (
                   <button onClick={()=>setShowMoreScans(v=>!v)} style={showMoreBtn}>
-                    {showMoreScans ? "Show less" : `Show ${scans.length-3} more`}
+                    {showMoreScans ? "Show less" : `Show ${scans.length-10} more`}
                   </button>
                 )}
               </div>
@@ -684,17 +700,18 @@ export default function ProfilePageV2() {
           )}
 
           {/* ── FOLLOWS LIST ── */}
-          {tab==="profile" && follows.length > 0 && (
+          {list==="follows" && follows.length === 0 && <div style={emptyStyle}>No followed tracks yet.</div>}
+          {list==="follows" && follows.length > 0 && (
             <Section title="Followed tracks" id="followed-tracks">
               <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:2 }}>
-                {(showMoreFollows ? follows : follows.slice(0,3)).map((f,i) => (
+                {(showMoreFollows ? follows : follows.slice(0,10)).map((f,i) => (
                   <TrackRow key={f.track_title || i} title={f.track_title || "Unknown"} artist={f.track_subtitle} released={!!f.is_released}
                     status={f.is_released ? "rel" : "unrel"}
                     onFollowChange={(on) => { if (!on) setFollows((p: any[]) => p.filter((x: any) => x.track_title !== f.track_title)); }} />
                 ))}
-                {follows.length > 3 && (
+                {follows.length > 10 && (
                   <button onClick={()=>setShowMoreFollows(v=>!v)} style={showMoreBtn}>
-                    {showMoreFollows ? "Show less" : `Show ${follows.length-3} more`}
+                    {showMoreFollows ? "Show less" : `Show ${follows.length-10} more`}
                   </button>
                 )}
               </div>
@@ -702,10 +719,11 @@ export default function ProfilePageV2() {
           )}
 
           {/* ── MES TRACKS (en dernier) ── */}
-          {tab==="studio" && tracks.length > 0 && (
+          {list==="uploads" && tracks.length === 0 && <div style={emptyStyle}>No uploads yet.</div>}
+          {list==="uploads" && tracks.length > 0 && (
             <Section title="My uploads">
               <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:4 }}>
-                {(showMoreTracks ? tracks : tracks.slice(0,3)).map((t) => renaming?.id === t.id ? (
+                {(showMoreTracks ? tracks : tracks.slice(0,10)).map((t) => renaming?.id === t.id ? (
                   <div key={t.id} style={{ display:"grid", gap:8, padding:"14px 0", borderBottom:`1px solid ${C.lineSoft}` }}>
                     <input value={renaming!.title} onChange={(e) => setRenaming({ ...renaming!, title: e.target.value, error: "" })} placeholder="Title"
                       style={{ ...ui.input, padding:"9px 12px", fontSize:14, fontWeight:600 }} />
@@ -772,9 +790,9 @@ export default function ProfilePageV2() {
                     )}
                   </div>
                 ))}
-                {tracks.length > 3 && (
+                {tracks.length > 10 && (
                   <button onClick={()=>setShowMoreTracks(v=>!v)} style={showMoreBtn}>
-                    {showMoreTracks ? "Show less" : `Show ${tracks.length-3} more`}
+                    {showMoreTracks ? "Show less" : `Show ${tracks.length-10} more`}
                   </button>
                 )}
               </div>

@@ -10,6 +10,12 @@ export async function GET(req: Request) {
   const user_id  = me.id;
   const other_id = searchParams.get("other_id") || "";
 
+  // Just the number of unread messages (the ✉️ badge in the top bar)
+  if (searchParams.get("unread") === "1") {
+    const { count } = await sb.from("messages").select("id", { count: "exact", head: true }).eq("receiver_id", user_id).eq("read", false);
+    return Response.json({ ok: true, unread: count || 0 }, { headers: { "Cache-Control": "no-store" } });
+  }
+
   // Newest first from the DB (a conversation keeps its latest messages), then back to chronological order
   let query = sb.from("messages").select("*").order("created_at", { ascending: false }).limit(other_id ? 300 : 1000);
   if (other_id) query = query.or(`and(sender_id.eq.${user_id},receiver_id.eq.${other_id}),and(sender_id.eq.${other_id},receiver_id.eq.${user_id})`);
