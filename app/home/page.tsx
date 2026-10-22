@@ -406,7 +406,7 @@ export default function Home() {
     } catch {
       stopMeters();
       setStatus("idle");
-      alert("Micro non autorisé. Active l'accès micro dans le navigateur.");
+      alert("Microphone blocked. Allow microphone access in your browser settings.");
     }
   }
 

@@ -204,7 +204,7 @@ export async function POST(req: Request) {
       label: catalogLabel,
       track: savedTrack,
       snippets_created: snippetRows.length,
-      message: existingTrack ? 'Upload BPro mis à jour' : 'Upload BPro créé'
+      message: existingTrack ? 'Upload updated' : 'Upload created'
     })
   } catch (error) {
     const message =

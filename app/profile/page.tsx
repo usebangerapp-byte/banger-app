@@ -323,7 +323,7 @@ export default function ProfilePageV2() {
           const avatar_url = p?.avatar_url || null;
           // Aperçu du dernier message : fichier audio ou texte court
           const rawLast = msg.file_name ? `🎵 ${msg.file_name}` :
-            msg.content?.startsWith("📎") ? "📎 Fichier audio" :
+            msg.content?.startsWith("📎") ? "📎 Audio file" :
             msg.content || "";
           map.set(other, { user_id: other, display_name, avatar_url, last: rawLast, lastAt: msg.created_at,
             unread: msg.receiver_id === userId && !msg.read ? (map.get(other)?.unread||0)+1 : (map.get(other)?.unread||0) });
@@ -676,17 +676,17 @@ export default function ProfilePageV2() {
                   <div style={{ ...glass, background:"rgba(30,30,30,0.85)",
                     borderRadius:24, padding:"24px 20px", maxWidth:300, width:"90%", textAlign:"center" as const }}
                     onClick={e=>e.stopPropagation()}>
-                    <div style={{ fontSize:15, fontWeight:700, marginBottom:8 }}>Supprimer la conversation ?</div>
+                    <div style={{ fontSize:15, fontWeight:700, marginBottom:8 }}>Delete this conversation?</div>
                     <div style={{ fontSize:13, color:"rgba(255,255,255,0.45)", marginBottom:20 }}>
-                      Tous les messages seront effacés définitivement.
+                      All messages will be deleted for good.
                     </div>
                     <div style={{ display:"flex", gap:10 }}>
                       <button onClick={()=>setConvToDelete(null)}
                         style={{ flex:1, padding:"11px 0", borderRadius:999, border:"1px solid rgba(255,255,255,0.12)",
-                          background:"rgba(255,255,255,0.08)", color:"#fff", fontSize:14, cursor:"pointer" }}>Annuler</button>
+                          background:"rgba(255,255,255,0.08)", color:"#fff", fontSize:14, cursor:"pointer" }}>Cancel</button>
                       <button onClick={()=>deleteConversation(convToDelete)}
                         style={{ flex:1, padding:"11px 0", borderRadius:999, border:"none",
-                          background:"#e5484d", color:"#fff", fontSize:14, fontWeight:700, cursor:"pointer" }}>Supprimer</button>
+                          background:"#e5484d", color:"#fff", fontSize:14, fontWeight:700, cursor:"pointer" }}>Delete</button>
                     </div>
                   </div>
                 </div>

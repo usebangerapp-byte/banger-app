@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { ui, C, tag } from "@/lib/ui";
@@ -60,6 +60,10 @@ const plans: {
 export default function OnboardingView() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  // Pro: monthly or yearly (yearly only shown when it is set up in Stripe)
+  const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
+  const [hasYearly, setHasYearly] = useState(false);
+  useEffect(() => { fetch("/api/stripe/plans").then((r) => r.json()).then((j) => setHasYearly(!!j?.yearly)).catch(() => {}); }, []);
 
   async function choosePlan(plan: Plan) {
     setLoading(true);
@@ -97,7 +101,8 @@ export default function OnboardingView() {
 
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
-        headers: { "Authorization": `Bearer ${token}` },
+        headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: billing }),
       });
       const json = await res.json();
       if (json.url) {
@@ -135,6 +140,18 @@ export default function OnboardingView() {
                 <span style={{ fontSize: 15 }}>{feature}</span>
               </div>
             ))}
+            {plan.key === "pro" && hasYearly && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 14 }}>
+                {([["monthly", "Monthly", "€9.99 / month"], ["yearly", "Yearly", "€79 / year · save 34%"]] as const).map(([k, label, price]) => (
+                  <button key={k} type="button" onClick={() => setBilling(k)} aria-pressed={billing === k}
+                    style={{ borderRadius: 16, padding: "12px 10px", cursor: "pointer", fontFamily: "inherit", color: "#fff", textAlign: "center", background: billing === k ? "rgba(245,207,104,0.12)" : "rgba(255,255,255,0.05)",
+                      border: billing === k ? "1px solid rgba(245,207,104,0.7)" : `1px solid ${C.glassBorder}` }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: billing === k ? C.gold : "#fff" }}>{label}</div>
+                    <div style={{ fontSize: 12, color: C.text2, marginTop: 3 }}>{price}</div>
+                  </button>
+                ))}
+              </div>
+            )}
             <button
               type="button"
               onClick={() => choosePlan(plan.key)}
@@ -143,7 +160,7 @@ export default function OnboardingView() {
                 ? { ...ui.cta, margin: "16px 0 16px", opacity: loading ? 0.6 : 1 }
                 : { ...ui.pill, margin: "16px 0 16px", width: "100%", padding: "15px", fontSize: 16 }}
             >
-              {loading && plan.key === "pro" ? "Redirecting…" : plan.key === "pro" ? "Go Pro" : plan.cta}
+              {loading && plan.key === "pro" ? "Redirecting…" : plan.key === "pro" ? "Start 3-day free trial" : plan.cta}
             </button>
           </section>
         ))}
