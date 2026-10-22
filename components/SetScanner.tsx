@@ -49,7 +49,10 @@ function mergeScan(base: DraftRow[], scanned: DraftRow[]): DraftRow[] {
     const t = parseTime(sc.start) ?? 0;
     let best = -1, bestD = Infinity;
     out.forEach((r, i) => { const d = Math.abs((parseTime(r.start) ?? 0) - t); if (r.id && d < bestD) { best = i; bestD = d; } });
-    if (best >= 0 && bestD <= 120) out[best] = { ...out[best], id: false, title: sc.title, artist: sc.artist, flag: "found by the scan — check" };
+    if (best < 0 || bestD > 120) continue;
+    // Heard twice the same → fill the ID. Heard only once → just a hint, the row stays an ID.
+    if (!sc.flag) out[best] = { ...out[best], id: false, title: sc.title, artist: sc.artist, flag: "found by the scan (heard twice) — check" };
+    else out[best] = { ...out[best], flag: `maybe ${sc.artist ? sc.artist + " - " : ""}${sc.title} (heard once) — tap Known to use it` , title: out[best].title || sc.title, artist: out[best].artist || sc.artist };
   }
   return out;
 }
