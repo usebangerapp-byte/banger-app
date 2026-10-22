@@ -51,7 +51,7 @@ const plans: {
       "Get my tracklist: live or from a link",
       "Upload your unreleased tracks, they become scannable",
       "Release control & scan stats on your tracks",
-      "Send demos to DJs and to BANGER",
+      "Send demos to DJs, labels and BANGER",
     ],
     cta: "Go Pro",
   },

@@ -15,8 +15,8 @@ const SCENES = [
   { icon: "bell", title: "Follow every ID", text: "Unlimited follows. The alert the day each one drops." },
   { icon: "sets", title: "Full set tracklists", text: "Every track of every set, and help unlock the IDs." },
   { icon: "tracklist", title: "Get my tracklist", text: "Live while you play, or from a YouTube / SoundCloud link." },
-  { icon: "upload", title: "Your track in their crates", text: "Upload your unreleased music. Every BANGER scan can now name it." },
-  { icon: "send", title: "Demos that get answers", text: "Send private tracks to DJs, or to BANGER. Get 🔥, feedback and requests." },
+  { icon: "upload", title: "Upload your IDs", text: "Your unreleased music becomes scannable. Every BANGER scan can name it." },
+  { icon: "send", title: "Send demos to DJs & labels", text: "Private tracks to DJs, labels or BANGER. Get 🔥, feedback and requests." },
   { icon: "stats", title: "See it travel", text: "Know how often your IDs get scanned, week after week." },
 ];
 
