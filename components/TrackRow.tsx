@@ -2,7 +2,7 @@
 
 import { fmtTitle, fmtArtist } from "@/lib/format";
 import { useEffect, useId, useState, type ReactNode, type CSSProperties } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { authFetch } from "@/lib/authFetch";
 import { ui, C, tag, TAG_TEXT } from "@/lib/ui";
@@ -140,11 +140,17 @@ export default function TrackRow({ title, artist, rank, meta, last, onFollowChan
   }
 
   const sub = [artist ? fmtArtist(artist) : "", meta].filter(Boolean).join(" · ");
+  const router = useRouter();
+  const href = trackHref(title, artist);
+  const canFollow = !(released ?? m?.released);
+  const round: CSSProperties = { width: 34, height: 34, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 };
 
+  // The whole row opens the track (Info); the bell follows it; admins get a small pencil.
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 0", borderBottom: last ? "none" : `1px solid ${C.lineSoft}`, minWidth: 0 }}>
+    <div role="link" tabIndex={0} onClick={() => router.push(href)} onKeyDown={(e) => { if (e.key === "Enter") router.push(href); }}
+      style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: last ? "none" : `1px solid ${C.lineSoft}`, minWidth: 0, cursor: "pointer" }}>
       {rank !== undefined && <span style={{ ...ui.rank, width: 18 }}>{rank}</span>}
-      <div style={{ width: 32, flexShrink: 0, display: "flex", justifyContent: "center" }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: 32, flexShrink: 0, display: "flex", justifyContent: "center" }}>
         {m?.snippet
           ? <PreviewButton compact id={`row-${key}`} snippetPath={m.snippet} />
           : <span aria-hidden style={{ width: 32, height: 32, borderRadius: "50%", border: `1px dashed ${C.lineSoft}`, opacity: 0.6 }} />}
@@ -154,22 +160,27 @@ export default function TrackRow({ title, artist, rank, meta, last, onFollowChan
         {(sub || status) && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, marginTop: 2 }}>
             {sub && <span style={{ flex: 1, minWidth: 0 }}><MarqueeText text={sub} group={lineGroup} style={{ ...ui.rowSub, marginTop: 0 }} /></span>}
-            {status && (() => { const k = m ? (m.released ? "rel" : "unrel") : status; return <span style={tag(k)}>{TAG_TEXT[k]}</span>; })()}
+            {status && (() => { const k = m ? (m.released ? "rel" : "unrel") : status; return <span style={{ ...tag(k), fontSize: 11, padding: "3px 8px" }}>{TAG_TEXT[k]}</span>; })()}
           </div>
         )}
       </div>
-      <div style={{ display: "grid", gap: 6, flexShrink: 0, width: 96 }}>
-        {!(released ?? m?.released) && <button onClick={toggleFollow} disabled={busy}
-          style={following
-            ? { ...ui.pillSmall, justifyContent: "center", color: C.text3 }
-            : { ...ui.pillSmall, justifyContent: "center", color: C.gold, background: "rgba(245,207,104,0.12)", borderColor: "rgba(245,207,104,0.30)" }}>
-          {busy ? "…" : <><Bell filled={following} />{following ? "Following" : "Follow"}</>}
-        </button>}
-        <Link href={trackHref(title, artist)} style={{ ...ui.pillSmall, justifyContent: "center" }}>Info</Link>
+      <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
         {right}
         {isAdmin && (
-          <button onClick={() => setEditing(true)} style={{ ...ui.pillSmall, justifyContent: "center", color: C.text3, padding: "4px 8px", fontSize: 12 }}>Edit</button>
+          <button onClick={() => setEditing(true)} aria-label="Edit (admin)"
+            style={{ ...round, width: 30, height: 30, border: `1px solid ${C.glassBorder}`, background: "rgba(255,255,255,0.05)", color: C.text3 }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /></svg>
+          </button>
         )}
+        {canFollow && (
+          <button onClick={toggleFollow} disabled={busy} aria-label={following ? "Following — tap to unfollow" : "Follow — notify me when it's out"}
+            style={following
+              ? { ...round, border: "1px solid rgba(245,207,104,0.45)", background: C.goldGrad, color: C.goldInk }
+              : { ...round, border: "1px solid rgba(245,207,104,0.35)", background: "rgba(245,207,104,0.10)", color: C.gold }}>
+            {busy ? "…" : <span style={{ transform: "scale(1.35)", display: "flex" }}><Bell filled={following} /></span>}
+          </button>
+        )}
+        <span aria-hidden style={{ color: C.text4, fontSize: 18, marginLeft: 2 }}>›</span>
         {editing && <AdminTrackSheet title={title} artist={artist} onClose={() => setEditing(false)} />}
       </div>
     </div>
