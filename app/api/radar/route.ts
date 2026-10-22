@@ -12,8 +12,8 @@ async function compute(): Promise<Response> {
 
   const { data: scans } = await supabase
     .from("scan_events")
-    .select(`track_id, created_at, track_title, track_subtitle, result_type,
-      bpro_tracks!scan_events_track_id_fkey(id, title, artist, release_status)`)
+    .select(`track_id, created_at, track_title, track_subtitle, result_type, user_id,
+      bpro_tracks!scan_events_track_id_fkey(id, title, artist, release_status, is_released)`)
     .not("track_id", "is", null)
     .gte("created_at", sevenDaysAgo)
     .order("created_at", { ascending: false })
@@ -25,6 +25,7 @@ async function compute(): Promise<Response> {
     track_subtitle: string
     scans: number
     release_status: string
+    people: Set<string>
   }
 
   const grouped = new Map<string, TrackEntry>()
@@ -34,13 +35,16 @@ async function compute(): Promise<Response> {
     const linked = Array.isArray((e as any).bpro_tracks) ? (e as any).bpro_tracks[0] : (e as any).bpro_tracks
     const title = linked?.title || e.track_title || "Unknown"
     const subtitle = linked?.artist || e.track_subtitle || ""
-    const releaseStatus = linked?.release_status || "unknown"
-    const cur = grouped.get(e.track_id) || { track_id: e.track_id, track_title: title, track_subtitle: subtitle, scans: 0, release_status: releaseStatus }
-    cur.scans += 1
+    // Released if either field says so (uploads set is_released, the release check sets release_status)
+    const releaseStatus = linked?.is_released === true || linked?.release_status === "released" ? "released" : "unreleased"
+    const cur = grouped.get(e.track_id) || { track_id: e.track_id, track_title: title, track_subtitle: subtitle, scans: 0, release_status: releaseStatus, people: new Set<string>() }
+    // One person scanning the same track 10 times counts once: trending = how many different people.
+    cur.people.add(e.user_id || `anon-${e.created_at}`)
+    cur.scans = cur.people.size
     grouped.set(e.track_id, cur)
   }
 
-  const weeklyAll = [...grouped.values()].sort((a, b) => b.scans - a.scans)
+  const weeklyAll = [...grouped.values()].map(({ people, ...t }) => t).sort((a, b) => b.scans - a.scans)
   const weeklyUnreleased = weeklyAll.filter(t => t.release_status !== "released")
 
   const hot = weeklyUnreleased[0] || weeklyAll[0] || null
