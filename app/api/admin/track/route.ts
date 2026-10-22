@@ -9,6 +9,13 @@ export const dynamic = "force-dynamic";
 const clean = (v: any) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, 160);
 const likeExact = (s: string) => s.replace(/[\\%_]/g, (m) => "\\" + m);
 
+/** All-time scans of this title (what the Charts count). */
+async function realCount(sb: any, title: string) {
+  const { count } = await sb.from("scan_events").select("id", { count: "exact", head: true })
+    .ilike("track_title", likeExact(title)).neq("result_type", "not_found");
+  return count || 0;
+}
+
 /**
  * Admin edits on any track, identified by its current title.
  * POST { title, artist?, newTitle?, newArtist?, hidden?, scans? (number | null), released? (boolean) }
@@ -56,9 +63,16 @@ export async function POST(req: Request) {
 
   // 3) list overrides (hide / forced scan count) — stored under the final title's key
   if ("hidden" in b || "scans" in b) {
-    const scans = b.scans === null || b.scans === "" || b.scans === undefined ? null : Math.max(0, Math.floor(Number(b.scans)) || 0);
+    // The number typed is what shows today; we store the difference with the real count,
+    // so every new scan keeps adding on top (185 shown + 1 new scan = 186).
     const fk = titleKey(finalTitle);
-    const { error } = await sb.from("track_overrides").upsert({ key: fk, hidden: !!b.hidden, scans, updated_at: new Date().toISOString() });
+    let bonus: number | null = null;
+    if (!(b.scans === null || b.scans === "" || b.scans === undefined)) {
+      const target = Math.max(0, Math.floor(Number(b.scans)) || 0);
+      bonus = target - (await realCount(sb, finalTitle));
+    }
+    const { error } = await sb.from("track_overrides").upsert({ key: fk, hidden: !!b.hidden, scans: null, scan_bonus: bonus, updated_at: new Date().toISOString() });
+    if (error && /scan_bonus/.test(error.message)) return Response.json({ ok: false, error: "Run the scan bonus SQL first" }, { status: 500 });
     if (error) return Response.json({ ok: false, error: "Run the track_overrides SQL first (" + error.message + ")" }, { status: 500 });
     if (fk !== key) await sb.from("track_overrides").delete().eq("key", key);
   }
@@ -73,13 +87,16 @@ export async function GET(req: Request) {
   const title = clean(new URL(req.url).searchParams.get("title"));
   const { data: rows } = await sb.from("bpro_tracks").select("id,title,artist,is_released,release_status").ilike("title", likeExact(title)).limit(1);
   const t: any = (rows || [])[0] || null;
-  const { count: realScans } = await sb.from("scan_events").select("id", { count: "exact", head: true })
-    .ilike("track_title", likeExact(title)).neq("result_type", "not_found");
+  const realScans = await realCount(sb, title);
   let ov: any = null;
-  try { ov = (await sb.from("track_overrides").select("hidden,scans").eq("key", titleKey(title)).maybeSingle()).data; } catch {}
+  try {
+    const r = await sb.from("track_overrides").select("hidden,scans,scan_bonus").eq("key", titleKey(title)).maybeSingle();
+    ov = r.error ? (await sb.from("track_overrides").select("hidden,scans").eq("key", titleKey(title)).maybeSingle()).data : r.data;
+  } catch {}
   return Response.json({
     ok: true, inBanger: !!t, artist: t?.artist || null,
     released: t ? (t.is_released === true || t.release_status === "released") : null,
-    hidden: !!ov?.hidden, scans: ov?.scans ?? null, realScans: realScans ?? null,
+    hidden: !!ov?.hidden, realScans,
+    scans: ov?.scan_bonus != null ? Math.max(0, realScans + ov.scan_bonus) : (ov?.scans ?? null),
   });
 }

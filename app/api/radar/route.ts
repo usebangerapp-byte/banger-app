@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js"
-import { loadOverrides, ovFor } from "@/lib/server/overrides"
+import { loadOverrides, ovFor, shownScans } from "@/lib/server/overrides"
 import { adminClient, userFromRequest } from "@/lib/server/notify"
 import { isPro } from "@/lib/server/pro"
 import { FREE } from "@/lib/plan"
@@ -52,7 +52,7 @@ async function compute(): Promise<Response> {
   const ov = await loadOverrides(supabase)
   const weeklyAll = [...grouped.values()].map(({ people, ...t }) => t)
     .filter((t) => !ovFor(ov, t.track_title)?.hidden)
-    .map((t) => { const o = ovFor(ov, t.track_title); return o?.scans != null ? { ...t, scans: o.scans } : t })
+    .map((t) => ({ ...t, scans: shownScans(ovFor(ov, t.track_title), t.scans) }))
     .sort((a, b) => b.scans - a.scans)
   const weeklyUnreleased = weeklyAll.filter(t => t.release_status !== "released")
 

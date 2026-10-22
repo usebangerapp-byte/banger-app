@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js"
-import { loadOverrides, ovFor } from "@/lib/server/overrides"
+import { loadOverrides, ovFor, shownScans } from "@/lib/server/overrides"
 import { adminClient, userFromRequest } from "@/lib/server/notify"
 import { isPro } from "@/lib/server/pro"
 import { FREE } from "@/lib/plan"
@@ -70,7 +70,7 @@ async function compute(): Promise<Response> {
   const ov = await loadOverrides(supabase)
   const result = Array.from(map.values())
     .filter((r) => !ovFor(ov, r.track_title)?.hidden)
-    .map((r) => { const o = ovFor(ov, r.track_title); return o?.scans != null ? { ...r, scans: o.scans } : r })
+    .map((r) => ({ ...r, scans: shownScans(ovFor(ov, r.track_title), r.scans) }))
     .sort((a, b) => b.scans - a.scans)
     .slice(0, 200)
 
