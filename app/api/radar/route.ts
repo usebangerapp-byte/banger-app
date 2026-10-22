@@ -107,7 +107,7 @@ async function compute(): Promise<Response> {
 }
 
 
-// Free accounts: Hot (#1) + Trending #2–#3 in full; the rest and Most wanted come back locked (no titles sent).
+// Free accounts: the top 3 of Hot and of Wanted in full; the rest comes back locked (no titles sent).
 export async function GET(req: Request) {
   const res = await compute()
   if (res.status !== 200) return res
@@ -117,7 +117,7 @@ export async function GET(req: Request) {
   const pro = me ? await isPro(sb, me.id) : false
   if (!pro) {
     data.trending = (data.trending || []).map((t: any, i: number) => (i < FREE.radarRows - 1 ? t : { locked: true }))
-    data.mostWanted = (data.mostWanted || []).map(() => ({ locked: true }))
+    data.mostWanted = (data.mostWanted || []).map((t: any, i: number) => (i < FREE.radarRows ? t : { locked: true }))
   }
   return Response.json({ ...data, pro }, { headers: { "Cache-Control": "no-store" } })
 }

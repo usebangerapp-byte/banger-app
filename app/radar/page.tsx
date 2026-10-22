@@ -141,13 +141,16 @@ export default function RadarPage() {
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr)" }}>
             {data.mostWanted.length === 0 && <div style={ui.empty}>No followers yet — be the first to follow a track.</div>}
-            {locked ? data.mostWanted.slice(0, 5).map((_, i, arr) => <LockedRow bigRank key={i} rank={i + 1} kind="radar" last={i === arr.length - 1} />)
-            : (showMoreWanted ? data.mostWanted : data.mostWanted.slice(0, 10)).map((t, i, arr) => (
-              <SharedTrackRow bigRank key={i} rank={i + 1} title={t.track_title} artist={t.track_subtitle || ""}
+            {(locked ? data.mostWanted.slice(0, 8) : showMoreWanted ? data.mostWanted : data.mostWanted.slice(0, 10)).map((t: any, i, arr) => t.locked
+              ? <LockedRow bigRank key={i} rank={i + 1} kind="radar" last={i === arr.length - 1} />
+              : <SharedTrackRow bigRank key={i} rank={i + 1} title={t.track_title} artist={t.track_subtitle || ""}
                 meta={`${t.followers} waiting`} last={i === arr.length - 1}
                 onFollowChange={(on) => setData((d) => ({ ...d, mostWanted: d.mostWanted.map((w) =>
                   w.track_title === t.track_title ? { ...w, followers: Math.max(0, w.followers + (on ? 1 : -1)) } : w) }))} />
-            ))}
+            )}
+            {locked && data.mostWanted.length > 8 && (
+              <button onClick={() => openPro("radar")} style={{ ...ui.more, color: C.gold }}>{`+${data.mostWanted.length - 8} more with Pro`}</button>
+            )}
             {!locked && data.mostWanted.length > 10 && (
               <button onClick={() => setShowMoreWanted(v => !v)} style={ui.more}>
                 {showMoreWanted ? "Show less" : `Show ${data.mostWanted.length - 10} more`}
