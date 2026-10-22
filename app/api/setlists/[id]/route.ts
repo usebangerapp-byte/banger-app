@@ -237,6 +237,31 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       await checkSetTracks(sb, { setId: id, limit: 30 }).catch(() => 0);
       return Response.json({ ok: true, count: rows.length });
     }
+    // One row: fix its time / name, or remove it (admins)
+    if (b.action === "edit_track" || b.action === "delete_track") {
+      const { data: t } = await sb.from("setlist_tracks").select("id,title,artist").eq("id", b.track_id).eq("setlist_id", id).maybeSingle();
+      if (!t) return Response.json({ ok: false, error: "Track not found" }, { status: 404 });
+      if (b.action === "delete_track") await sb.from("setlist_tracks").delete().eq("id", t.id);
+      else {
+        const title = clean(b.title) || null, artist = clean(b.artist) || null;
+        const start = b.start_sec == null || !isFinite(Number(b.start_sec)) ? null : Math.max(0, Math.floor(Number(b.start_sec)));
+        const renamed = (title || "") !== (t.title || "") || (artist || "") !== (t.artist || "");
+        await sb.from("setlist_tracks").update({
+          start_sec: start, title, artist: title ? artist : null,
+          ...(renamed ? { released: null, release_checked_at: null } : {}),
+          ...(title && !t.title ? { validated_at: new Date().toISOString() } : {}),
+        }).eq("id", t.id);
+        if (title && !t.title) await sb.from("setlist_suggestions").update({ status: "closed" }).eq("track_id", t.id).eq("status", "open");
+      }
+      // keep positions in time order
+      const { data: all } = await sb.from("setlist_tracks").select("id,start_sec,position").eq("setlist_id", id);
+      const sorted = [...(all || [])].sort((x: any, y: any) => (x.start_sec ?? 1e9) - (y.start_sec ?? 1e9) || x.position - y.position);
+      await Promise.all(sorted.map((r: any, i: number) => r.position === i + 1 ? null : sb.from("setlist_tracks").update({ position: i + 1 }).eq("id", r.id)));
+      const hasIds = sorted.length && (await sb.from("setlist_tracks").select("id").eq("setlist_id", id).is("title", null).limit(1)).data?.length;
+      if (hasIds) await sb.from("setlists").update({ unlocked_at: null }).eq("id", id); else await checkUnlocked(sb, id);
+      if (b.action === "edit_track") await checkSetTracks(sb, { setId: id, limit: 3 }).catch(() => 0);
+      return Response.json({ ok: true });
+    }
     if (b.action === "reject") {
       // kept as "rejected": people with several rejected names stop counting (see trustWeight)
       await sb.from("setlist_suggestions").update({ status: "rejected" }).eq("track_id", b.track_id).eq("key", b.key).eq("status", "open");

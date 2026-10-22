@@ -43,6 +43,7 @@ export default function SetPage() {
   const [naming, setNaming] = useState<SetTrack | null>(null);
   const [flash, setFlash] = useState("");
   const [scanOpen, setScanOpen] = useState(false);
+  const [rowEdit, setRowEdit] = useState<SetTrack | null>(null);
   const player = useRef<any>(null);
   const boxRef = useRef<HTMLDivElement | null>(null);
 
@@ -212,6 +213,12 @@ export default function SetPage() {
                     <div style={{ fontSize: 13, color: C.text2 }}>{[t.asks ? `${t.asks} want to know` : "", t.suggestions?.length ? `${t.suggestions.length} name${t.suggestions.length > 1 ? "s" : ""}` : "", t.fires ? `🔥 ${t.fires}` : ""].filter(Boolean).join(" · ") || "Nobody knows yet"}</div>
                   </>}
                 </div>
+                {d.admin && (
+                  <button onClick={(e) => { e.stopPropagation(); setRowEdit(t); }} aria-label="Edit this row"
+                    style={{ width: 34, height: 34, borderRadius: "50%", flexShrink: 0, border: `1px solid ${C.glassBorder}`, background: "rgba(255,255,255,0.06)", color: C.text2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /></svg>
+                  </button>
+                )}
                 {t.title
                   ? <Link href={trackHref(t.title, t.artist)} onClick={(e) => e.stopPropagation()} style={{ ...ui.pillSmall }}>Info</Link>
                   : <button onClick={(e) => { e.stopPropagation(); setNaming(t); }} style={{ ...ui.pillSmall, color: C.gold, borderColor: "rgba(245,207,104,0.35)" }}>✏️ Name it</button>}
@@ -244,6 +251,7 @@ export default function SetPage() {
         {d.admin && <button onClick={async () => { if (confirm("Delete this set?") && await act({ action: "delete" })) router.push("/sets"); }} style={{ ...ui.more, color: C.danger }}>Delete set</button>}
       </div>
 
+      {rowEdit && <RowSheet track={rowEdit} onClose={() => setRowEdit(null)} act={act} onDone={(m) => { setRowEdit(null); say(m); reload(); }} />}
       {naming && <NameSheet track={naming} isAdmin={d.admin} onClose={() => setNaming(null)} onDone={(msg) => { setNaming(null); say(msg); reload(); }} act={act} />}
     </main>
   );
@@ -266,6 +274,45 @@ function NameSheet({ track, isAdmin, onClose, onDone, act }: { track: SetTrack; 
             if (j) onDone(isAdmin ? "Named ✓" : "Thanks — your name is in");
           }} style={{ ...ui.cta, flex: 1 }}>{busy ? "…" : isAdmin ? "Validate" : "Send"}</button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/** Admins: fix one row of the tracklist — time, artist, title — or remove it. */
+function RowSheet({ track, onClose, onDone, act }: { track: SetTrack; onClose: () => void; onDone: (m: string) => void; act: (b: any) => Promise<any> }) {
+  const [time, setTime] = useState(fmtTime(track.start_sec) || "");
+  const [artist, setArtist] = useState(track.artist || "");
+  const [title, setTitle] = useState(track.title || "");
+  const [busy, setBusy] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
+  const badTime = time.trim() !== "" && parseTime(time) == null;
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 5000, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ ...glass, background: "rgba(20,20,20,0.97)", width: "100%", maxWidth: 520, borderRadius: "24px 24px 0 0", padding: "18px 18px calc(22px + env(safe-area-inset-bottom))", display: "grid", gap: 10 }}>
+        <div style={{ fontSize: 18, fontWeight: 800 }}>Edit track {String(track.position).padStart(2, "0")}</div>
+        <label style={{ display: "grid", gap: 6, fontSize: 13, color: C.text3 }}>Start time (m:ss or h:mm:ss)
+          <input value={time} onChange={(e) => setTime(e.target.value)} placeholder="12:25" inputMode="numeric" style={{ ...ui.input, borderColor: badTime ? C.danger : undefined }} />
+        </label>
+        <label style={{ display: "grid", gap: 6, fontSize: 13, color: C.text3 }}>Artist
+          <input value={artist} onChange={(e) => setArtist(e.target.value)} placeholder="Artist" style={ui.input} />
+        </label>
+        <label style={{ display: "grid", gap: 6, fontSize: 13, color: C.text3 }}>Title — leave empty to make it an ID
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" style={{ ...ui.input, fontWeight: 600 }} />
+        </label>
+        <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+          <button onClick={onClose} style={{ ...ui.pill, flex: 1, justifyContent: "center" }}>Cancel</button>
+          <button disabled={busy || badTime} onClick={async () => {
+            setBusy(true);
+            const j = await act({ action: "edit_track", track_id: track.id, start_sec: time.trim() ? parseTime(time) : null, title, artist });
+            setBusy(false); if (j) onDone("Saved ✓");
+          }} style={{ ...ui.cta, flex: 1 }}>{busy ? "…" : "Save"}</button>
+        </div>
+        <button onClick={async () => {
+          if (!confirmDel) { setConfirmDel(true); return; }
+          setBusy(true); const j = await act({ action: "delete_track", track_id: track.id }); setBusy(false);
+          if (j) onDone("Removed");
+        }} style={{ ...ui.more, color: C.danger }}>{confirmDel ? "Tap again to remove this track" : "Remove this track"}</button>
       </div>
     </div>
   );
