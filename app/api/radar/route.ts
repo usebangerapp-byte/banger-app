@@ -14,15 +14,17 @@ async function compute(): Promise<Response> {
 
   // ── 1. Scans (last 7 days) for HOT + TRENDING ──────────────────────────
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+  // a quiet week is completed with the last 30 days, so the list always has ~10 tracks
+  const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
 
   const { data: scans } = await supabase
     .from("scan_events")
     .select(`track_id, created_at, track_title, track_subtitle, result_type, user_id,
       bpro_tracks!scan_events_track_id_fkey(id, title, artist, release_status, is_released)`)
     .not("track_id", "is", null)
-    .gte("created_at", sevenDaysAgo)
+    .gte("created_at", monthAgo)
     .order("created_at", { ascending: false })
-    .limit(5000)
+    .limit(10000)
 
   type TrackEntry = {
     track_id: string
@@ -33,9 +35,10 @@ async function compute(): Promise<Response> {
     people: Set<string>
   }
 
+  const group = (since: string) => {
   const grouped = new Map<string, TrackEntry>()
-
   for (const e of (scans || [])) {
+    if (String(e.created_at) < since) continue
     if (!e.track_id) continue
     const linked = Array.isArray((e as any).bpro_tracks) ? (e as any).bpro_tracks[0] : (e as any).bpro_tracks
     const title = linked?.title || e.track_title || "Unknown"
@@ -48,16 +51,22 @@ async function compute(): Promise<Response> {
     cur.scans = cur.people.size
     grouped.set(e.track_id, cur)
   }
+  return grouped
+  }
 
   const ov = await loadOverrides(supabase)
-  const weeklyAll = [...grouped.values()].map(({ people, ...t }) => t)
+  const rank = (grouped: Map<string, TrackEntry>) => [...grouped.values()].map(({ people, ...t }) => t)
     .filter((t) => !ovFor(ov, t.track_title)?.hidden)
     .map((t) => ({ ...t, scans: shownScans(ovFor(ov, t.track_title), t.scans) }))
     .sort((a, b) => b.scans - a.scans)
+  const weeklyAll = rank(group(sevenDaysAgo))
   const weeklyUnreleased = weeklyAll.filter(t => t.release_status !== "released")
+  const listed = new Set(weeklyUnreleased.map((t) => t.track_id))
+  const monthExtra = weeklyUnreleased.length >= 30 ? [] : rank(group(monthAgo)).filter((t) => t.release_status !== "released" && !listed.has(t.track_id))
+  const ranked = [...weeklyUnreleased, ...monthExtra]
 
-  const hot = weeklyUnreleased[0] || weeklyAll[0] || null
-  const trending = weeklyUnreleased.slice(1, 11) // top 2-11 → positions 2-10 on screen
+  const hot = ranked[0] || weeklyAll[0] || null
+  const trending = ranked.slice(1, 30) // positions 2-30 (10 shown, then "Show more")
 
   // ── 2. Most Wanted: tracks with most followers ──────────────────────────
   const { data: followerRows } = await supabase
@@ -92,7 +101,7 @@ async function compute(): Promise<Response> {
     .filter((w) => { const st = status.get(tkey(w.track_title)); return !!st && !st.released && !ovFor(ov, w.track_title)?.hidden })
     .map((w) => ({ ...w, track_subtitle: w.track_subtitle || status.get(tkey(w.track_title))?.artist || "" }))
     .sort((a, b) => b.followers - a.followers)
-    .slice(0, 10)
+    .slice(0, 30)
 
   return Response.json({ hot, trending, mostWanted })
 }

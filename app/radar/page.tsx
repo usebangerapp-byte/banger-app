@@ -109,7 +109,10 @@ export default function RadarPage() {
             );
           })}
           <span style={{ flex: 1 }} />
-          <Link href="/charts" style={{ paddingBottom: 12, fontSize: 14, fontWeight: 700, color: C.gold, textDecoration: "none", whiteSpace: "nowrap" }}>Top 100 ›</Link>
+          <Link href="/charts" style={{ paddingBottom: 10, display: "grid", justifyItems: "end", lineHeight: 1.15, color: C.gold, textDecoration: "none", whiteSpace: "nowrap" }}>
+            <span style={{ fontSize: 14, fontWeight: 800 }}>Top 100 ›</span>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", opacity: 0.8 }}>UNRELEASED</span>
+          </Link>
         </div>
 
         {loading ? (
