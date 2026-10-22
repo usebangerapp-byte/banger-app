@@ -140,9 +140,12 @@ export default function SetScanner({ player, duration, initial, sourceUrl, onSav
         text += "\n" + String(r?.data?.text || "");
       }
       const lines = cleanOcr(text);
+      if (!lines.length) { setOcr("Couldn't read a tracklist on these photos."); return; }
+      // the photo REPLACES the draft right away (no extra tap needed); the text stays below for fixes
+      applyText(lines.join("\n"));
       setPaste(lines.join("\n"));
       const noTime = lines.filter((l) => !/^\d{1,2}:\d{2}/.test(l)).length;
-      setOcr(lines.length ? `${lines.length} lines read${noTime ? ` · ${noTime} without a time — add it` : ""}. Check them, then “Use this tracklist”.` : "Couldn't read a tracklist on these photos.");
+      setOcr(`✓ Draft replaced by the photo · ${lines.length} tracks${noTime ? ` · ${noTime} without a time — add it` : ""}. Check it, then tap “Save tracklist” at the bottom.`);
     } catch { setOcr("Couldn't read the photos — paste the text instead."); }
   }
 
@@ -151,6 +154,7 @@ export default function SetScanner({ player, duration, initial, sourceUrl, onSav
     if (!parsed.length) { setStatus("Nothing to import — one track per line, “0:00 Artist - Title”."); return; }
     const next = parsed.map((p) => ({ start: fmtTime(p.start_sec) || "", title: p.title || "", artist: p.artist || "", id: !p.title }));
     setRows(next); base.current = next; setPaste(null);
+    setStatus(`Draft replaced · ${next.length} tracks — tap “Save tracklist” to publish it.`);
   }
 
   async function listenOnce(): Promise<Blob | null> {

@@ -95,7 +95,7 @@ function TrackView() {
   const q = encodeURIComponent(`${info?.artist || ""} ${title}`.trim());
 
   return (
-    <section style={{ ...glass, borderRadius: 24, padding: "22px 18px", display: "grid", gap: 14 }}>
+    <section style={{ ...glass, borderRadius: 24, padding: "22px 18px", display: "grid", gridTemplateColumns: "minmax(0,1fr)", gap: 14, minWidth: 0, overflow: "hidden" }}>
       <div style={{ display: "grid", gap: 4, minWidth: 0 }}>
         <MarqueeText text={fmtTitle(title)} style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em" }} />
         {info?.artist && <div style={{ fontSize: 15, color: C.text2 }}>{fmtArtist(info.artist)}</div>}
