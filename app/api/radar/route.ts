@@ -67,7 +67,22 @@ async function compute(): Promise<Response> {
     followMap.set(key, cur)
   }
 
+  // Only tracks that are on BANGER and not out yet: following a released (or unknown) track is pointless.
+  const tkey = (t: string) => (t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s*\(\s*(original|extended|club|radio|vocal|instrumental|dub|remaster|reprise)(\s+(mix|version|edit|cut))?\s*\)/gi, " ")
+    .replace(/\s+/g, " ").trim()
+  const { data: catalog } = await supabase.from("bpro_tracks").select("title,artist,is_released,release_status").limit(20000)
+  const status = new Map<string, { released: boolean; artist: string }>()
+  for (const t of (catalog || []) as any[]) {
+    const k = tkey(t.title)
+    if (!k) continue
+    const released = t.is_released === true || t.release_status === "released"
+    const prev = status.get(k)
+    status.set(k, { released: (prev?.released ?? false) || released, artist: prev?.artist || t.artist || "" })
+  }
   const mostWanted = [...followMap.values()]
+    .filter((w) => { const st = status.get(tkey(w.track_title)); return !!st && !st.released })
+    .map((w) => ({ ...w, track_subtitle: w.track_subtitle || status.get(tkey(w.track_title))?.artist || "" }))
     .sort((a, b) => b.followers - a.followers)
     .slice(0, 10)
 

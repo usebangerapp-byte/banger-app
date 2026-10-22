@@ -30,23 +30,23 @@ function TrackView() {
   const router = useRouter();
   const title = (params.get("t") || "").trim();
   const artistParam = (params.get("a") || "").trim();
-  const [info, setInfo] = useState<{ artist: string; snippet: string | null; released: boolean; beatport: string | null; spotify: string | null; releaseDate?: string | null; label?: string | null } | null>(null);
+  const [info, setInfo] = useState<{ artist: string; snippet: string | null; released: boolean | null; beatport: string | null; spotify: string | null; releaseDate?: string | null; label?: string | null } | null>(null);
   const [userId, setUserId] = useState("");
   const [following, setFollowing] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     const sb = createSupabaseBrowser();
-    if (!sb || !title) { setInfo({ artist: artistParam, snippet: null, released: true, beatport: null, spotify: null }); return; }
+    if (!sb || !title) { setInfo({ artist: artistParam, snippet: null, released: null, beatport: null, spotify: null }); return; }
     (async () => {
       const { data: rows } = await sb.from("bpro_tracks")
-        .select("title,artist,snippet_path,allow_preview,is_released,release_url,release_date").ilike("title", title).limit(5);
+        .select("title,artist,snippet_path,allow_preview,is_released,release_status,release_url,release_date").ilike("title", title).limit(5);
       const key = trackKey(title);
       const row: any = (rows || []).find((r: any) => trackKey(r.title || "") === key) || (rows || [])[0];
       setInfo({
         artist: artistParam || row?.artist || "",
         snippet: row && row.allow_preview !== false ? row.snippet_path || null : null,
-        released: row ? !!row.is_released : true,
+        released: row ? (!!row.is_released || row.release_status === "released") : null,
         beatport: row?.release_url || null,
         spotify: null,
         releaseDate: row?.release_date || null,
@@ -93,7 +93,7 @@ function TrackView() {
       </div>
       {info && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          <span style={tag(info.released ? "rel" : "unrel")}>{info.released ? TAG_TEXT.rel : TAG_TEXT.unrel}</span>
+          {info.released !== null && <span style={tag(info.released ? "rel" : "unrel")}>{info.released ? TAG_TEXT.rel : TAG_TEXT.unrel}</span>}
           {info.releaseDate && !Number.isNaN(new Date(info.releaseDate).getTime()) && (
             <span style={{ ...tag("neutral"), display: "inline-flex", alignItems: "center", gap: 5 }}>
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true">
@@ -114,7 +114,7 @@ function TrackView() {
         {info?.snippet && <PreviewButton id={`track-${title}`} snippetPath={info.snippet} />}
         <a href={info?.spotify || `https://open.spotify.com/search/${q}`} target="_blank" rel="noreferrer" style={ui.pillSmall}><SpotifyLogo /> Spotify</a>
         <a href={info?.beatport || `https://www.beatport.com/search?q=${q}`} target="_blank" rel="noreferrer" style={ui.pillSmall}><BeatportLogo /> Beatport</a>
-{!info?.released && (
+{info?.released === false && (
         <button onClick={toggleFollow} disabled={busy}
           style={following ? { ...ui.pillSmall, color: C.text3 } : { ...ui.pillSmall, color: C.gold, background: "rgba(245,207,104,0.12)", borderColor: "rgba(245,207,104,0.30)" }}>
           <Bell filled={following} />{following ? "Following" : "Follow"}
