@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode, type CSSProperties } from "react";
+import { useEffect, useId, useState, type ReactNode, type CSSProperties } from "react";
 import Link from "next/link";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { authFetch } from "@/lib/authFetch";
@@ -113,6 +113,7 @@ export default function TrackRow({ title, artist, rank, meta, last, onFollowChan
   const { meta: m, following, key } = useTrackState(title);
   const [busy, setBusy] = useState(false);
   const isAdmin = useIsAdmin();
+  const lineGroup = useId();   // title + artist line glide together
   const [editing, setEditing] = useState(false);
 
   async function toggleFollow() {
@@ -146,10 +147,10 @@ export default function TrackRow({ title, artist, rank, meta, last, onFollowChan
           : <span aria-hidden style={{ width: 32, height: 32, borderRadius: "50%", border: `1px dashed ${C.lineSoft}`, opacity: 0.6 }} />}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <MarqueeText text={title || "Unknown"} style={ui.rowTitle} />
+        <MarqueeText text={title || "Unknown"} style={ui.rowTitle} group={lineGroup} />
         {(sub || status) && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, marginTop: 2 }}>
-            {sub && <span style={{ ...ui.rowSub, marginTop: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{sub}</span>}
+            {sub && <span style={{ flex: 1, minWidth: 0 }}><MarqueeText text={sub} group={lineGroup} style={{ ...ui.rowSub, marginTop: 0 }} /></span>}
             {status && (() => { const k = m ? (m.released ? "rel" : "unrel") : status; return <span style={tag(k)}>{TAG_TEXT[k]}</span>; })()}
           </div>
         )}

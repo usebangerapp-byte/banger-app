@@ -8,7 +8,8 @@ import { useEffect, useId, useRef, useState, type CSSProperties, type MouseEvent
  */
 const EVT = "banger-marquee-active";
 
-export default function MarqueeText({ text, style }: { text: string; style?: CSSProperties }) {
+/** `group`: lines sharing a group move together (e.g. a track's title and its artist line). */
+export default function MarqueeText({ text, style, group }: { text: string; style?: CSSProperties; group?: string }) {
   const id = useId();
   const boxRef = useRef<HTMLSpanElement | null>(null);
   const innerRef = useRef<HTMLSpanElement | null>(null);
@@ -16,10 +17,15 @@ export default function MarqueeText({ text, style }: { text: string; style?: CSS
   const [dist, setDist] = useState(0);
 
   useEffect(() => {
-    const onOther = (e: Event) => { if ((e as CustomEvent).detail !== id) setActive(false); };
+    const onOther = (e: Event) => {
+      const d = (e as CustomEvent).detail as { id: string; group?: string; on: boolean };
+      if (d.id === id) return;
+      if (group && d.group === group) setActive(d.on);   // my partner line was tapped: follow it
+      else if (d.on) setActive(false);                   // something else started moving: stop
+    };
     window.addEventListener(EVT, onOther);
     return () => window.removeEventListener(EVT, onOther);
-  }, [id]);
+  }, [id, group]);
 
   useEffect(() => {
     if (!active) { setDist(0); return; }
@@ -31,7 +37,7 @@ export default function MarqueeText({ text, style }: { text: string; style?: CSS
     e.stopPropagation();
     const next = !active;
     setActive(next);
-    if (next) window.dispatchEvent(new CustomEvent(EVT, { detail: id }));
+    window.dispatchEvent(new CustomEvent(EVT, { detail: { id, group, on: next } }));
   }
 
   const moving = active && dist > 0;

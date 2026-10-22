@@ -15,9 +15,10 @@
   --font-mono: var(--font-ui);
 }
 
-html { background: #000; }
+html { background: #000; overflow-x: clip; }
 
 body {
+  overflow-x: clip;   /* nothing may push the page sideways */
   background: transparent;
   color: var(--foreground);
   font-family: var(--font-ui);
