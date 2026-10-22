@@ -9,6 +9,8 @@ import { openPro } from "@/components/ProSheet";
 import { fmtTime, youtubeId, type SetTrack } from "@/lib/setlists";
 import { trackHref } from "@/lib/preview";
 import { ui, C, glass } from "@/lib/ui";
+import SetScanner, { type DraftRow } from "@/components/SetScanner";
+import { parseTime } from "@/lib/setlists";
 
 type Data = {
   set: { id: string; title: string; venue: string | null; played_on: string | null; source_url: string; cover_url: string | null; unlocked_at: string | null };
@@ -39,6 +41,7 @@ export default function SetPage() {
   const [dur, setDur] = useState(0);
   const [naming, setNaming] = useState<SetTrack | null>(null);
   const [flash, setFlash] = useState("");
+  const [scanOpen, setScanOpen] = useState(false);
   const player = useRef<any>(null);
   const boxRef = useRef<HTMLDivElement | null>(null);
 
@@ -156,8 +159,26 @@ export default function SetPage() {
           </div>
         </section>
 
+        {d.admin && yt && !scanOpen && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <button onClick={() => setScanOpen(true)} style={{ ...ui.cta, padding: "12px 8px", fontSize: 14 }}>🎙 Scan this set</button>
+            <button onClick={() => setScanOpen(true)} style={{ ...ui.pill, justifyContent: "center", fontSize: 14 }}>✎ Edit tracklist</button>
+          </div>
+        )}
+        {scanOpen && (
+          <SetScanner player={player} duration={dur}
+            initial={d.tracks.filter((t) => !t.locked).map((t): DraftRow => ({ start: fmtTime(t.start_sec) || "0:00", title: t.title || "", artist: t.artist || "", id: !t.title }))}
+            onClose={() => setScanOpen(false)}
+            onSave={async (rows) => {
+              const j = await act({ action: "replace_tracks", rows: rows.map((r) => ({ start_sec: parseTime(r.start), title: r.id ? null : r.title, artist: r.id ? null : r.artist })) });
+              if (j) { say(`Tracklist saved · ${j.count} tracks`); reload(); return true; }
+              return false;
+            }} />
+        )}
+
         <div style={{ ...ui.label, padding: "4px 4px 0" }}>Tracklist</div>
         <section style={{ ...glass, borderRadius: 22, padding: "0 16px" }}>
+          {d.tracks.length === 0 && <div style={{ ...ui.empty, padding: "18px 0" }}>{d.admin ? "No tracklist yet — tap “Scan this set”." : "The tracklist is coming soon."}</div>}
           {d.tracks.map((t, i) => t.locked ? (
             <button key={t.id} onClick={() => openPro("sets")} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "13px 0", background: "none", border: "none", borderBottom: `1px solid ${C.lineSoft}`, cursor: "pointer", fontFamily: "inherit", color: "#fff", textAlign: "left" }}>
               <span style={{ ...ui.rank, width: 22 }}>{String(t.position).padStart(2, "0")}</span>

@@ -193,6 +193,28 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       await checkUnlocked(sb, id);
       return Response.json({ ok: true });
     }
+    if (b.action === "replace_tracks") {
+      // New tracklist from the set scanner / editor. Rows keep their validation credits when the name stays the same.
+      const rows = (Array.isArray(b.rows) ? b.rows : []).slice(0, 400).map((r: any) => ({
+        start_sec: r.start_sec == null || !isFinite(Number(r.start_sec)) ? null : Math.max(0, Math.floor(Number(r.start_sec))),
+        title: clean(r.title) || null, artist: clean(r.artist) || null,
+      })).sort((x: any, y: any) => (x.start_sec ?? 0) - (y.start_sec ?? 0));
+      const { data: old } = await sb.from("setlist_tracks").select("id,title,artist,named_by,validated_at").eq("setlist_id", id);
+      const keep = new Map<string, any>();
+      for (const o of old || []) if (o.title) keep.set(dupKey(o.title, o.artist || ""), o);
+      await sb.from("setlist_tracks").delete().eq("setlist_id", id);
+      if (rows.length) {
+        const { error } = await sb.from("setlist_tracks").insert(rows.map((r: any, i: number) => {
+          const o = r.title ? keep.get(dupKey(r.title, r.artist || "")) : null;
+          return { ...r, setlist_id: id, position: i + 1, named_by: o?.named_by || [], validated_at: o?.validated_at || null };
+        }));
+        if (error) throw error;
+      }
+      // reopen the set if new IDs appeared, or unlock it if everything is known
+      if (rows.some((r: any) => !r.title)) await sb.from("setlists").update({ unlocked_at: null }).eq("id", id);
+      else await checkUnlocked(sb, id);
+      return Response.json({ ok: true, count: rows.length });
+    }
     if (b.action === "reject") {
       // kept as "rejected": people with several rejected names stop counting (see trustWeight)
       await sb.from("setlist_suggestions").update({ status: "rejected" }).eq("track_id", b.track_id).eq("key", b.key).eq("status", "open");
