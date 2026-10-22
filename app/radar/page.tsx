@@ -44,7 +44,7 @@ export default function RadarPage() {
   }, [])
 
   useEffect(() => {
-    fetch("/api/radar")
+    fetch("/api/radar", { cache: "no-store" })
       .then(r => r.json())
       .then(json => setData({
         hot: json.hot || null,
@@ -132,7 +132,9 @@ export default function RadarPage() {
             ) : (<>
               {(showMoreWanted ? data.mostWanted : data.mostWanted.slice(0, 3)).map((t, i) => (
                 <SharedTrackRow key={i} rank={i + 1} title={t.track_title} artist={t.track_subtitle || ""}
-                  meta={`${t.followers} following`} last={!(data.mostWanted.length > 3) && i === Math.min(3, data.mostWanted.length) - 1} />
+                  meta={`${t.followers} following`} last={!(data.mostWanted.length > 3) && i === Math.min(3, data.mostWanted.length) - 1}
+                  onFollowChange={(on) => setData((d) => ({ ...d, mostWanted: d.mostWanted.map((w) =>
+                    w.track_title === t.track_title ? { ...w, followers: Math.max(0, w.followers + (on ? 1 : -1)) } : w) }))} />
               ))}
               {data.mostWanted.length > 3 && (
                 <button onClick={() => setShowMoreWanted(v => !v)} style={ui.more}>
