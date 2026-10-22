@@ -112,8 +112,9 @@ function fmtDate(d: string) {
  * One track, the same everywhere:
  * [rank] [▶ preview] [title / artist · meta / release date] [Follow over Info]
  */
-export default function TrackRow({ title, artist, rank, meta, last, onFollowChange, right, released, status }: {
+export default function TrackRow({ title, artist, rank, meta, last, onFollowChange, right, released, status, bigRank }: {
   title: string; artist?: string | null; rank?: number; meta?: string; last?: boolean;
+  bigRank?: boolean;         // chart look: big gold number
   released?: boolean;        // released tracks can't be followed (nothing left to wait for)
   status?: "rel" | "unrel";  // show a Released / Unreleased pill (the uploaded track's real status wins)
   onFollowChange?: (following: boolean) => void;
@@ -156,7 +157,7 @@ export default function TrackRow({ title, artist, rank, meta, last, onFollowChan
   return (
     <div role="link" tabIndex={0} onClick={() => router.push(href)} onKeyDown={(e) => { if (e.key === "Enter") router.push(href); }}
       style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: last ? "none" : `1px solid ${C.lineSoft}`, minWidth: 0, cursor: "pointer" }}>
-      {rank !== undefined && <span style={{ ...ui.rank, width: 18 }}>{rank}</span>}
+      {rank !== undefined && <span style={bigRank ? BIG_RANK : { ...ui.rank, width: 18 }}>{rank}</span>}
       <div onClick={(e) => e.stopPropagation()} style={{ width: 32, flexShrink: 0, display: "flex", justifyContent: "center" }}>
         {m?.snippet
           ? <PreviewButton compact id={`row-${key}`} snippetPath={m.snippet} />
@@ -194,6 +195,8 @@ export default function TrackRow({ title, artist, rank, meta, last, onFollowChan
   );
 }
 
+
+export const BIG_RANK: CSSProperties = { width: 34, flexShrink: 0, fontSize: 26, fontWeight: 800, letterSpacing: "-0.03em", color: C.gold, fontVariantNumeric: "tabular-nums", textAlign: "left" };
 
 /** The same Follow button as in every list (bell + toast), usable on its own. */
 export function FollowButton({ title, artist, style }: { title: string; artist?: string | null; style?: CSSProperties }) {

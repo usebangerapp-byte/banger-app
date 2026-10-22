@@ -22,20 +22,12 @@ export default function RadarPage() {
   const [loading, setLoading] = useState(true)
   const [showMoreTrending, setShowMoreTrending] = useState(false)
   const [showMoreWanted, setShowMoreWanted] = useState(false)
+  const [view, setView] = useState<"hot" | "wanted">("hot")
   const [userId, setUserId] = useState<string | null>(null)
   const [followed, setFollowed] = useState<Set<string>>(new Set())
   const [followLoading, setFollowLoading] = useState<Set<string>>(new Set())
   const [toast, setToast] = useState<string | null>(null)
   const previews = usePreviewIndex()
-  // #1 of each chart for the Charts card
-  const [chartTop, setChartTop] = useState<{ rel?: { title: string; artist: string }; unrel?: { title: string; artist: string } }>({})
-  useEffect(() => {
-    authFetch("/api/charts", { cache: "no-store" }).then(r => r.json()).then((rows) => {
-      const list = Array.isArray(rows) ? rows.filter((r: any) => !r.locked && r.track_title && r.track_title !== "Unknown") : []
-      const rel = list.find((r: any) => r.result_type === "recognized_world"), unrel = list.find((r: any) => r.result_type === "recognized_unreleased")
-      setChartTop({ rel: rel && { title: rel.track_title, artist: rel.track_subtitle || "" }, unrel: unrel && { title: unrel.track_title, artist: unrel.track_subtitle || "" } })
-    }).catch(() => {})
-  }, [])
   const locked = data.trending.some((t) => t.locked) || data.mostWanted.some((t) => t.locked)
 
   useEffect(() => {
@@ -102,83 +94,64 @@ export default function RadarPage() {
 
       <div style={ui.shell}>
         <PageHeader title="Radar" sub="What the scene is scanning right now." />
-        {/* Charts — the doorway to the Top 100, shown big with today's #1s */}
-        <Link href="/charts" style={{ position: "relative", overflow: "hidden", display: "grid", gap: 12, textDecoration: "none", color: "#fff", padding: "18px 18px 16px",
-          borderRadius: 24, border: "1px solid rgba(245,207,104,0.45)", boxShadow: "0 0 32px rgba(245,207,104,0.18), inset 0 1px 0 rgba(255,235,160,0.15)",
-          background: "linear-gradient(140deg, rgba(245,207,104,0.22), rgba(200,140,40,0.08) 45%, rgba(20,20,20,0.6))" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ width: 44, height: 44, borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", background: C.goldGrad, boxShadow: "0 6px 18px rgba(200,140,15,0.35)" }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={C.goldInk} strokeWidth={2.4} strokeLinecap="round" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7" /></svg>
-            </span>
-            <span style={{ flex: 1, fontSize: 22, fontWeight: 800, letterSpacing: "-0.01em" }}>Charts</span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: C.gold, padding: "6px 12px", borderRadius: 999, background: "rgba(0,0,0,0.35)", border: "1px solid rgba(245,207,104,0.35)" }}>Top 100 ›</span>
-          </div>
-          {chartTop.unrel && (
-            <div style={{ display: "grid", gap: 6 }}>
-              {([["Unreleased", chartTop.unrel, C.gold]] as const).filter(([, t]) => t).map(([label, t, color]) => (
-                <div key={label} style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, fontSize: 14 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color, width: 78, flexShrink: 0 }}>#1 {label}</span>
-                  <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 600 }}>
-                    {fmtTitle(t!.title)}{t!.artist ? <span style={{ color: C.text2, fontWeight: 500 }}> · {fmtArtist(t!.artist)}</span> : null}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </Link>
+
+        {/* Chart look: no boxes — two words as tabs, big gold numbers, thin lines */}
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 22, borderBottom: `1px solid ${C.line}`, padding: "0 2px" }}>
+          {(["hot", "wanted"] as const).map((v) => {
+            const on = view === v;
+            return (
+              <button key={v} onClick={() => setView(v)} aria-pressed={on}
+                style={{ background: "none", border: "none", padding: "0 0 10px", marginBottom: -1, cursor: "pointer", fontFamily: "inherit",
+                  fontSize: 24, fontWeight: 800, letterSpacing: "-0.02em", color: on ? "#fff" : C.text4,
+                  borderBottom: `2px solid ${on ? C.gold : "transparent"}` }}>
+                {v === "hot" ? "Hot" : "Wanted"}
+              </button>
+            );
+          })}
+          <span style={{ flex: 1 }} />
+          <Link href="/charts" style={{ paddingBottom: 12, fontSize: 14, fontWeight: 700, color: C.gold, textDecoration: "none", whiteSpace: "nowrap" }}>Top 100 ›</Link>
+        </div>
 
         {loading ? (
           <div style={ui.empty}>Loading…</div>
-        ) : (<>
-
-          {/* 1 — HOT RIGHT NOW: this week's most scanned, one list (#1 then the rest) */}
-          <section style={ui.section}>
-            <div style={ui.label}>Hot right now</div>
-            {!data.hot && data.trending.length === 0 ? (
-              <div style={ui.empty}>Nothing scanned this week yet. Be first.</div>
-            ) : (<>
-              {data.hot && (
-                <SharedTrackRow rank={1} title={data.hot.track_title} artist={data.hot.track_subtitle || ""}
-                  meta={`${data.hot.scans} scan${data.hot.scans === 1 ? "" : "s"}`} last={data.trending.length === 0} />
-              )}
-              {(locked ? data.trending.slice(0, 5) : showMoreTrending ? data.trending : data.trending.slice(0, 4)).map((t, i, arr) => t.locked
-                ? <LockedRow key={i} rank={i + 2} kind="radar" last={i === arr.length - 1} />
-                : <SharedTrackRow key={i} rank={i + 2} title={t.track_title} artist={t.track_subtitle || ""}
-                  meta={`${t.scans} scan${t.scans === 1 ? "" : "s"}`} last={i === arr.length - 1 && !(data.trending.length > 4)} />
-              )}
-              {locked && data.trending.length > 5 && (
-                <button onClick={() => openPro("radar")} style={{ ...ui.more, color: C.gold }}>{`+${data.trending.length - 5} more with Pro`}</button>
-              )}
-              {!locked && data.trending.length > 4 && (
-                <button onClick={() => setShowMoreTrending(v => !v)} style={ui.more}>
-                  {showMoreTrending ? "Show less" : `Show ${data.trending.length - 4} more`}
-                </button>
-              )}
-            </>)}
-          </section>
-
-          {/* 3 — MOST WANTED */}
-          <section style={ui.section}>
-            <div style={ui.label}>Most wanted</div>
-            {data.mostWanted.length === 0 ? (
-              <div style={ui.empty}>No followers yet — be the first to follow a track.</div>
-            ) : (<>
-              {locked ? data.mostWanted.slice(0, 3).map((_, i, arr) => <LockedRow key={i} rank={i + 1} kind="radar" last={i === arr.length - 1} />)
-              : (showMoreWanted ? data.mostWanted : data.mostWanted.slice(0, 3)).map((t, i) => (
-                <SharedTrackRow key={i} rank={i + 1} title={t.track_title} artist={t.track_subtitle || ""}
-                  meta={`${t.followers} following`} last={!(data.mostWanted.length > 3) && i === Math.min(3, data.mostWanted.length) - 1}
-                  onFollowChange={(on) => setData((d) => ({ ...d, mostWanted: d.mostWanted.map((w) =>
-                    w.track_title === t.track_title ? { ...w, followers: Math.max(0, w.followers + (on ? 1 : -1)) } : w) }))} />
-              ))}
-              {!locked && data.mostWanted.length > 3 && (
-                <button onClick={() => setShowMoreWanted(v => !v)} style={ui.more}>
-                  {showMoreWanted ? "Show less" : `Show ${data.mostWanted.length - 3} more`}
-                </button>
-              )}
-            </>)}
-          </section>
-
-        </>)}
+        ) : view === "hot" ? (
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr)" }}>
+            {!data.hot && data.trending.length === 0 && <div style={ui.empty}>Nothing scanned this week yet. Be first.</div>}
+            {data.hot && (
+              <SharedTrackRow bigRank rank={1} title={data.hot.track_title} artist={data.hot.track_subtitle || ""}
+                meta={`${data.hot.scans} scan${data.hot.scans === 1 ? "" : "s"}`} last={data.trending.length === 0} />
+            )}
+            {(locked ? data.trending.slice(0, 9) : showMoreTrending ? data.trending : data.trending.slice(0, 9)).map((t, i, arr) => t.locked
+              ? <LockedRow bigRank key={i} rank={i + 2} kind="radar" last={i === arr.length - 1} />
+              : <SharedTrackRow bigRank key={i} rank={i + 2} title={t.track_title} artist={t.track_subtitle || ""}
+                meta={`${t.scans} scan${t.scans === 1 ? "" : "s"}`} last={i === arr.length - 1} />
+            )}
+            {locked && data.trending.length > 9 && (
+              <button onClick={() => openPro("radar")} style={{ ...ui.more, color: C.gold }}>{`+${data.trending.length - 9} more with Pro`}</button>
+            )}
+            {!locked && data.trending.length > 9 && (
+              <button onClick={() => setShowMoreTrending(v => !v)} style={ui.more}>
+                {showMoreTrending ? "Show less" : `Show ${data.trending.length - 9} more`}
+              </button>
+            )}
+          </div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr)" }}>
+            {data.mostWanted.length === 0 && <div style={ui.empty}>No followers yet — be the first to follow a track.</div>}
+            {locked ? data.mostWanted.slice(0, 5).map((_, i, arr) => <LockedRow bigRank key={i} rank={i + 1} kind="radar" last={i === arr.length - 1} />)
+            : (showMoreWanted ? data.mostWanted : data.mostWanted.slice(0, 10)).map((t, i, arr) => (
+              <SharedTrackRow bigRank key={i} rank={i + 1} title={t.track_title} artist={t.track_subtitle || ""}
+                meta={`${t.followers} waiting`} last={i === arr.length - 1}
+                onFollowChange={(on) => setData((d) => ({ ...d, mostWanted: d.mostWanted.map((w) =>
+                  w.track_title === t.track_title ? { ...w, followers: Math.max(0, w.followers + (on ? 1 : -1)) } : w) }))} />
+            ))}
+            {!locked && data.mostWanted.length > 10 && (
+              <button onClick={() => setShowMoreWanted(v => !v)} style={ui.more}>
+                {showMoreWanted ? "Show less" : `Show ${data.mostWanted.length - 10} more`}
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </main>
   )

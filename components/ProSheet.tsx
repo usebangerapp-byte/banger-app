@@ -51,11 +51,11 @@ export function ProSheetHost() {
 }
 
 /** A locked list row: same height as a track row, blurred placeholder, opens the Pro sheet. */
-export function LockedRow({ rank, kind, last }: { rank?: number; kind: ProKind; last?: boolean }) {
+export function LockedRow({ rank, kind, last, bigRank }: { rank?: number; kind: ProKind; last?: boolean; bigRank?: boolean }) {
   return (
     <button onClick={() => openPro(kind)} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "13px 0", background: "none",
       border: "none", borderBottom: last ? "none" : `1px solid ${C.lineSoft}`, cursor: "pointer", fontFamily: "inherit", color: "#fff", textAlign: "left" }}>
-      {rank !== undefined && <span style={{ ...ui.rank, width: 18 }}>{rank}</span>}
+      {rank !== undefined && <span style={bigRank ? { width: 34, flexShrink: 0, fontSize: 26, fontWeight: 800, letterSpacing: "-0.03em", color: C.gold, opacity: 0.6 } : { ...ui.rank, width: 18 }}>{rank}</span>}
       <span aria-hidden style={{ width: 32, height: 32, borderRadius: "50%", border: `1px dashed ${C.lineSoft}`, flexShrink: 0 }} />
       <span style={{ flex: 1, minWidth: 0, display: "grid", gap: 7, filter: "blur(5px)", opacity: 0.7 }} aria-hidden>
         <span style={{ height: 13, width: `${55 + ((rank || 1) * 13) % 35}%`, borderRadius: 6, background: "rgba(255,255,255,0.45)" }} />
