@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtTitle, fmtArtist } from "@/lib/format";
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { authFetch } from "@/lib/authFetch";
@@ -122,8 +123,8 @@ export default function ListenPage() {
             </button>
 
             <div style={{ display: "grid", gap: 4, minWidth: 0, maxWidth: "100%" }}>
-              <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em", overflowWrap: "anywhere" }}>{promo.title}</div>
-              {promo.artist && <div style={{ fontSize: 15, color: C.text2 }}>{promo.artist}</div>}
+              <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em", overflowWrap: "anywhere" }}>{fmtTitle(promo.title)}</div>
+              {promo.artist && <div style={{ fontSize: 15, color: C.text2 }}>{fmtArtist(promo.artist)}</div>}
             </div>
 
             <button onClick={(e) => { e.stopPropagation(); toggle(); }} aria-label={playing ? "Pause" : "Play"} disabled={!promo.url}

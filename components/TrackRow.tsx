@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtTitle, fmtArtist } from "@/lib/format";
 import { useEffect, useId, useState, type ReactNode, type CSSProperties } from "react";
 import Link from "next/link";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
@@ -138,7 +139,7 @@ export default function TrackRow({ title, artist, rank, meta, last, onFollowChan
     } finally { setBusy(false); }
   }
 
-  const sub = [artist, meta].filter(Boolean).join(" · ");
+  const sub = [artist ? fmtArtist(artist) : "", meta].filter(Boolean).join(" · ");
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 0", borderBottom: last ? "none" : `1px solid ${C.lineSoft}`, minWidth: 0 }}>
@@ -149,7 +150,7 @@ export default function TrackRow({ title, artist, rank, meta, last, onFollowChan
           : <span aria-hidden style={{ width: 32, height: 32, borderRadius: "50%", border: `1px dashed ${C.lineSoft}`, opacity: 0.6 }} />}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <MarqueeText text={title || "Unknown"} style={ui.rowTitle} group={lineGroup} />
+        <MarqueeText text={fmtTitle(title) || "Unknown"} style={ui.rowTitle} group={lineGroup} />
         {(sub || status) && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, marginTop: 2 }}>
             {sub && <span style={{ flex: 1, minWidth: 0 }}><MarqueeText text={sub} group={lineGroup} style={{ ...ui.rowSub, marginTop: 0 }} /></span>}

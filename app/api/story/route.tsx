@@ -1,3 +1,4 @@
+import { fmtTitle, fmtArtist } from "@/lib/format";
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
@@ -16,8 +17,8 @@ const WOOFER = `<svg xmlns="http://www.w3.org/2000/svg" width="500" height="500"
 // GET /api/story?t=Title&a=Artist&u=1  → 1080×1920 image for Instagram / WhatsApp stories
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const title = (url.searchParams.get("t") || "Unknown").slice(0, 80);
-  const artist = (url.searchParams.get("a") || "").slice(0, 80);
+  const title = fmtTitle((url.searchParams.get("t") || "Unknown").slice(0, 80));
+  const artist = fmtArtist((url.searchParams.get("a") || "").slice(0, 80));
   const unreleased = url.searchParams.get("u") === "1";
   const woofer = `data:image/svg+xml;base64,${btoa(WOOFER)}`;
   const bLogo = `${url.origin}/B-logo-sm.png`;

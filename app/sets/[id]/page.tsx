@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtTitle, fmtArtist } from "@/lib/format";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -110,7 +111,7 @@ export default function SetPage() {
               : <a href={d.set.source_url} target="_blank" rel="noreferrer" style={{ display: "grid", placeItems: "center", height: "100%", color: C.gold, textDecoration: "none", fontWeight: 600 }}>Open the set ↗</a>}
           </div>
           <div style={{ padding: "14px 16px 16px", display: "grid", gap: 6 }}>
-            <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: "-0.02em" }}>{d.set.title}</div>
+            <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: "-0.02em" }}>{fmtArtist(d.set.title)}</div>
             <div style={{ fontSize: 14, color: C.text2 }}>{[d.set.venue, d.set.played_on && new Date(d.set.played_on).toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" })].filter(Boolean).join(" · ")}</div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
               <div style={{ flex: 1, height: 6, borderRadius: 3, background: "rgba(255,255,255,0.12)", overflow: "hidden" }}>
@@ -193,9 +194,9 @@ export default function SetPage() {
                 <span style={{ width: 52, fontSize: 13, color: C.text3, fontVariantNumeric: "tabular-nums" }}>{fmtTime(t.start_sec)}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   {t.title ? <>
-                    <div style={{ fontSize: 15, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", overflowWrap: "anywhere" }}>{t.title}</div>
+                    <div style={{ fontSize: 15, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", overflowWrap: "anywhere" }}>{fmtTitle(t.title)}</div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flexWrap: "wrap" }}>
-                      <span style={{ fontSize: 13, color: C.text2 }}>{[t.artist, t.fires ? `🔥 ${t.fires}` : ""].filter(Boolean).join(" · ")}</span>
+                      <span style={{ fontSize: 13, color: C.text2 }}>{[t.artist ? fmtArtist(t.artist) : "", t.fires ? `🔥 ${t.fires}` : ""].filter(Boolean).join(" · ")}</span>
                       {(t as any).released === true && <span style={tag("rel")}>{TAG_TEXT.rel}</span>}
                       {(t as any).released === false && <span style={tag("unrel")}>{TAG_TEXT.unrel}</span>}
                     </div>
@@ -218,7 +219,7 @@ export default function SetPage() {
               {!t.title && t.suggestions?.map((s) => (
                 <div key={s.key} style={{ marginLeft: 86, padding: "10px 12px", borderRadius: 14, background: "rgba(245,207,104,0.08)", border: "1px solid rgba(245,207,104,0.25)", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                   <div style={{ flex: 1, minWidth: 140 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600 }}>{s.title} — {s.artist}</div>
+                    <div style={{ fontSize: 14, fontWeight: 600 }}>{fmtTitle(s.title)} — {fmtArtist(s.artist)}</div>
                     <div style={{ fontSize: 12, color: C.text3 }}>{`suggested by ${s.count} DJ${s.count > 1 ? "s" : ""}`}{(s.weight || 0) >= 2 ? " · waiting for validation" : ""}{d.admin && s.verified ? " · ✓ found in catalogues" : d.admin ? " · not found in catalogues" : ""}</div>
                   </div>
                   {!s.mine && <button onClick={async () => { if (await act({ action: "suggest", track_id: t.id, title: s.title, artist: s.artist })) { say("Confirmed 👍"); reload(); } }} style={{ ...ui.pillSmall }}>👍 Confirm</button>}

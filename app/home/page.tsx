@@ -1,4 +1,5 @@
 "use client"; // build-1781643571963714000
+import { fmtTitle, fmtArtist } from "@/lib/format";
 import { useRouter } from "next/navigation";
 
 import Image from "next/image";
@@ -659,9 +660,9 @@ function ScanResult({ title, subtitle, tag, snippet }: {
           ? <PreviewButton compact id={`scan-${title}`} snippetPath={preview} />
           : <span aria-hidden style={{ width: 32, height: 32, borderRadius: "50%", border: "1px dashed rgba(255,255,255,0.12)", flexShrink: 0 }} />)}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <MarqueeText text={title} style={{ ...scanStyles.resultTitle, fontSize: 17 }} />
+          <MarqueeText text={fmtTitle(title)} style={{ ...scanStyles.resultTitle, fontSize: 17 }} />
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4, minWidth: 0 }}>
-            {artist && <span style={{ fontSize: 14, color: C.text2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{artist}</span>}
+            {artist && <span style={{ fontSize: 14, color: C.text2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{fmtArtist(artist)}</span>}
             <span style={tagStyle(tag === "UNRELEASED" ? "unrel" : tag === "RELEASED" ? "rel" : "neutral")}>
               {tag === "UNRELEASED" ? TAG_TEXT.unrel : tag === "RELEASED" ? TAG_TEXT.rel : "Not found"}
             </span>

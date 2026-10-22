@@ -87,7 +87,8 @@ export function cleanOcr(text: string): string[] {
     l = l.replace(/^(\d{2})(\d{2})\b/, "$1:$2");                         // "4121" → 41:21
     l = l.replace(/^(\d{1,2}:\d{2}(?::\d{2})?)(?=[^\s:\d])/, "$1 ");      // "41:21Betoko"
     l = l.replace(/\s*[-–—]\s*/g, " - ").replace(/(\S)-(?=[A-Z])/g, "$1 - "); // "Betoko-USoFine" → "Betoko - USoFine"
-    l = l.replace(/[\s.,;:\-–—]+$/, "").trim();                          // trailing " -" / " ."
+    // trailing reading noise: " -", " .", "._", "= .", " a :" …
+    for (let k = 0; k < 3; k++) l = l.replace(/(?:\s+[^\sA-Za-z0-9À-ÿ()]+|\s+[a-z]\W*)+$/, "").replace(/[\s.,;:=_\-–—~]+$/, "").trim();
     const hasTime = /^\d{1,2}:\d{2}/.test(l);
     // keep lines with a time, or that look like "Artist - Title" (the time was unreadable)
     if (hasTime || / - \S/.test(l)) out.push(l);

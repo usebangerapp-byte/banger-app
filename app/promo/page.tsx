@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtTitle, fmtArtist } from "@/lib/format";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
@@ -275,7 +276,7 @@ export default function PromoPage() {
                 <div key={p.id} style={{ borderBottom: `1px solid ${C.lineSoft}` }}>
                   <div onClick={() => setOpenId(open ? null : p.id)} style={{ ...ui.row, borderBottom: "none", cursor: "pointer" }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <MarqueeText text={p.artist ? `${p.artist} - ${p.title}` : p.title} style={ui.rowTitle} />
+                      <MarqueeText text={p.artist ? `${fmtArtist(p.artist)} - ${fmtTitle(p.title)}` : fmtTitle(p.title)} style={ui.rowTitle} />
                       <div style={{ ...ui.rowSub, whiteSpace: "normal" }}>
                         {new Date(p.created_at).toLocaleDateString([], { day: "numeric", month: "short" })} · <span style={{ color: heard ? C.gold : C.text3, fontWeight: 600 }}>{promoSummary(p.recipients)}</span>
                       </div>

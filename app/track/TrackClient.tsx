@@ -1,4 +1,5 @@
 "use client";
+import { fmtTitle, fmtArtist } from "@/lib/format";
 import { openPro } from "@/components/ProSheet";
 import { fmtTime } from "@/lib/setlists";
 
@@ -96,8 +97,8 @@ function TrackView() {
   return (
     <section style={{ ...glass, borderRadius: 24, padding: "22px 18px", display: "grid", gap: 14 }}>
       <div style={{ display: "grid", gap: 4, minWidth: 0 }}>
-        <MarqueeText text={title} style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em" }} />
-        {info?.artist && <div style={{ fontSize: 15, color: C.text2 }}>{info.artist}</div>}
+        <MarqueeText text={fmtTitle(title)} style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em" }} />
+        {info?.artist && <div style={{ fontSize: 15, color: C.text2 }}>{fmtArtist(info.artist)}</div>}
       </div>
       {info && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>

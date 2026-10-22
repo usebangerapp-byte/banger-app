@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtTitle, fmtArtist } from "@/lib/format";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { authFetch } from "@/lib/authFetch";
@@ -48,7 +49,7 @@ export default function SetsPage() {
               <Link key={s.id} href={`/sets/${s.id}`} style={{ ...glass, borderRadius: 22, padding: 12, display: "flex", gap: 12, alignItems: "center", textDecoration: "none", color: "#fff" }}>
                 <div style={{ width: 84, height: 84, borderRadius: 16, flexShrink: 0, background: s.cover_url ? `center/cover no-repeat url(${s.cover_url})` : "linear-gradient(160deg,#3a2c12,#0b0b0b)" }} />
                 <div style={{ flex: 1, minWidth: 0, display: "grid", gap: 5 }}>
-                  <div style={{ fontSize: 16, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.title}</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fmtArtist(s.title)}</div>
                   <div style={{ fontSize: 13, color: C.text2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{[s.venue, sourceKind(s.source_url)].filter(Boolean).join(" · ")}</div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <div style={{ flex: 1, height: 5, borderRadius: 3, background: "rgba(255,255,255,0.12)", overflow: "hidden" }}>

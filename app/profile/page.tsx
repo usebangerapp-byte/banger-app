@@ -2,6 +2,7 @@
 
 export const dynamic = "force-dynamic";
 
+import { fmtTitle, fmtArtist } from "@/lib/format";
 import { authFetch } from "@/lib/authFetch";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -742,8 +743,8 @@ export default function ProfilePageV2() {
                 ) : (
                   <div key={t.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"16px 0", borderBottom:`1px solid ${C.lineSoft}` }}>
                     <div style={{ flex:1, minWidth:0, overflow:"hidden" }}>
-                      <MarqueeText text={t.title || "Untitled"} style={ui.rowTitle} />
-                      <Link href={trackHref(t.title || "", t.artist)} style={{ ...ui.rowSub, display:"block", textDecoration:"none" }}>{t.artist || "Open"} <span style={{ color:C.gold }}>›</span></Link>
+                      <MarqueeText text={fmtTitle(t.title) || "Untitled"} style={ui.rowTitle} />
+                      <Link href={trackHref(t.title || "", t.artist)} style={{ ...ui.rowSub, display:"block", textDecoration:"none" }}>{t.artist ? fmtArtist(t.artist) : "Open"} <span style={{ color:C.gold }}>›</span></Link>
                     </div>
                     <button
                       onClick={async () => {
