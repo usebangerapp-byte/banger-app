@@ -9,7 +9,8 @@ import { useEffect, useId, useRef, useState, type CSSProperties, type MouseEvent
 const EVT = "banger-marquee-active";
 
 /** `group`: lines sharing a group move together (e.g. a track's title and its artist line). */
-export default function MarqueeText({ text, style, group }: { text: string; style?: CSSProperties; group?: string }) {
+/** `passive`: the tap is NOT used (it goes to the parent, e.g. a whole row that opens the track). */
+export default function MarqueeText({ text, style, group, passive }: { text: string; style?: CSSProperties; group?: string; passive?: boolean }) {
   const id = useId();
   const boxRef = useRef<HTMLSpanElement | null>(null);
   const innerRef = useRef<HTMLSpanElement | null>(null);
@@ -34,6 +35,7 @@ export default function MarqueeText({ text, style, group }: { text: string; styl
   }, [active, text]);
 
   function toggle(e: MouseEvent) {
+    if (passive) return;
     e.stopPropagation();
     const next = !active;
     setActive(next);
@@ -47,7 +49,7 @@ export default function MarqueeText({ text, style, group }: { text: string; styl
   return (
     <span ref={boxRef} onClick={toggle} title={text}
       style={{
-        display: "block", overflow: "hidden", whiteSpace: "nowrap", cursor: "pointer", minWidth: 0,
+        display: "block", overflow: "hidden", whiteSpace: "nowrap", cursor: passive ? "inherit" : "pointer", minWidth: 0,
         maskImage: moving ? mask : undefined, WebkitMaskImage: moving ? mask : undefined,
         ...style,
         textOverflow: undefined,

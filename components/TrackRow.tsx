@@ -164,10 +164,10 @@ export default function TrackRow({ title, artist, rank, meta, last, onFollowChan
           : <span aria-hidden style={{ width: 32, height: 32, borderRadius: "50%", border: `1px dashed ${C.lineSoft}`, opacity: 0.6 }} />}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <MarqueeText text={fmtTitle(title) || "Unknown"} style={ui.rowTitle} group={lineGroup} />
+        <MarqueeText passive text={fmtTitle(title) || "Unknown"} style={ui.rowTitle} group={lineGroup} />
         {(sub || status) && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, marginTop: 2 }}>
-            {sub && <span style={{ flex: 1, minWidth: 0 }}><MarqueeText text={sub} group={lineGroup} style={{ ...ui.rowSub, marginTop: 0 }} /></span>}
+            {sub && <span style={{ flex: 1, minWidth: 0 }}><MarqueeText passive text={sub} group={lineGroup} style={{ ...ui.rowSub, marginTop: 0 }} /></span>}
             {status && (() => { const k = m ? (m.released ? "rel" : "unrel") : status; return <span style={{ ...tag(k), fontSize: 11, padding: "3px 8px" }}>{TAG_TEXT[k]}</span>; })()}
           </div>
         )}
@@ -188,7 +188,10 @@ export default function TrackRow({ title, artist, rank, meta, last, onFollowChan
             {busy ? "…" : <span style={{ transform: "scale(1.35)", display: "flex" }}><Bell filled={following} /></span>}
           </button>
         )}
-        <span aria-hidden style={{ color: C.text4, fontSize: 18, marginLeft: 2 }}>›</span>
+        <button onClick={() => router.push(href)} aria-label="Info"
+          style={{ background: "none", border: "none", padding: "8px 0 8px 4px", cursor: "pointer", fontFamily: "inherit", color: C.text3, fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 2 }}>
+          Info<span style={{ fontSize: 16 }}>›</span>
+        </button>
         {editing && <AdminTrackSheet title={title} artist={artist} onClose={() => setEditing(false)} />}
       </div>
     </div>
