@@ -207,42 +207,42 @@ export default function SetPage() {
             </button>
           ) : (
             <div key={t.id} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr)", minWidth: 0, gap: 10, padding: "13px 0", borderBottom: i === d.tracks.length - 1 && !lockedN ? "none" : `1px solid ${C.lineSoft}` }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, cursor: t.start_sec != null ? "pointer" : "default" }} onClick={() => seek(t.start_sec)}>
-                <span style={{ ...ui.rank, width: 22 }}>{String(t.position).padStart(2, "0")}</span>
-                <span style={{ width: 52, fontSize: 13, color: C.text3, fontVariantNumeric: "tabular-nums" }}>{fmtTime(t.start_sec)}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 12, minWidth: 0, cursor: t.start_sec != null ? "pointer" : "default" }} onClick={() => seek(t.start_sec)}>
+                {/* number above the time: leaves the width to the title */}
+                <div style={{ width: 44, flexShrink: 0, display: "grid", gap: 2, paddingTop: 1 }}>
+                  <span style={{ ...ui.rank, width: "auto" }}>{String(t.position).padStart(2, "0")}</span>
+                  <span style={{ fontSize: 12, color: C.text3, fontVariantNumeric: "tabular-nums" }}>{fmtTime(t.start_sec)}</span>
+                </div>
+                <div style={{ flex: 1, minWidth: 0, display: "grid", gap: 3 }}>
                   {t.title ? <>
-                    <div style={{ fontSize: 15, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", overflowWrap: "anywhere" }}>{fmtTitle(t.title)}</div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flexWrap: "wrap" }}>
-                      <span style={{ fontSize: 13, color: C.text2 }}>{[t.artist ? fmtArtist(t.artist) : "", t.fires ? `🔥 ${t.fires}` : ""].filter(Boolean).join(" · ")}</span>
-                    </div>
-                    {(t as any).released !== true && !(t as any).scannable && ((t as any).wanted > 0 || d.pro) && (
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, flexWrap: "wrap" }} onClick={(e) => e.stopPropagation()}>
-                        {(t as any).wanted > 0 && <span style={{ fontSize: 12, color: C.gold }}>Wanted by {(t as any).wanted} DJ{(t as any).wanted > 1 ? "s" : ""}</span>}
-                        {d.pro && <button onClick={() => router.push(`/bpro?title=${encodeURIComponent(t.title || "")}&artist=${encodeURIComponent(t.artist || "")}`)}
-                          style={{ ...ui.pillSmall, padding: "5px 10px", fontSize: 12, color: C.goldInk, background: C.goldGrad, border: "1px solid transparent" }}>Make scannable</button>}
-                      </div>
-                    )}
+                    <div style={{ fontSize: 16, fontWeight: 650, lineHeight: 1.3, overflowWrap: "anywhere" }}>{fmtTitle(t.title)}</div>
+                    <div style={{ fontSize: 13, color: C.text2, lineHeight: 1.35, overflowWrap: "anywhere" }}>{[t.artist ? fmtArtist(t.artist) : "", t.fires ? `🔥 ${t.fires}` : ""].filter(Boolean).join(" · ")}</div>
                   </> : <>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: C.gold }}>ID</div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: C.gold }}>ID</div>
                     <div style={{ fontSize: 13, color: C.text2 }}>{[t.asks ? `${t.asks} want to know` : "", t.suggestions?.length ? `${t.suggestions.length} name${t.suggestions.length > 1 ? "s" : ""}` : "", t.fires ? `🔥 ${t.fires}` : ""].filter(Boolean).join(" · ") || "Nobody knows yet"}</div>
                   </>}
+                  {/* small actions line under the name */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 5, flexWrap: "wrap" }} onClick={(e) => e.stopPropagation()}>
+                    {t.title && (t as any).released != null && (
+                      <span style={{ ...tag((t as any).released ? "rel" : "unrel"), fontSize: 11, padding: "3px 8px" }}>{(t as any).released ? TAG_TEXT.rel : TAG_TEXT.unrel}</span>
+                    )}
+                    {t.title
+                      ? <Link href={trackHref(t.title, t.artist)} style={{ ...ui.pillSmall, fontSize: 12, padding: "4px 10px" }}>Info</Link>
+                      : <button onClick={() => setNaming(t)} style={{ ...ui.pillSmall, fontSize: 12, padding: "4px 10px", color: C.gold, borderColor: "rgba(245,207,104,0.35)" }}>✏️ Name it</button>}
+                    {t.title && (t as any).released !== true && !(t as any).scannable && (t as any).wanted > 0 && <span style={{ fontSize: 12, color: C.gold }}>Wanted by {(t as any).wanted} DJ{(t as any).wanted > 1 ? "s" : ""}</span>}
+                    {t.title && (t as any).released !== true && !(t as any).scannable && d.pro && <button onClick={() => router.push(`/bpro?title=${encodeURIComponent(t.title || "")}&artist=${encodeURIComponent(t.artist || "")}`)}
+                      style={{ ...ui.pillSmall, fontSize: 12, padding: "4px 10px", color: C.goldInk, background: C.goldGrad, border: "1px solid transparent" }}>Make scannable</button>}
+                    {d.admin && (
+                      <button onClick={() => setRowEdit(t)} aria-label="Edit this row"
+                        style={{ width: 28, height: 28, borderRadius: "50%", flexShrink: 0, border: `1px solid ${C.glassBorder}`, background: "rgba(255,255,255,0.06)", color: C.text2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", marginLeft: "auto" }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /></svg>
+                      </button>
+                    )}
+                  </div>
                 </div>
-                {d.admin && (
-                  <button onClick={(e) => { e.stopPropagation(); setRowEdit(t); }} aria-label="Edit this row"
-                    style={{ width: 34, height: 34, borderRadius: "50%", flexShrink: 0, border: `1px solid ${C.glassBorder}`, background: "rgba(255,255,255,0.06)", color: C.text2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /></svg>
-                  </button>
-                )}
-                {t.title && (t as any).released != null && (
-                  <span style={{ ...tag((t as any).released ? "rel" : "unrel"), flexShrink: 0 }}>{(t as any).released ? TAG_TEXT.rel : TAG_TEXT.unrel}</span>
-                )}
-                {t.title
-                  ? <Link href={trackHref(t.title, t.artist)} onClick={(e) => e.stopPropagation()} style={{ ...ui.pillSmall }}>Info</Link>
-                  : <button onClick={(e) => { e.stopPropagation(); setNaming(t); }} style={{ ...ui.pillSmall, color: C.gold, borderColor: "rgba(245,207,104,0.35)" }}>✏️ Name it</button>}
               </div>
               {!t.title && t.suggestions?.map((s) => (
-                <div key={s.key} style={{ marginLeft: 86, padding: "10px 12px", borderRadius: 14, background: "rgba(245,207,104,0.08)", border: "1px solid rgba(245,207,104,0.25)", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <div key={s.key} style={{ marginLeft: 56, padding: "10px 12px", borderRadius: 14, background: "rgba(245,207,104,0.08)", border: "1px solid rgba(245,207,104,0.25)", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                   <div style={{ flex: 1, minWidth: 140 }}>
                     <div style={{ fontSize: 14, fontWeight: 600 }}>{fmtTitle(s.title)} — {fmtArtist(s.artist)}</div>
                     <div style={{ fontSize: 12, color: C.text3 }}>{[s.scan ? `🎙 scan heard it ${s.scan}×` : "", s.count ? `suggested by ${s.count} DJ${s.count > 1 ? "s" : ""}` : ""].filter(Boolean).join(" · ")}{(s.weight || 0) >= 2 ? " · waiting for validation" : ""}{d.admin && s.verified ? " · ✓ found in catalogues" : d.admin ? " · not found in catalogues" : ""}</div>
