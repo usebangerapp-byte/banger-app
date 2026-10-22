@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { authFetch } from "@/lib/authFetch";
@@ -150,7 +150,7 @@ export default function BulkUpload({ initialFiles }: { initialFiles?: File[] }) 
   async function runAll() {
     if (!rights) return;
     setRunning(true);
-    const queue = items.filter((i) => i.state !== "done" && !isDup(i) && i.title.trim() && i.artist.trim());
+    const queue = items.filter((i) => i.state !== "done" && !isDup(i) && !badIds.has(i.id) && i.title.trim() && i.artist.trim());
     let next = 0;
     const worker = async () => {
       while (next < queue.length) {
@@ -221,18 +221,28 @@ export default function BulkUpload({ initialFiles }: { initialFiles?: File[] }) 
   }
   const isDup = (i: Item) => i.dup || dupOf.get(i.id);
   const dups = items.filter((i) => i.state !== "done" && isDup(i)).length;
-  // Which rows sit in "Needs attention". Recomputed when the list / run / duplicate check
-  // changes — not on every keystroke, so a row doesn't jump away while you fix its name.
+  // "Needs attention": a row with a problem goes there and STAYS there while you fix it
+  // (no jumping around as you type). It only moves back up when you tap Confirm.
+  const hasProblem = (i: Item) => i.state !== "done" && (!!isDup(i) || !i.title.trim() || !i.artist.trim() || i.state === "error");
+  const [held, setHeld] = useState<Set<string>>(new Set());
   const errSig = items.filter((i) => i.state === "error").map((i) => i.id).join(",");
-  const badIds = useMemo(() => new Set(items.filter((i) => i.state !== "done" &&
-    (!!isDup(i) || !i.title.trim() || !i.artist.trim() || i.state === "error")).map((i) => i.id)),
+  useEffect(() => {
+    const add = items.filter(hasProblem).map((i) => i.id).filter((id) => !held.has(id));
+    if (add.length) setHeld((h) => new Set([...h, ...add]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [items.length, running, onBanger, errSig]);
+  }, [items.length, running, onBanger, errSig]);
+  const badIds = new Set(items.filter((i) => i.state !== "done" && held.has(i.id)).map((i) => i.id));
+  function confirmRow(it: Item) {
+    if (hasProblem(it) && it.state !== "error") return;
+    if (it.state === "error") patch(it.id, { state: "ready", error: undefined });
+    setHeld((h) => { const n = new Set(h); n.delete(it.id); return n; });
+  }
 
   const done = items.filter((i) => i.state === "done").length;
   const missing = items.filter((i) => i.state !== "done" && !isDup(i) && (!i.title.trim() || !i.artist.trim())).length;
-  const todo = items.filter((i) => i.state !== "done" && !isDup(i)).length;
-  const can = !running && rights && todo > 0 && missing === 0;
+  // Rows still in "Needs attention" are left out of the upload until confirmed.
+  const todo = items.filter((i) => i.state !== "done" && !isDup(i) && !badIds.has(i.id)).length;
+  const can = !running && rights && todo > 0;
 
   return (
     <div style={{ display: "grid", gap: 14, minWidth: 0 }}>
@@ -267,6 +277,8 @@ export default function BulkUpload({ initialFiles }: { initialFiles?: File[] }) 
               <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: isDup(it) && it.state !== "done" ? C.gold : it.state === "error" ? C.danger : it.state === "done" ? C.rel : C.text3 }}>
                 <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {isDup(it) && it.state !== "done" ? (isDup(it) === "batch" ? "Duplicate in this batch · skipped" : "Already on BANGER · skipped")
+                    : it.state !== "done" && (!it.title.trim() || !it.artist.trim()) ? "Title or artist missing"
+                    : badIds.has(it.id) && it.state === "ready" ? "Fixed? Tap Confirm"
                     : it.state === "ready" ? `${(it.file.size / 1024 / 1024).toFixed(1)} MB · ready`
                     : it.state === "prep" ? "Preparing…"
                     : it.state === "upload" ? `Uploading… ${it.pct}%`
@@ -274,6 +286,12 @@ export default function BulkUpload({ initialFiles }: { initialFiles?: File[] }) 
                     : it.state === "done" ? (it.outOn != null ? `Done ✓ · already out${it.outOn ? ` (${it.outOn})` : ""} → marked Released` : "Done ✓ · now scannable")
                     : it.error}
                 </span>
+                {!running && badIds.has(it.id) && !isDup(it) && it.title.trim() && it.artist.trim() && (
+                  <button onClick={() => confirmRow(it)}
+                    style={{ ...ui.pillSmall, padding: "6px 14px", color: C.goldInk, background: C.goldGrad, border: "1px solid transparent" }}>
+                    {it.state === "error" ? "Retry" : "Confirm"}
+                  </button>
+                )}
               </div>
               {(it.state === "upload" || it.state === "register" || it.state === "prep") && (
                 <div style={{ height: 4, borderRadius: 2, background: "rgba(255,255,255,0.10)", overflow: "hidden" }}>
