@@ -123,7 +123,7 @@ export default function ChartsPage() {
     (async () => {
       try {
         // 1) Charts toujours en premier (source principale)
-        const chartsRes = await fetch("/api/charts").then(r => r.json()).catch(() => []);
+        const chartsRes = await fetch("/api/charts", { cache: "no-store" }).then(r => r.json()).catch(() => []);
         if (!mounted) return;
 
         const scanList = Array.isArray(chartsRes) ? chartsRes : [];

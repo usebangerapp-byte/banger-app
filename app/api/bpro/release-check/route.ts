@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { notifyTrackReleased } from "@/lib/server/notify";
+import { lookupRelease } from "@/lib/server/catalog";
 export const runtime = "nodejs";
 const MB_UA = "BangerApp/1.0 (contact@usebanger.com)";
 
@@ -59,11 +60,18 @@ export async function GET() {
     await new Promise(r => setTimeout(r, 1100)); // rate limit MusicBrainz 1 req/s
 
     try {
-      const { isReleased, mbid, releaseDate } = await checkMusicBrainz(title, artist);
+      // Deezer / iTunes first (much better coverage of electronic music), MusicBrainz as a fallback
+      let isReleased = false, mbid: string | null = null, releaseDate: string | null = null, source = "musicbrainz";
+      const cat = await lookupRelease(title, artist).catch(() => null);
+      if (cat?.releaseDate && new Date(cat.releaseDate).getTime() <= Date.now()) {
+        isReleased = true; releaseDate = cat.releaseDate; source = "catalog";
+      } else {
+        ({ isReleased, mbid, releaseDate } = await checkMusicBrainz(title, artist));
+      }
       await supabase.from("bpro_tracks").update({
         release_checked_at: new Date().toISOString(),
         // Never downgrade an uploader's choice to "unknown"; only flip when a strict match is found.
-        ...(isReleased ? { release_status: "released", is_released: true, release_source: "musicbrainz" } : {}),
+        ...(isReleased ? { release_status: "released", is_released: true, release_source: source } : {}),
         ...(releaseDate?{release_date:releaseDate}:{}),
         ...(isReleased?{beatport_url:`https://www.beatport.com/search?q=${encodeURIComponent(firstArtist(artist)+" "+cleanTitle(title))}`}:{}),
       }).eq("id",track.id);

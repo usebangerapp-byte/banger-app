@@ -7,6 +7,7 @@ import { authFetch } from "@/lib/authFetch";
 import { ui, C } from "@/lib/ui";
 import { PreviewButton, trackKey, trackHref } from "@/lib/preview";
 import MarqueeText from "@/components/MarqueeText";
+import AdminTrackSheet, { useIsAdmin } from "@/components/AdminTrackSheet";
 
 /* ── Shared data, loaded once per session ─────────────────────────── */
 
@@ -110,6 +111,8 @@ export default function TrackRow({ title, artist, rank, meta, last, onFollowChan
 }) {
   const { meta: m, following, key } = useTrackState(title);
   const [busy, setBusy] = useState(false);
+  const isAdmin = useIsAdmin();
+  const [editing, setEditing] = useState(false);
 
   async function toggleFollow() {
     if (busy) return;
@@ -154,6 +157,10 @@ export default function TrackRow({ title, artist, rank, meta, last, onFollowChan
         </button>}
         <Link href={trackHref(title, artist)} style={{ ...ui.pillSmall, justifyContent: "center" }}>Info</Link>
         {right}
+        {isAdmin && (
+          <button onClick={() => setEditing(true)} style={{ ...ui.pillSmall, justifyContent: "center", color: C.text3, padding: "4px 8px", fontSize: 12 }}>Edit</button>
+        )}
+        {editing && <AdminTrackSheet title={title} artist={artist} onClose={() => setEditing(false)} />}
       </div>
     </div>
   );

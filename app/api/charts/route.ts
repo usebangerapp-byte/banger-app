@@ -1,4 +1,6 @@
 import { createClient } from "@supabase/supabase-js"
+import { loadOverrides, ovFor } from "@/lib/server/overrides"
+export const dynamic = "force-dynamic"
 
 type ResultType = "recognized_unreleased" | "recognized_world" | "not_found" | null
 
@@ -61,7 +63,10 @@ async function compute(): Promise<Response> {
     map.set(key, current)
   }
 
+  const ov = await loadOverrides(supabase)
   const result = Array.from(map.values())
+    .filter((r) => !ovFor(ov, r.track_title)?.hidden)
+    .map((r) => { const o = ovFor(ov, r.track_title); return o?.scans != null ? { ...r, scans: o.scans } : r })
     .sort((a, b) => b.scans - a.scans)
     .slice(0, 200)
 
@@ -73,7 +78,7 @@ async function compute(): Promise<Response> {
 export async function GET() {
   const res = await compute()
   if (res.status === 200) {
-    res.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300")
+    res.headers.set("Cache-Control", "no-store")
   }
   return res
 }

@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js"
+import { loadOverrides, ovFor } from "@/lib/server/overrides"
 export const dynamic = "force-dynamic"
 
 async function compute(): Promise<Response> {
@@ -45,7 +46,11 @@ async function compute(): Promise<Response> {
     grouped.set(e.track_id, cur)
   }
 
-  const weeklyAll = [...grouped.values()].map(({ people, ...t }) => t).sort((a, b) => b.scans - a.scans)
+  const ov = await loadOverrides(supabase)
+  const weeklyAll = [...grouped.values()].map(({ people, ...t }) => t)
+    .filter((t) => !ovFor(ov, t.track_title)?.hidden)
+    .map((t) => { const o = ovFor(ov, t.track_title); return o?.scans != null ? { ...t, scans: o.scans } : t })
+    .sort((a, b) => b.scans - a.scans)
   const weeklyUnreleased = weeklyAll.filter(t => t.release_status !== "released")
 
   const hot = weeklyUnreleased[0] || weeklyAll[0] || null
@@ -81,7 +86,7 @@ async function compute(): Promise<Response> {
     status.set(k, { released: (prev?.released ?? false) || released, artist: prev?.artist || t.artist || "" })
   }
   const mostWanted = [...followMap.values()]
-    .filter((w) => { const st = status.get(tkey(w.track_title)); return !!st && !st.released })
+    .filter((w) => { const st = status.get(tkey(w.track_title)); return !!st && !st.released && !ovFor(ov, w.track_title)?.hidden })
     .map((w) => ({ ...w, track_subtitle: w.track_subtitle || status.get(tkey(w.track_title))?.artist || "" }))
     .sort((a, b) => b.followers - a.followers)
     .slice(0, 10)

@@ -100,7 +100,7 @@ export default function RadarPage() {
             <div style={ui.label}>Hot right now</div>
             {data.hot ? (
               <SharedTrackRow rank={1} title={data.hot.track_title} artist={data.hot.track_subtitle || ""}
-                meta={`${data.hot.scans} scan${data.hot.scans === 1 ? "" : "s"} this week`} last />
+                meta={`${data.hot.scans} scan${data.hot.scans === 1 ? "" : "s"}`} last />
             ) : (
               <div style={ui.empty}>Nothing scanned this week yet. Be first.</div>
             )}
