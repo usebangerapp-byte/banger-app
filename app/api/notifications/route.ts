@@ -36,10 +36,21 @@ export async function GET(req: Request) {
   // Old empty rows (no text, no sender) are noise — hide them
   .filter((n) => n.message || n.track_title || n.actor_id);
 
+  // Exact duplicates (same kind, same track, same text — e.g. two "Welcome" sent at the same moment,
+  // or the same "out now" twice): keep the newest, delete the others
+  const seenDup = new Set<string>(); const dupIds: any[] = [];
+  const unique = raw.filter((n) => {
+    if (n.type === "message" || n.type === "follow") return true;
+    const k = `${n.type}|${String(n.track_title || "").toLowerCase().trim()}|${String(n.message || "").trim()}`;
+    if (seenDup.has(k)) { dupIds.push(n.id); return false; }
+    seenDup.add(k); return true;
+  });
+  if (dupIds.length) { try { await sb.from("notifications").delete().eq("user_id", user.id).in("id", dupIds); } catch {} }
+
   // One line per person: all messages (or follows) from the same sender are added up
   const groups = new Map<string, any>();
   const rows: any[] = [];
-  for (const n of raw) {
+  for (const n of unique) {
     const isPromo = typeof n.type === "string" && n.type.startsWith("promo_");
     const groupable = n.type === "message" || n.type === "follow" || isPromo;
     const who = n.actor_id || n.track_title;
