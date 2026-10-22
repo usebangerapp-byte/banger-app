@@ -177,7 +177,7 @@ export default function SetPage() {
         )}
 
         <div style={{ ...ui.label, padding: "4px 4px 0" }}>Tracklist</div>
-        <section style={{ ...glass, borderRadius: 22, padding: "0 16px" }}>
+        <section style={{ ...glass, borderRadius: 22, padding: "0 16px", display: "grid", gridTemplateColumns: "minmax(0,1fr)" }}>
           {d.tracks.length === 0 && <div style={{ ...ui.empty, padding: "18px 0" }}>{d.admin ? "No tracklist yet — tap “Scan this set”." : "The tracklist is coming soon."}</div>}
           {d.tracks.map((t, i) => t.locked ? (
             <button key={t.id} onClick={() => openPro("sets")} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "13px 0", background: "none", border: "none", borderBottom: `1px solid ${C.lineSoft}`, cursor: "pointer", fontFamily: "inherit", color: "#fff", textAlign: "left" }}>
@@ -187,13 +187,13 @@ export default function SetPage() {
               <span style={{ fontSize: 12, fontWeight: 600, color: C.gold }}>🔒 Pro</span>
             </button>
           ) : (
-            <div key={t.id} style={{ display: "grid", gap: 10, padding: "13px 0", borderBottom: i === d.tracks.length - 1 && !lockedN ? "none" : `1px solid ${C.lineSoft}` }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, cursor: t.start_sec != null ? "pointer" : "default" }} onClick={() => seek(t.start_sec)}>
+            <div key={t.id} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr)", minWidth: 0, gap: 10, padding: "13px 0", borderBottom: i === d.tracks.length - 1 && !lockedN ? "none" : `1px solid ${C.lineSoft}` }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, cursor: t.start_sec != null ? "pointer" : "default" }} onClick={() => seek(t.start_sec)}>
                 <span style={{ ...ui.rank, width: 22 }}>{String(t.position).padStart(2, "0")}</span>
                 <span style={{ width: 52, fontSize: 13, color: C.text3, fontVariantNumeric: "tabular-nums" }}>{fmtTime(t.start_sec)}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   {t.title ? <>
-                    <div style={{ fontSize: 15, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</div>
+                    <div style={{ fontSize: 15, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", overflowWrap: "anywhere" }}>{t.title}</div>
                     <div style={{ fontSize: 13, color: C.text2 }}>{[t.artist, t.fires ? `🔥 ${t.fires}` : ""].filter(Boolean).join(" · ")}</div>
                   </> : <>
                     <div style={{ fontSize: 15, fontWeight: 700, color: C.gold }}>ID</div>

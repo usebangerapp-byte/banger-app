@@ -78,6 +78,32 @@ export default function SetScanner({ player, duration, initial, sourceUrl, onSav
     if (!j?.tracklist) { setStatus(j?.note || j?.error || "No tracklist found — paste one below."); setPaste(""); return; }
     applyText(j.tracklist); setStatus(j.note || "Tracklist imported — check it.");
   }
+  // Photos of a tracklist (a screenshot of a YouTube comment…) → text, read on the device (OCR)
+  const [ocr, setOcr] = useState("");
+  async function fromPhotos(files: FileList | null) {
+    if (!files?.length) return;
+    const list = Array.from(files).slice(0, 3);
+    setOcr("Loading the reader…");
+    try {
+      const w = window as any;
+      if (!w.Tesseract) await new Promise<void>((res, rej) => {
+        const sc = document.createElement("script");
+        sc.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+        sc.onload = () => res(); sc.onerror = () => rej(new Error("load")); document.head.appendChild(sc);
+      });
+      let text = "";
+      for (let i = 0; i < list.length; i++) {
+        setOcr(`Reading photo ${i + 1}/${list.length}…`);
+        const r = await w.Tesseract.recognize(list[i], "eng");
+        text += "\n" + String(r?.data?.text || "");
+      }
+      // keep only the lines that look like "1. 00:00 Artist - Title"
+      const lines = text.split(/\r?\n/).map((l) => l.replace(/[|]/g, "").trim()).filter((l) => /\d{1,2}[:.]\d{2}/.test(l))
+        .map((l) => l.replace(/(\d{1,2})\.(\d{2})(?=\s)/, "$1:$2"));
+      setPaste(lines.join("\n")); setOcr(lines.length ? `${lines.length} lines read — check them, then “Use this tracklist”.` : "Couldn't read a tracklist on these photos.");
+    } catch { setOcr("Couldn't read the photos — paste the text instead."); }
+  }
+
   function applyText(text: string) {
     const parsed = parseTracklist(text);
     if (!parsed.length) { setStatus("Nothing to import — one track per line, “0:00 Artist - Title”."); return; }
@@ -153,6 +179,11 @@ export default function SetScanner({ player, duration, initial, sourceUrl, onSav
         <button onClick={importFromLink} disabled={scanning} style={{ ...ui.cta, padding: "12px 8px", fontSize: 14 }}>⬇ Import tracklist</button>
         <button onClick={() => setPaste(paste === null ? "" : null)} disabled={scanning} style={{ ...ui.pill, justifyContent: "center", padding: "12px 8px", fontSize: 14 }}>📋 Paste</button>
       </div>
+      <label style={{ ...ui.pill, justifyContent: "center", padding: "12px 8px", fontSize: 14, cursor: scanning ? "default" : "pointer" }}>
+        📷 From photos (up to 3)
+        <input type="file" accept="image/*" multiple disabled={scanning} style={{ display: "none" }} onChange={(e) => { fromPhotos(e.target.files); e.target.value = ""; }} />
+      </label>
+      {ocr && <div style={{ fontSize: 13, color: C.gold }}>{ocr}</div>}
       {paste !== null && (
         <div style={{ display: "grid", gap: 8 }}>
           <textarea value={paste} onChange={(e) => setPaste(e.target.value)} rows={8} placeholder={"Paste the tracklist (a YouTube comment, the description…)\n1. 00:00 Artist - Title\n2. 04:55 Artist - Title"} style={{ ...ui.input, fontFamily: "inherit", resize: "vertical" }} />
