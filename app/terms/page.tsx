@@ -53,7 +53,7 @@ export default function TermsPage() {
             <li>Your profile, followers and messages</li>
           </ul>
 
-          <h3 style={s.h3}>PRO plan — €9.99 / month or €79 / year</h3>
+          <h3 style={s.h3}>PRO plan — €9.99 / month or €99 / year</h3>
           <p>The PRO plan includes everything in the free plan, plus:</p>
           <ul style={s.ul}>
             <li>The full Radar &amp; Most wanted</li>

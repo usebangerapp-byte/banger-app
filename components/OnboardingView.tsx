@@ -10,7 +10,7 @@ type Plan = "public" | "pro";
 
 // --- À ajuster facilement ---
 const CONTACT_EMAIL = "contact@usebanger.com";
-const PRO_PRICE = "€9.99/month or €79/year · 3 days free";
+const PRO_PRICE = "€9.99/month or €99/year · 3 days free";
 // ----------------------------
 
 const plans: {
@@ -142,7 +142,7 @@ export default function OnboardingView() {
             ))}
             {plan.key === "pro" && hasYearly && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 14 }}>
-                {([["monthly", "Monthly", "€9.99 / month"], ["yearly", "Yearly", "€79 / year · save 34%"]] as const).map(([k, label, price]) => (
+                {([["monthly", "Monthly", "€9.99 / month"], ["yearly", "Yearly", "€99 / year · 2 months free"]] as const).map(([k, label, price]) => (
                   <button key={k} type="button" onClick={() => setBilling(k)} aria-pressed={billing === k}
                     style={{ borderRadius: 16, padding: "12px 10px", cursor: "pointer", fontFamily: "inherit", color: "#fff", textAlign: "center", background: billing === k ? "rgba(245,207,104,0.12)" : "rgba(255,255,255,0.05)",
                       border: billing === k ? "1px solid rgba(245,207,104,0.7)" : `1px solid ${C.glassBorder}` }}>

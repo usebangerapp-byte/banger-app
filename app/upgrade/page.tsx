@@ -102,7 +102,7 @@ export default function UpgradePage() {
 
   const planPicker = !isPro && hasYearly && (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, width: "100%" }}>
-      {([["monthly", "Monthly", "€9.99 / month"], ["yearly", "Yearly", "€79 / year · save 34%"]] as const).map(([k, label, price]) => (
+      {([["monthly", "Monthly", "€9.99 / month"], ["yearly", "Yearly", "€99 / year · 2 months free"]] as const).map(([k, label, price]) => (
         <button key={k} onClick={() => setPlan(k)} style={{ ...glass, borderRadius: 18, padding: "12px 10px", cursor: "pointer", fontFamily: "inherit", color: "#fff", textAlign: "center",
           border: plan === k ? "1px solid rgba(245,207,104,0.7)" : `1px solid ${C.glassBorder}`, boxShadow: plan === k ? "0 0 18px rgba(245,207,104,0.25)" : "none" }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: plan === k ? C.gold : "#fff" }}>{label}</div>
@@ -111,7 +111,7 @@ export default function UpgradePage() {
       ))}
     </div>
   );
-  const priceLine = plan === "yearly" ? "3 days free, then €79/year. Cancel anytime." : "3 days free, then €9.99/month. Cancel anytime.";
+  const priceLine = plan === "yearly" ? "3 days free, then €99/year. Cancel anytime." : "3 days free, then €9.99/month. Cancel anytime.";
   const cta = isPro ? (
     <div style={alreadyPro}>You&apos;re Pro ✦ Enjoy the vault.</div>
   ) : (
