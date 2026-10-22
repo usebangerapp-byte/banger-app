@@ -54,6 +54,13 @@ function loadFollows() {
   return followLoad;
 }
 
+/** Released status of uploaded tracks (BANGER's own truth), by track key. */
+export function useReleasedIndex() {
+  const [idx, setIdx] = useState<Map<string, boolean> | null>(null);
+  useEffect(() => { let alive = true; loadMeta().then((m) => { if (alive) setIdx(new Map([...m].map(([k, v]) => [k, v.released]))); }); return () => { alive = false; }; }, []);
+  return idx;
+}
+
 export function useTrackState(title: string) {
   const key = trackKey(title);
   const [meta, setMeta] = useState<Meta | null>(null);

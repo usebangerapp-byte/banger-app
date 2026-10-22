@@ -13,7 +13,7 @@ import { PeopleSearch, PeopleSheet } from "@/components/People";
 import { ui, C, glass, tag, TAG_TEXT } from "@/lib/ui";
 import { promoSummary } from "@/lib/feedback";
 import MarqueeText from "@/components/MarqueeText";
-import TrackRow from "@/components/TrackRow";
+import TrackRow, { useReleasedIndex } from "@/components/TrackRow";
 import { usePreviewIndex, PreviewButton, trackKey, trackHref } from "@/lib/preview";
 import Link from "next/link";
 import { Skeleton, SkeletonTrackRow, SkeletonStyles } from "@/components/Skeleton";
@@ -451,8 +451,11 @@ export default function ProfilePageV2() {
 
   const name     = profile?.display_name || profile?.email?.split("@")[0] || "You";
   // Followed tracks: still waiting (Follows) / came out (Released)
-  const waiting = follows.filter((f: any) => !f.is_released);
-  const out = follows.filter((f: any) => !!f.is_released);
+  // same truth as the pill on each row: the uploaded track's own status first
+  const relIdx = useReleasedIndex();
+  const isOut = (f: any) => { const k = trackKey(String(f.track_title || "")); return relIdx?.has(k) ? !!relIdx.get(k) : !!f.is_released; };
+  const waiting = follows.filter((f: any) => !isOut(f));
+  const out = follows.filter((f: any) => isOut(f));
   function openList(l: "scans"|"follows"|"released") {
     setList(l);
     setTimeout(() => document.getElementById("lists")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
@@ -631,8 +634,8 @@ export default function ProfilePageV2() {
               <Section title={list==="follows" ? "Waiting for release" : "Out now"} id="followed-tracks">
                 <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:2 }}>
                   {(showMoreFollows ? rows : rows.slice(0,10)).map((f: any, i: number) => (
-                    <TrackRow key={f.track_title || i} title={f.track_title || "Unknown"} artist={f.track_subtitle} released={!!f.is_released}
-                      status={f.is_released ? "rel" : "unrel"}
+                    <TrackRow key={f.track_title || i} title={f.track_title || "Unknown"} artist={f.track_subtitle} released={isOut(f)}
+                      status={isOut(f) ? "rel" : "unrel"}
                       onFollowChange={(on) => { if (!on) setFollows((p: any[]) => p.filter((x: any) => x.track_title !== f.track_title)); }} />
                   ))}
                   {rows.length > 10 && (
