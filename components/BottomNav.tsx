@@ -14,6 +14,7 @@ const I = {
   radar: <><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><path d="M12 12l7-7" /></>,
   scan: <><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="3" /></>,
   charts: <path d="M5 20V10M12 20V4M19 20v-7" />,
+  sets: <><rect x="3" y="4" width="18" height="16" rx="3" /><path d="M7 9h10M7 13h7M7 17h4" /></>,
   pro: <path d="M12 3l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.3 6.8 19.1l1-5.8L3.5 9.2l5.9-.8z" />,
   upload: <path d="M12 19V5M6 11l6-6 6 6" />,
 };
@@ -22,7 +23,7 @@ const PUBLIC_ITEMS: Item[] = [
   { label: "Profile", href: "/profile", icon: I.profile },
   { label: "Radar",   href: "/radar",   icon: I.radar },
   { label: "Scan",    href: "/home",    icon: I.scan },
-  { label: "Charts",  href: "/charts",  icon: I.charts },
+  { label: "Sets",    href: "/sets",    icon: I.sets },
   { label: "Pro",     href: "/upgrade", icon: I.pro },
 ];
 
@@ -30,7 +31,7 @@ const PRO_ITEMS: Item[] = [
   { label: "Profile", href: "/profile", icon: I.profile },
   { label: "Radar",   href: "/radar",   icon: I.radar },
   { label: "Scan",    href: "/home",    icon: I.scan },
-  { label: "Charts",  href: "/charts",  icon: I.charts },
+  { label: "Sets",    href: "/sets",    icon: I.sets },
   { label: "Upload",  href: "/bpro",    icon: I.upload },
 ];
 

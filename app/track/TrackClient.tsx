@@ -1,5 +1,6 @@
 "use client";
 import { openPro } from "@/components/ProSheet";
+import { fmtTime } from "@/lib/setlists";
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -35,6 +36,11 @@ function TrackView() {
   const [userId, setUserId] = useState("");
   const [following, setFollowing] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [playedIn, setPlayedIn] = useState<{ id: string; title: string; venue: string | null; at: number | null }[]>([]);
+  useEffect(() => {
+    if (!title) return;
+    fetch(`/api/setlists?track=${encodeURIComponent(title)}`).then((r) => r.json()).then((j) => setPlayedIn(j?.sets || [])).catch(() => {});
+  }, [title]);
 
   useEffect(() => {
     const sb = createSupabaseBrowser();
@@ -126,6 +132,18 @@ function TrackView() {
         </button>
         )}
       </div>
+      {playedIn.length > 0 && (
+        <div style={{ display: "grid", gap: 8, borderTop: `1px solid ${C.lineSoft}`, paddingTop: 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", color: C.text3 }}>PLAYED IN</div>
+          {playedIn.map((p) => (
+            <a key={p.id + String(p.at)} href={`/sets/${p.id}${p.at ? `?t=${p.at}` : ""}`} style={{ display: "flex", alignItems: "center", gap: 10, color: "#fff", textDecoration: "none", fontSize: 14 }}>
+              <span style={{ color: C.gold }}>▶</span>
+              <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.venue ? `${p.title} · ${p.venue}` : p.title}</span>
+              {p.at != null && <span style={{ color: C.text3, fontVariantNumeric: "tabular-nums" }}>{fmtTime(p.at)}</span>}
+            </a>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

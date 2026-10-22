@@ -92,6 +92,12 @@ export default function RadarPage() {
 
       <div style={ui.shell}>
         <PageHeader title="Radar" sub="What the scene is scanning right now." />
+        <Link href="/charts" style={{ ...ui.section, display: "flex", alignItems: "center", gap: 12, textDecoration: "none", color: "#fff", padding: "14px 18px" }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={C.gold} strokeWidth={2} strokeLinecap="round" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7" /></svg>
+          <span style={{ flex: 1, fontSize: 16, fontWeight: 600 }}>Charts</span>
+          <span style={{ fontSize: 13, color: C.text3 }}>Top 100</span>
+          <span style={{ color: C.text4 }}>›</span>
+        </Link>
 
         {loading ? (
           <div style={ui.empty}>Loading…</div>
