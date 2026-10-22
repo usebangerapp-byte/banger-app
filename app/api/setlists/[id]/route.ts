@@ -195,6 +195,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       return Response.json({ ok: true });
     }
 
+    // Anyone opening a set fills in the release status of tracks never checked yet
+    if (b.action === "refresh_status") {
+      const n = await checkSetTracks(sb, { setId: id, limit: 12 }).catch(() => 0);
+      return Response.json({ ok: true, changed: n });
+    }
+
     if (!admin) return Response.json({ ok: false, error: "Admins only" }, { status: 403 });
 
     if (b.action === "validate" || b.action === "name") {

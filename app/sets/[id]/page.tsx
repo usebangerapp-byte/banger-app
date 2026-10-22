@@ -52,6 +52,14 @@ export default function SetPage() {
       .then((j) => { if (j?.ok) setD(j); else setError(j?.error || "Set not found"); }).catch(() => setError("Network error"));
   }, [id]);
   useEffect(() => { reload(); }, [reload]);
+  const refreshed = useRef(false);
+  useEffect(() => {
+    if (!d || refreshed.current) return;
+    if (!d.tracks.some((t: any) => t.title && t.released == null && !t.locked)) return;
+    refreshed.current = true;
+    authFetch(`/api/setlists/${id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "refresh_status" }) })
+      .then(() => reload()).catch(() => {});
+  }, [d, id, reload]);
 
   const yt = d ? youtubeId(d.set.source_url) : null;
   useEffect(() => {
@@ -198,8 +206,6 @@ export default function SetPage() {
                     <div style={{ fontSize: 15, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", overflowWrap: "anywhere" }}>{fmtTitle(t.title)}</div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flexWrap: "wrap" }}>
                       <span style={{ fontSize: 13, color: C.text2 }}>{[t.artist ? fmtArtist(t.artist) : "", t.fires ? `🔥 ${t.fires}` : ""].filter(Boolean).join(" · ")}</span>
-                      {(t as any).released === true && <span style={tag("rel")}>{TAG_TEXT.rel}</span>}
-                      {(t as any).released === false && <span style={tag("unrel")}>{TAG_TEXT.unrel}</span>}
                     </div>
                     {(t as any).released !== true && !(t as any).scannable && ((t as any).wanted > 0 || d.pro) && (
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, flexWrap: "wrap" }} onClick={(e) => e.stopPropagation()}>
@@ -218,6 +224,9 @@ export default function SetPage() {
                     style={{ width: 34, height: 34, borderRadius: "50%", flexShrink: 0, border: `1px solid ${C.glassBorder}`, background: "rgba(255,255,255,0.06)", color: C.text2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /></svg>
                   </button>
+                )}
+                {t.title && (t as any).released != null && (
+                  <span style={{ ...tag((t as any).released ? "rel" : "unrel"), flexShrink: 0 }}>{(t as any).released ? TAG_TEXT.rel : TAG_TEXT.unrel}</span>
                 )}
                 {t.title
                   ? <Link href={trackHref(t.title, t.artist)} onClick={(e) => e.stopPropagation()} style={{ ...ui.pillSmall }}>Info</Link>
