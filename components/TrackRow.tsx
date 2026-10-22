@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode, type CSSProperties } from "react";
 import Link from "next/link";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { authFetch } from "@/lib/authFetch";
-import { ui, C } from "@/lib/ui";
+import { ui, C, tag, TAG_TEXT } from "@/lib/ui";
 import { PreviewButton, trackKey, trackHref } from "@/lib/preview";
 import MarqueeText from "@/components/MarqueeText";
 import AdminTrackSheet, { useIsAdmin } from "@/components/AdminTrackSheet";
@@ -103,9 +103,10 @@ function fmtDate(d: string) {
  * One track, the same everywhere:
  * [rank] [▶ preview] [title / artist · meta / release date] [Follow over Info]
  */
-export default function TrackRow({ title, artist, rank, meta, last, onFollowChange, right, released }: {
+export default function TrackRow({ title, artist, rank, meta, last, onFollowChange, right, released, status }: {
   title: string; artist?: string | null; rank?: number; meta?: string; last?: boolean;
   released?: boolean;        // released tracks can't be followed (nothing left to wait for)
+  status?: "rel" | "unrel";  // show a Released / Unreleased pill (the uploaded track's real status wins)
   onFollowChange?: (following: boolean) => void;
   right?: ReactNode;   // extra control under Info (e.g. a status tag)
 }) {
@@ -146,7 +147,12 @@ export default function TrackRow({ title, artist, rank, meta, last, onFollowChan
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <MarqueeText text={title || "Unknown"} style={ui.rowTitle} />
-        {sub && <div style={ui.rowSub}>{sub}</div>}
+        {(sub || status) && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, marginTop: 2 }}>
+            {sub && <span style={{ ...ui.rowSub, marginTop: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{sub}</span>}
+            {status && (() => { const k = m ? (m.released ? "rel" : "unrel") : status; return <span style={tag(k)}>{TAG_TEXT[k]}</span>; })()}
+          </div>
+        )}
       </div>
       <div style={{ display: "grid", gap: 6, flexShrink: 0, width: 96 }}>
         {!(released ?? m?.released) && <button onClick={toggleFollow} disabled={busy}

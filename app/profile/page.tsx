@@ -666,7 +666,7 @@ export default function ProfilePageV2() {
               <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:2 }}>
                 {(showMoreScans ? scans : scans.slice(0,3)).map((s,i) => (
                   <TrackRow key={i} title={s.track_title || "Unknown"} artist={s.track_subtitle} released={s.result_type !== "recognized_unreleased"}
-                    meta={s.result_type === "recognized_unreleased" ? TAG_TEXT.unrel : TAG_TEXT.rel} />
+                    status={s.result_type === "recognized_unreleased" ? "unrel" : "rel"} />
                 ))}
                 {scans.length > 3 && (
                   <button onClick={()=>setShowMoreScans(v=>!v)} style={showMoreBtn}>
@@ -683,7 +683,7 @@ export default function ProfilePageV2() {
               <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:2 }}>
                 {(showMoreFollows ? follows : follows.slice(0,3)).map((f,i) => (
                   <TrackRow key={f.track_title || i} title={f.track_title || "Unknown"} artist={f.track_subtitle} released={!!f.is_released}
-                    meta={f.is_released ? "Out now" : "Waiting"}
+                    status={f.is_released ? "rel" : "unrel"}
                     onFollowChange={(on) => { if (!on) setFollows((p: any[]) => p.filter((x: any) => x.track_title !== f.track_title)); }} />
                 ))}
                 {follows.length > 3 && (
