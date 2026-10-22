@@ -67,6 +67,20 @@ async function compute(): Promise<Response> {
     map.set(key, current)
   }
 
+  // Status: a track uploaded on BANGER follows its own page (released / unreleased, and a release date
+  // still in the future = unreleased), not what the recogniser said at scan time.
+  const { data: cat } = await supabase.from("bpro_tracks").select("title,is_released,release_status,release_date").limit(20000)
+  const today = new Date().toISOString().slice(0, 10)
+  const rel = new Map<string, boolean>()
+  for (const t of (cat || []) as any[]) {
+    const out = t.is_released === true || t.release_status === "released"
+    rel.set(titleKey(t.title), out && !(t.release_date && String(t.release_date).slice(0, 10) > today))
+  }
+  for (const r of map.values()) {
+    const k = titleKey(r.track_title || "")
+    if (rel.has(k)) r.result_type = rel.get(k) ? "recognized_world" : "recognized_unreleased"
+  }
+
   const ov = await loadOverrides(supabase)
   const result = Array.from(map.values())
     .filter((r) => !ovFor(ov, r.track_title)?.hidden)
@@ -89,13 +103,10 @@ export async function GET(req: Request) {
   const pro = me ? await isPro(sb, me.id) : false
   let out = rows
   if (!pro) {
-    const { data: cat } = await sb.from("bpro_tracks").select("title,is_released,release_status").limit(20000)
-    const rel = new Map<string, boolean>()
-    for (const t of (cat || []) as any[]) rel.set(titleKey(t.title), t.is_released === true || t.release_status === "released")
     const seen = { rel: new Set<string>(), unrel: new Set<string>() }
     out = rows.map((r) => {
       const k = titleKey(r.track_title)
-      const released = rel.has(k) ? !!rel.get(k) : r.result_type === "recognized_world"
+      const released = r.result_type === "recognized_world"
       const bucket = released ? seen.rel : seen.unrel
       if (bucket.has(k) || bucket.size < FREE.chartRows) { bucket.add(k); return r }
       return { locked: true, result_type: released ? "recognized_world" : "recognized_unreleased", scans: 0 }
