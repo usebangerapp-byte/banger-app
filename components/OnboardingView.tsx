@@ -50,7 +50,7 @@ const plans: {
       "10-second preview of your tracks",
       "Release control & scan stats on your tracks",
       "Send demos to DJs and get their feedback",
-      "Set mode",
+      "Get my tracklist",
     ],
     cta: "Go Pro",
   },

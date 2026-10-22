@@ -10,6 +10,7 @@ import { getRegion } from "@/lib/scan/getRegion";
 import { ui, C, glass, tag, TAG_TEXT } from "@/lib/ui";
 import PageHeader from "@/components/PageHeader";
 import MarqueeText from "@/components/MarqueeText";
+import LinkScan from "@/components/LinkScan";
 
 const SAMPLE_MS = 10_000;   // listen 10 s
 const GAP_MS = 40_000;      // then wait before the next listen (≈ one scan per 50 s)
@@ -45,6 +46,7 @@ export default function SetModePage() {
   const [history, setHistory] = useState<SavedSet[]>([]);
   const [openSet, setOpenSet] = useState<string | null>(null);
   const [copied, setCopied] = useState("");
+  const [mode, setMode] = useState<"live" | "link">("live");
 
   const runningRef = useRef(false);
   const setIdRef = useRef("");
@@ -203,7 +205,27 @@ export default function SetModePage() {
         @keyframes setIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
       `}</style>
       <div style={ui.shell}>
-        <PageHeader back title="Set mode" sub="BANGER builds your tracklist while you play." />
+        <PageHeader back title="Get my tracklist" sub="Fast auto scan" />
+
+        {phase !== "running" && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 8 }}>
+            {(["live", "link"] as const).map((m) => {
+              const on = mode === m;
+              return (
+                <button key={m} onClick={() => setMode(m)} aria-pressed={on}
+                  style={{ padding: "12px 6px", borderRadius: 16, cursor: "pointer", fontFamily: "inherit", fontSize: 15, fontWeight: 700,
+                    border: `1px solid ${on ? "rgba(245,207,104,0.55)" : C.glassBorder}`,
+                    background: on ? "rgba(245,207,104,0.14)" : "rgba(255,255,255,0.06)", color: on ? C.gold : "#fff" }}>
+                  {m === "live" ? "🎧 Live set" : "🔗 From a link"}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {mode === "link" && <LinkScan textOf={(rows) => tracklistText(new Date(), rows)} />}
+
+        {mode === "live" && (<>
 
         {/* ── Idle ── */}
         {phase === "idle" && (
@@ -307,6 +329,7 @@ export default function SetModePage() {
             })}
           </section>
         )}
+        </>)}
       </div>
     </main>
   );

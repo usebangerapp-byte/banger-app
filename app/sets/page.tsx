@@ -36,7 +36,7 @@ export default function SetsPage() {
           <span style={{ width: 36, height: 36, borderRadius: 12, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(245,207,104,0.12)", border: "1px solid rgba(245,207,104,0.25)" }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.gold} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h7" /><circle cx="18" cy="16" r="3" /></svg>
           </span>
-          <span style={{ flex: 1, fontSize: 15, fontWeight: 600 }}>Set mode</span>
+          <span style={{ flex: 1, fontSize: 15, fontWeight: 600 }}>Get my tracklist</span>
           <span style={{ color: C.text4 }}>›</span>
         </Link>
 
