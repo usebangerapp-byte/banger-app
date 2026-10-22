@@ -4,6 +4,9 @@ import { ADMIN_EMAILS } from "@/lib/admins";
 import { dupKey } from "@/lib/dupKey";
 import { FREE } from "@/lib/plan";
 import { lookupRelease } from "@/lib/server/catalog";
+import { checkSetTracks } from "@/lib/server/setRelease";
+import { titleKey } from "@/lib/titleKey";
+export const maxDuration = 60;
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -80,6 +83,23 @@ async function load(sb: any, id: string, user: any) {
     if (!pro && i >= FREE.chartRows && t.title) return { id: t.id, position: t.position, start_sec: t.start_sec, locked: true, known: true };
     return row;
   });
+  // Status of named tracks: BANGER base first (scannable = uploaded on BANGER), else the stored catalogue check
+  const named = list.filter((t) => t.title);
+  const { data: base } = named.length ? await sb.from("bpro_tracks").select("title,is_released,release_status").limit(20000) : { data: [] };
+  const baseMap = new Map<string, any>();
+  for (const b of (base || []) as any[]) baseMap.set(titleKey(b.title), b);
+  const titles = [...new Set(named.map((t) => t.title))];
+  const { data: fol } = titles.length ? await sb.from("track_followers").select("track_title").in("track_title", titles) : { data: [] };
+  for (const row of out as any[]) {
+    if (!row.title) continue;
+    const t = list.find((x) => x.id === row.id);
+    const b = baseMap.get(titleKey(row.title));
+    row.scannable = !!b;
+    row.released = b ? (b.is_released === true || b.release_status === "released") : (t?.released ?? null);
+    row.release_date = t?.release_date || null; row.release_label = t?.release_label || null;
+    row.wanted = (row.asks || 0) + (fol || []).filter((f: any) => f.track_title === row.title).length;
+  }
+
   // Credits: the people who named IDs in this set
   const namers = [...new Set(list.flatMap((t) => t.named_by || []))] as string[];
   const { data: people } = namers.length ? await sb.from("profiles").select("id,display_name").in("id", namers) : { data: [] };
@@ -191,6 +211,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       await sb.from("setlist_suggestions").update({ status: "accepted" }).eq("track_id", t.id).eq("key", dupKey(title, artist)).eq("status", "open");
       await sb.from("setlist_suggestions").update({ status: "closed" }).eq("track_id", t.id).eq("status", "open");
       await checkUnlocked(sb, id);
+      await checkSetTracks(sb, { setId: id, limit: 5 }).catch(() => 0);
       return Response.json({ ok: true });
     }
     if (b.action === "replace_tracks") {
@@ -213,6 +234,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       // reopen the set if new IDs appeared, or unlock it if everything is known
       if (rows.some((r: any) => !r.title)) await sb.from("setlists").update({ unlocked_at: null }).eq("id", id);
       else await checkUnlocked(sb, id);
+      await checkSetTracks(sb, { setId: id, limit: 30 }).catch(() => 0);
       return Response.json({ ok: true, count: rows.length });
     }
     if (b.action === "reject") {

@@ -115,6 +115,13 @@ export default function UploadPage() {
 
   const [artist,        setArtist]        = useState("");
   const [trackTitle,    setTrackTitle]    = useState("");
+  // "Make scannable" from a set: the name is already known — keep it, whatever the file is called
+  const nameFromSet = useRef(false);
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const t = q.get("title"), a = q.get("artist");
+    if (t) { setTrackTitle(t); setArtist(a || ""); nameFromSet.current = true; }
+  }, []);
   const [releaseStatus, setReleaseStatus] = useState<ReleaseStatus>("unreleased");
   const [releaseDate,   setReleaseDate]   = useState("");
   const [allowPreview,  setAllowPreview]  = useState(true);
@@ -170,7 +177,7 @@ export default function UploadPage() {
     if (!file) return;
     setAudioFile(file); setError(""); setDone(false); setStep("");
     // Fill artist & title from the file's tags / name (remix credits stay in the title)
-    guessTrackName(file).then((g) => {
+    if (!nameFromSet.current) guessTrackName(file).then((g) => {
       if (g.artist) setArtist(g.artist);
       if (g.title) setTrackTitle(g.title);
     }).catch(() => {});

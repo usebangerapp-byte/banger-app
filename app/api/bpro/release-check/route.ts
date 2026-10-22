@@ -1,6 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { notifyTrackReleased } from "@/lib/server/notify";
 import { lookupRelease } from "@/lib/server/catalog";
+import { checkSetTracks } from "@/lib/server/setRelease";
+export const maxDuration = 60;
 export const runtime = "nodejs";
 const MB_UA = "BangerApp/1.0 (contact@usebanger.com)";
 
@@ -84,5 +86,7 @@ export async function GET() {
       results.push({ id:track.id, title, artist, searchTitle:cleanTitle(title), searchArtist:firstArtist(artist), isReleased, mbid, releaseDate, release_status:isReleased?"released":"unknown" });
     } catch(e: any) { results.push({ id:track.id, title, artist, error:e?.message }); }
   }
-  return Response.json({ ok:true, count:results.length, results });
+  // the tracks named in the Sets too
+  const setsChanged = await checkSetTracks(supabase, { limit: 25 }).catch(() => 0);
+  return Response.json({ ok:true, count:results.length, results, setsChanged });
 }

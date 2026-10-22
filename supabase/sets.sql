@@ -51,3 +51,9 @@ alter table setlists enable row level security;
 alter table setlist_tracks enable row level security;
 alter table setlist_reactions enable row level security;
 alter table setlist_suggestions enable row level security;
+
+-- Release status of named tracks in sets
+alter table setlist_tracks add column if not exists released boolean;
+alter table setlist_tracks add column if not exists release_date date;
+alter table setlist_tracks add column if not exists release_label text;
+alter table setlist_tracks add column if not exists release_checked_at timestamptz;

@@ -8,7 +8,7 @@ import PageHeader from "@/components/PageHeader";
 import { openPro } from "@/components/ProSheet";
 import { fmtTime, youtubeId, type SetTrack } from "@/lib/setlists";
 import { trackHref } from "@/lib/preview";
-import { ui, C, glass } from "@/lib/ui";
+import { ui, C, glass, tag, TAG_TEXT } from "@/lib/ui";
 import SetScanner, { type DraftRow } from "@/components/SetScanner";
 import { parseTime } from "@/lib/setlists";
 
@@ -194,7 +194,18 @@ export default function SetPage() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   {t.title ? <>
                     <div style={{ fontSize: 15, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", overflowWrap: "anywhere" }}>{t.title}</div>
-                    <div style={{ fontSize: 13, color: C.text2 }}>{[t.artist, t.fires ? `🔥 ${t.fires}` : ""].filter(Boolean).join(" · ")}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 13, color: C.text2 }}>{[t.artist, t.fires ? `🔥 ${t.fires}` : ""].filter(Boolean).join(" · ")}</span>
+                      {(t as any).released === true && <span style={tag("rel")}>{TAG_TEXT.rel}</span>}
+                      {(t as any).released === false && <span style={tag("unrel")}>{TAG_TEXT.unrel}</span>}
+                    </div>
+                    {(t as any).released !== true && !(t as any).scannable && ((t as any).wanted > 0 || d.pro) && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, flexWrap: "wrap" }} onClick={(e) => e.stopPropagation()}>
+                        {(t as any).wanted > 0 && <span style={{ fontSize: 12, color: C.gold }}>Wanted by {(t as any).wanted} DJ{(t as any).wanted > 1 ? "s" : ""}</span>}
+                        {d.pro && <button onClick={() => router.push(`/bpro?title=${encodeURIComponent(t.title || "")}&artist=${encodeURIComponent(t.artist || "")}`)}
+                          style={{ ...ui.pillSmall, padding: "5px 10px", fontSize: 12, color: C.goldInk, background: C.goldGrad, border: "1px solid transparent" }}>Make scannable</button>}
+                      </div>
+                    )}
                   </> : <>
                     <div style={{ fontSize: 15, fontWeight: 700, color: C.gold }}>ID</div>
                     <div style={{ fontSize: 13, color: C.text2 }}>{[t.asks ? `${t.asks} want to know` : "", t.suggestions?.length ? `${t.suggestions.length} name${t.suggestions.length > 1 ? "s" : ""}` : "", t.fires ? `🔥 ${t.fires}` : ""].filter(Boolean).join(" · ") || "Nobody knows yet"}</div>
