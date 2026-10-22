@@ -6,7 +6,7 @@ import { getRegion } from "@/lib/scan/getRegion";
 import { fmtTime, youtubeId } from "@/lib/setlists";
 import { buildDraft, type DraftRow } from "@/components/SetScanner";
 import { fmtTitle, fmtArtist } from "@/lib/format";
-import { ui, C, glass } from "@/lib/ui";
+import { ui, C, glass, FLAT } from "@/lib/ui";
 
 const SAMPLE_MS = 10_000;   // listen 10 s
 const STEP_SEC = 90;        // one listen every 1:30 of the set
@@ -139,7 +139,7 @@ export default function LinkScan({ textOf }: { textOf: (rows: { title: string; a
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
-      <section style={{ ...glass, borderRadius: 22, padding: 16, display: "grid", gap: 10 }}>
+      <section style={{ ...glass, borderRadius: 22, padding: 16, display: "grid", gap: 10 , ...FLAT }}>
         <div style={{ display: "flex", gap: 8 }}>
           <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="YouTube or SoundCloud link" inputMode="url"
             style={{ ...ui.input, flex: 1, minWidth: 0, padding: "11px 14px" }} disabled={running} />
@@ -157,7 +157,7 @@ export default function LinkScan({ textOf }: { textOf: (rows: { title: string; a
       </section>
 
       {rows.length > 0 && (
-        <section style={{ ...glass, borderRadius: 22, padding: "6px 16px 14px", display: "grid", gap: 0 }}>
+        <section style={{ ...glass, borderRadius: 22, padding: "6px 16px 14px", display: "grid", gap: 0 , ...FLAT }}>
           {rows.map((r, i) => (
             <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "11px 0", borderBottom: `1px solid ${C.lineSoft}` }}>
               <div style={{ width: 44, flexShrink: 0, display: "grid", gap: 2 }}>

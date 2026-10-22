@@ -1075,9 +1075,9 @@ const scanStyles: Record<string, CSSProperties> = {
     border: "1px solid rgba(255,255,255,0.12)", borderRadius: 999, padding: "4px 10px",
   },
   resultBlock: {
-    ...glass,
-    borderRadius: 22,
-    padding: "16px 18px",
+    borderRadius: 0,
+    padding: "14px 0",
+    borderTop: `1px solid ${C.line}`,
     textAlign: "center" as const,
     width: "100%",
     maxWidth: 340,

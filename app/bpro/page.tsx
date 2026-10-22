@@ -1,5 +1,6 @@
 "use client";
 
+import WordTabs from "@/components/WordTabs";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import MyUploads from "@/components/MyUploads";
 import { useRouter } from "next/navigation";
@@ -10,7 +11,7 @@ import PageHeader from "@/components/PageHeader";
 import { guessTrackName } from "@/lib/trackName";
 import { authFetch } from "@/lib/authFetch";
 import BulkUpload from "@/components/BulkUpload";
-import { ui, C, glass } from "@/lib/ui";
+import { ui, C, glass, FLAT } from "@/lib/ui";
 
 const SEGMENT_DURATION = 25;
 const MAX_SEGMENTS     = 20;
@@ -302,19 +303,10 @@ export default function UploadPage() {
         <PageHeader title="Upload" sub="Register your track for scanning." />
 
         {!busy && !done && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 8 }}>
-            {(["upload", "mine"] as const).map((v) => {
-              const on = view === v;
-              return (
-                <button key={v} onClick={() => setView(v)} aria-pressed={on}
-                  style={{ padding: "12px 6px", borderRadius: 16, cursor: "pointer", fontFamily: "inherit", fontSize: 15, fontWeight: 700,
-                    border: `1px solid ${on ? "rgba(245,207,104,0.55)" : C.glassBorder}`,
-                    background: on ? "rgba(245,207,104,0.14)" : "rgba(255,255,255,0.06)", color: on ? C.gold : "#fff" }}>
-                  {v === "upload" ? "New upload" : `My tracks${mineCount != null ? ` · ${mineCount}` : ""}`}
-                </button>
-              );
-            })}
-          </div>
+          <WordTabs value={view} onChange={setView} items={[
+            { key: "upload", label: "New upload" },
+            { key: "mine", label: <>My tracks{mineCount != null && <span style={{ fontSize: 13, fontWeight: 700, marginLeft: 5, color: view === "mine" ? C.gold : C.text4 }}>{mineCount}</span>}</> },
+          ]} />
         )}
         {/* kept mounted so the count shows on the button */}
         <div style={{ display: view === "mine" && !busy && !done ? "block" : "none" }}><MyUploads pro onCount={setMineCount} /></div>
@@ -336,15 +328,7 @@ export default function UploadPage() {
         )}
 
         {!busy && !done && view === "upload" && (
-          <div style={{ ...glass, display: "grid", gridTemplateColumns: "1fr 1fr", padding: 4, borderRadius: 999 }}>
-            {(["one", "bulk"] as const).map((m) => (
-              <button key={m} onClick={() => setMode(m)}
-                style={{ padding: "9px 0", borderRadius: 999, border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 14,
-                  background: mode === m ? "rgba(255,255,255,0.16)" : "transparent", color: mode === m ? "#fff" : C.text3, fontWeight: mode === m ? 600 : 500 }}>
-                {m === "one" ? "One track" : "Several tracks"}
-              </button>
-            ))}
-          </div>
+          <WordTabs size={16} value={mode} onChange={setMode} items={[{ key: "one", label: "One track" }, { key: "bulk", label: "Several tracks" }]} />
         )}
 
         {!busy && !done && view === "upload" && mode === "bulk" && <BulkUpload initialFiles={bulkFiles} />}
@@ -437,7 +421,7 @@ export default function UploadPage() {
   );
 }
 
-const cardStyle: React.CSSProperties = { ...glass, borderRadius: 22, padding: 18, display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 12, minWidth: 0 };
+const cardStyle: React.CSSProperties = { ...glass, borderRadius: 22, padding: 18, display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 12, minWidth: 0, ...FLAT };
 const doneBadge: React.CSSProperties = {
   width: 64, height: 64, borderRadius: "50%", background: C.goldGrad, display: "flex", alignItems: "center", justifyContent: "center",
   boxShadow: "0 0 30px rgba(245,207,104,0.55)",

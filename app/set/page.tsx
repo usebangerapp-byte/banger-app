@@ -1,5 +1,6 @@
 "use client";
 
+import WordTabs from "@/components/WordTabs";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getBrowserRole } from "@/lib/auth/getBrowserRole";
@@ -208,19 +209,7 @@ export default function SetModePage() {
         <PageHeader back title="Get my tracklist" sub="Fast auto scan" />
 
         {phase !== "running" && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 8 }}>
-            {(["live", "link"] as const).map((m) => {
-              const on = mode === m;
-              return (
-                <button key={m} onClick={() => setMode(m)} aria-pressed={on}
-                  style={{ padding: "12px 6px", borderRadius: 16, cursor: "pointer", fontFamily: "inherit", fontSize: 15, fontWeight: 700,
-                    border: `1px solid ${on ? "rgba(245,207,104,0.55)" : C.glassBorder}`,
-                    background: on ? "rgba(245,207,104,0.14)" : "rgba(255,255,255,0.06)", color: on ? C.gold : "#fff" }}>
-                  {m === "live" ? "🎧 Live set" : "🔗 From a link"}
-                </button>
-              );
-            })}
-          </div>
+          <WordTabs size={20} value={mode} onChange={setMode} items={[{ key: "live", label: "🎧 Live set" }, { key: "link", label: "🔗 From a link" }]} />
         )}
 
         {mode === "link" && <LinkScan textOf={(rows) => tracklistText(new Date(), rows)} />}

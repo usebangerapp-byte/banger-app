@@ -6,7 +6,7 @@ import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { authFetch } from "@/lib/authFetch";
 import { guessTrackName } from "@/lib/trackName";
 import { dupKey } from "@/lib/dupKey";
-import { ui, C, glass } from "@/lib/ui";
+import { ui, C, glass, FLAT } from "@/lib/ui";
 
 type Item = {
   id: string; file: File; artist: string; title: string;
@@ -304,7 +304,7 @@ export default function BulkUpload({ initialFiles }: { initialFiles?: File[] }) 
           const bad = items.filter((it) => badIds.has(it.id));
           return (<>
             {good.length > 0 && (
-              <section style={{ ...glass, borderRadius: 22, padding: "4px 14px", display: "grid", gridTemplateColumns: "minmax(0,1fr)" }}>
+              <section style={{ ...glass, borderRadius: 22, padding: "4px 14px", display: "grid", gridTemplateColumns: "minmax(0,1fr)" , ...FLAT }}>
                 {good.map(row)}
               </section>
             )}
@@ -316,7 +316,7 @@ export default function BulkUpload({ initialFiles }: { initialFiles?: File[] }) 
                     style={{ ...ui.pillSmall, color: C.text2 }}>Remove duplicates ({dups})</button>
                 )}
               </div>
-              <section style={{ ...glass, borderRadius: 22, padding: "4px 14px", display: "grid", gridTemplateColumns: "minmax(0,1fr)", borderColor: "rgba(245,207,104,0.25)" }}>
+              <section style={{ ...glass, borderRadius: 22, padding: "4px 14px", display: "grid", gridTemplateColumns: "minmax(0,1fr)", borderColor: "rgba(245,207,104,0.25)" , ...FLAT }}>
                 {bad.map(row)}
               </section>
             </>)}
@@ -324,7 +324,7 @@ export default function BulkUpload({ initialFiles }: { initialFiles?: File[] }) 
         })()}
 
         {/* Shared settings */}
-        <section style={{ ...glass, borderRadius: 22, padding: 16, display: "grid", gap: 12 }}>
+        <section style={{ ...glass, borderRadius: 22, padding: 16, display: "grid", gap: 12 , ...FLAT }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             {[false, true].map((rel) => (
               <button key={String(rel)} disabled={running} onClick={() => setReleased(rel)}

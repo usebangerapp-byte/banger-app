@@ -2,6 +2,7 @@
 
 export const dynamic = "force-dynamic";
 
+import WordTabs from "@/components/WordTabs";
 import { fmtTitle, fmtArtist } from "@/lib/format";
 import { authFetch } from "@/lib/authFetch";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
@@ -10,7 +11,7 @@ import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { getBrowserRole } from "@/lib/auth/getBrowserRole";
 import PageHeader from "@/components/PageHeader";
 import { PeopleSearch, PeopleSheet } from "@/components/People";
-import { ui, C, glass, tag, TAG_TEXT } from "@/lib/ui";
+import { ui, C, glass, tag, TAG_TEXT, FLAT } from "@/lib/ui";
 import { promoSummary } from "@/lib/feedback";
 import MarqueeText from "@/components/MarqueeText";
 import TrackRow, { useReleasedIndex } from "@/components/TrackRow";
@@ -132,7 +133,7 @@ function AudioPlayer({ src, name }: { src: string; name: string }) {
 function Section({ title, children, id }: { title: string; children: React.ReactNode; id?: string }) {
   return (
     <section id={id} style={{ ...sectionStyle, scrollMarginTop: 80 }}>
-      <div style={sectionTitleStyle}>{title}</div>
+      {title && <div style={sectionTitleStyle}>{title}</div>}
       {children}
     </section>
   );
@@ -493,7 +494,7 @@ export default function ProfilePageV2() {
         {tab==="profile" && (<>
 
           {/* ── IDENTITY: avatar + stats side by side, name, links, actions — compact ── */}
-          <section style={{ ...glass, borderRadius:24, padding:"16px 16px 14px", display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:12, minWidth:0 }}>
+          <section style={{ ...glass, borderRadius:24, padding:"16px 16px 14px", display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:12, minWidth:0 , ...FLAT }}>
             <input ref={avatarInputRef} type="file" accept="image/*" style={{ display:"none" }}
               onChange={e => { const f = e.target.files?.[0]; if (f) uploadAvatar(f); e.target.value=""; }} />
 
@@ -591,27 +592,17 @@ export default function ProfilePageV2() {
           )}
 
           {/* ── MY LISTS: Scans · Follows · Uploads, one at a time ── */}
-          <div id="lists" style={{ display:"grid", gridTemplateColumns:"repeat(3, minmax(0,1fr))", gap:8, scrollMarginTop:72 }}>
-            {(["scans","follows","released"] as const).map((l) => {
-              const on = list === l;
-              const n = l==="scans" ? scans.length : l==="follows" ? waiting.length : out.length;
-              return (
-                <button key={l} onClick={() => setList(l)} aria-pressed={on}
-                  style={{ display:"grid", gap:2, justifyItems:"center", padding:"10px 6px", borderRadius:16, cursor:"pointer", fontFamily:"inherit",
-                    border:`1px solid ${on ? "rgba(245,207,104,0.55)" : C.glassBorder}`,
-                    background: on ? "rgba(245,207,104,0.14)" : "rgba(255,255,255,0.06)",
-                    boxShadow: on ? "0 0 16px rgba(245,207,104,0.18)" : "inset 0 1px 0 rgba(255,255,255,0.06)" }}>
-                  <span style={{ fontSize:18, fontWeight:800, color: on ? C.gold : "#fff", lineHeight:1.1 }}>{n}</span>
-                  <span style={{ fontSize:12, fontWeight:600, color: on ? C.gold : C.text2 }}>{l==="scans" ? "Scans" : l==="follows" ? "Follows" : "Out now"}</span>
-                </button>
-              );
-            })}
+          <div id="lists" style={{ scrollMarginTop:72 }}>
+            <WordTabs value={list} onChange={setList} items={(["scans","follows","released"] as const).map((l) => ({ key: l, label: <>
+              {l==="scans" ? "Scans" : l==="follows" ? "Follows" : "Out now"}
+              <span style={{ fontSize:13, fontWeight:700, marginLeft:5, color: list===l ? C.gold : C.text4 }}>{l==="scans" ? scans.length : l==="follows" ? waiting.length : out.length}</span>
+            </> }))} />
           </div>
 
           {/* ── SCANS LIST ── */}
           {list==="scans" && scans.length === 0 && <div style={emptyStyle}>No scans yet.</div>}
           {list==="scans" && scans.length > 0 && (
-            <Section title="Recent scans">
+            <Section title="">
               <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:2 }}>
                 {(showMoreScans ? scans : scans.slice(0,10)).map((s,i) => (
                   <TrackRow key={i} title={s.track_title || "Unknown"} artist={s.track_subtitle} released={s.result_type !== "recognized_unreleased"}
@@ -631,7 +622,7 @@ export default function ProfilePageV2() {
             const rows = list==="follows" ? waiting : out;
             if (!rows.length) return <div style={emptyStyle}>{list==="follows" ? "No followed tracks waiting." : "None of your followed tracks is out yet."}</div>;
             return (
-              <Section title={list==="follows" ? "Waiting for release" : "Out now"} id="followed-tracks">
+              <Section title="" id="followed-tracks">
                 <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:2 }}>
                   {(showMoreFollows ? rows : rows.slice(0,10)).map((f: any, i: number) => (
                     <TrackRow key={f.track_title || i} title={f.track_title || "Unknown"} artist={f.track_subtitle} released={isOut(f)}
@@ -651,7 +642,7 @@ export default function ProfilePageV2() {
         </>)}
 
         {tab==="messages" && (
-          <div style={{ ...glass, borderRadius:24, padding:"14px 16px 16px", display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:12, minWidth:0 }}>
+          <div style={{ ...glass, borderRadius:24, padding:"14px 16px 16px", display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:12, minWidth:0 , ...FLAT }}>
             {!activeConv ? (<>
               <div style={{ ...sectionTitleStyle, padding:"0 0 10px" }}>Conversations</div>
               {convs.length===0
@@ -831,7 +822,7 @@ export default function ProfilePageV2() {
   );
 }
 
-const weekCard: React.CSSProperties = { ...glass, borderRadius:24, padding:"14px 16px 16px", display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:0 };
+const weekCard: React.CSSProperties = { ...glass, borderRadius:24, padding:"14px 16px 16px", display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:0, ...FLAT };
 const weekLine: React.CSSProperties = { display:"flex", alignItems:"center", gap:10, fontSize:14, color:C.text2, minWidth:0, borderTop:`1px solid ${C.lineSoft}`, paddingTop:14, marginTop:14 };
 
 function formatMsgTime(iso: string) {
@@ -849,7 +840,7 @@ const shellStyle: React.CSSProperties = { ...ui.shell, gap:16 };
 const sectionStyle: React.CSSProperties = { ...ui.section, paddingBottom:4 };
 const sectionTitleStyle: React.CSSProperties = { ...ui.label };
 // identity card replaces old headerStyle
-const identityCard: React.CSSProperties = { ...glass, borderRadius:24, padding:18, display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:12, boxSizing:"border-box", overflow:"hidden" };
+const identityCard: React.CSSProperties = { ...glass, borderRadius:24, padding:18, display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:12, boxSizing:"border-box", overflow:"hidden", ...FLAT };
 const statsRow: React.CSSProperties = { display:"flex", background:"rgba(255,255,255,0.03)", borderRadius:14, border:"1px solid rgba(255,255,255,0.07)", padding:"10px 0", overflow:"hidden", boxSizing:"border-box" };
 const avatarStyle: React.CSSProperties = { width:64, height:64, boxSizing:"border-box", borderRadius:"50%", background:"rgba(255,255,255,0.08)", border:`1px solid ${C.line}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, fontWeight:800, flexShrink:0 };
 const statsLine: React.CSSProperties = { display:"flex", alignItems:"center", gap:16, flexWrap:"wrap", fontSize:13, color:C.text3 };

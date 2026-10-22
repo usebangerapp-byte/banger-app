@@ -7,7 +7,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { authFetch } from "@/lib/authFetch";
-import { ui, C, glass, tag, TAG_TEXT } from "@/lib/ui";
+import { ui, C, glass, tag, TAG_TEXT, FLAT } from "@/lib/ui";
 import { PreviewButton, trackKey } from "@/lib/preview";
 import PageHeader from "@/components/PageHeader";
 import MarqueeText from "@/components/MarqueeText";
@@ -95,7 +95,7 @@ function TrackView() {
   const q = encodeURIComponent(`${info?.artist || ""} ${title}`.trim());
 
   return (
-    <section style={{ ...glass, borderRadius: 24, padding: "22px 18px", display: "grid", gridTemplateColumns: "minmax(0,1fr)", gap: 14, minWidth: 0, overflow: "hidden" }}>
+    <section style={{ ...glass, borderRadius: 24, padding: "22px 18px", display: "grid", gridTemplateColumns: "minmax(0,1fr)", gap: 14, minWidth: 0, overflow: "hidden" , ...FLAT }}>
       <div style={{ display: "grid", gap: 4, minWidth: 0 }}>
         <MarqueeText text={fmtTitle(title)} style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em" }} />
         {info?.artist && <div style={{ fontSize: 15, color: C.text2 }}>{fmtArtist(info.artist)}</div>}

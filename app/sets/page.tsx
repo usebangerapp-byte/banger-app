@@ -7,7 +7,7 @@ import { authFetch } from "@/lib/authFetch";
 import PageHeader from "@/components/PageHeader";
 import { useIsAdmin } from "@/components/AdminTrackSheet";
 import { sourceKind } from "@/lib/setlists";
-import { ui, C, glass } from "@/lib/ui";
+import { ui, C, glass, FLAT_ROW } from "@/lib/ui";
 
 type SetRow = { id: string; title: string; venue: string | null; played_on?: string | null; source_url: string; cover_url: string | null; unlocked_at: string | null; total: number; known: number; asks: number; played?: string[] };
 
@@ -46,7 +46,7 @@ export default function SetsPage() {
         {isAdmin && <Link href="/sets/review" style={{ ...ui.pill, justifyContent: "center", color: C.gold, borderColor: "rgba(245,207,104,0.35)", textDecoration: "none" }}>🔎 Review IDs</Link>}
 
         {/* Set mode (Pro): record the tracklist of your own set — lives with the Sets */}
-        <Link href="/set" style={{ ...glass, borderRadius: 20, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, textDecoration: "none", color: "#fff" }}>
+        <Link href="/set" style={{ ...glass, borderRadius: 20, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, textDecoration: "none", color: "#fff" , ...FLAT_ROW }}>
           <span style={{ width: 36, height: 36, borderRadius: 12, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(245,207,104,0.12)", border: "1px solid rgba(245,207,104,0.25)" }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.gold} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h7" /><circle cx="18" cy="16" r="3" /></svg>
           </span>
@@ -68,7 +68,7 @@ export default function SetsPage() {
             const left = s.total - s.known;
             const done = s.total > 0 && left === 0;
             return (
-              <Link key={s.id} href={`/sets/${s.id}`} style={{ ...glass, borderRadius: 22, padding: 12, display: "flex", gap: 12, alignItems: "center", textDecoration: "none", color: "#fff" }}>
+              <Link key={s.id} href={`/sets/${s.id}`} style={{ ...glass, borderRadius: 22, padding: 12, display: "flex", gap: 12, alignItems: "center", textDecoration: "none", color: "#fff" , ...FLAT_ROW }}>
                 <div style={{ width: 84, height: 84, borderRadius: 16, flexShrink: 0, background: s.cover_url ? `center/cover no-repeat url(${s.cover_url})` : "linear-gradient(160deg,#3a2c12,#0b0b0b)" }} />
                 <div style={{ flex: 1, minWidth: 0, display: "grid", gap: 5 }}>
                   <div style={{ fontSize: 16, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fmtArtist(s.title)}</div>

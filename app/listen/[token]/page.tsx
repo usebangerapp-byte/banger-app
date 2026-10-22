@@ -4,7 +4,7 @@ import { fmtTitle, fmtArtist } from "@/lib/format";
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { authFetch } from "@/lib/authFetch";
-import { ui, C, glass } from "@/lib/ui";
+import { ui, C, glass, FLAT } from "@/lib/ui";
 import PageHeader from "@/components/PageHeader";
 import { VERDICTS, TAGS_SOUND, TAGS_ASK, type Verdict } from "@/lib/feedback";
 
@@ -108,7 +108,7 @@ export default function ListenPage() {
         {error && <section style={{ ...ui.card, color: C.text2, textAlign: "center" }}>{error}</section>}
 
         {promo && (
-          <section onClick={onCardTap} style={{ ...glass, borderRadius: 26, padding: "26px 20px", display: "grid", gap: 18, justifyItems: "center", textAlign: "center", position: "relative", overflow: "hidden" }}>
+          <section onClick={onCardTap} style={{ ...glass, borderRadius: 26, padding: "26px 20px", display: "grid", gap: 18, justifyItems: "center", textAlign: "center", position: "relative", overflow: "hidden" , ...FLAT }}>
             <style>{`@keyframes heartPop { 0% { transform: scale(.3); opacity: 0; } 30% { transform: scale(1.15); opacity: 1; } 70% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.3); opacity: 0; } }`}</style>
             {burst > 0 && (
               <span key={burst} aria-hidden style={{ position: "absolute", top: "38%", left: "50%", marginLeft: -45, fontSize: 90, lineHeight: 1,
@@ -179,7 +179,7 @@ export default function ListenPage() {
 
         {/* ── Feedback to the producer (recipient only) ── */}
         {promo?.isRecipient && (
-          <section style={{ ...glass, borderRadius: 24, padding: "18px 16px", display: "grid", gap: 14 }}>
+          <section style={{ ...glass, borderRadius: 24, padding: "18px 16px", display: "grid", gap: 14 , ...FLAT }}>
             <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: C.text3 }}>Your feedback</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 8 }}>
               {(Object.keys(VERDICTS) as Verdict[]).map((v) => {

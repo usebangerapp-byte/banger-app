@@ -9,7 +9,7 @@ import PageHeader from "@/components/PageHeader";
 import { openPro } from "@/components/ProSheet";
 import { fmtTime, youtubeId, type SetTrack } from "@/lib/setlists";
 import { trackHref } from "@/lib/preview";
-import { ui, C, glass, tag, TAG_TEXT } from "@/lib/ui";
+import { ui, C, glass, tag, TAG_TEXT, FLAT } from "@/lib/ui";
 import SetScanner, { type DraftRow } from "@/components/SetScanner";
 import { parseTime } from "@/lib/setlists";
 
@@ -115,7 +115,7 @@ export default function SetPage() {
 
         {flash && <div style={{ ...ui.toast }}>{flash}</div>}
 
-        <section style={{ ...glass, borderRadius: 22, overflow: "hidden", padding: 0 }}>
+        <section style={{ ...glass, borderRadius: 22, overflow: "hidden", padding: 0 , ...FLAT }}>
           <div style={{ aspectRatio: "16 / 9", background: "#000" }}>
             {yt ? <div ref={boxRef} style={{ width: "100%", height: "100%" }} />
               : <a href={d.set.source_url} target="_blank" rel="noreferrer" style={{ display: "grid", placeItems: "center", height: "100%", color: C.gold, textDecoration: "none", fontWeight: 600 }}>Open the set ↗</a>}
@@ -147,7 +147,7 @@ export default function SetPage() {
         </div>
 
         {/* Timeline: gold marks = IDs, brighter strip = the moments people loved */}
-        <section style={{ ...glass, borderRadius: 22, padding: "14px 16px", display: "grid", gap: 12 }}>
+        <section style={{ ...glass, borderRadius: 22, padding: "14px 16px", display: "grid", gap: 12 , ...FLAT }}>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: C.text3 }}><span>{current ? `Now · ${current.title ? current.title : "ID"}` : "Now"} · {fmtTime(now)}</span><span>{fmtTime(total)}</span></div>
           <div style={{ position: "relative", height: 30 }}>
             <div style={{ position: "absolute", left: 0, right: 0, top: 13, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.12)" }} />
@@ -195,8 +195,8 @@ export default function SetPage() {
             }} />
         )}
 
-        <div style={{ ...ui.label, padding: "4px 4px 0" }}>Tracklist</div>
-        <section style={{ ...glass, borderRadius: 22, padding: "0 16px", display: "grid", gridTemplateColumns: "minmax(0,1fr)" }}>
+        <div style={{ ...ui.label, padding: "4px 0 10px" }}>Tracklist</div>
+        <section style={{ ...glass, borderRadius: 22, padding: "0 16px", display: "grid", gridTemplateColumns: "minmax(0,1fr)" , ...FLAT }}>
           {d.tracks.length === 0 && <div style={{ ...ui.empty, padding: "18px 0" }}>{d.admin ? "No tracklist yet — tap “Scan this set”." : "The tracklist is coming soon."}</div>}
           {d.tracks.map((t, i) => t.locked ? (
             <button key={t.id} onClick={() => openPro("sets")} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "13px 0", background: "none", border: "none", borderBottom: `1px solid ${C.lineSoft}`, cursor: "pointer", fontFamily: "inherit", color: "#fff", textAlign: "left" }}>

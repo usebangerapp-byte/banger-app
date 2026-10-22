@@ -9,7 +9,7 @@ import { fmtTitle, fmtArtist } from "@/lib/format";
 import { promoSummary } from "@/lib/feedback";
 import { trackHref } from "@/lib/preview";
 import MarqueeText from "@/components/MarqueeText";
-import { ui, C, glass, tag, TAG_TEXT } from "@/lib/ui";
+import { ui, C, glass, tag, TAG_TEXT, FLAT, FLAT_ROW } from "@/lib/ui";
 
 /**
  * Your uploaded tracks (lives in the Upload tab): Send a demo, how they were scanned this week,
@@ -61,7 +61,7 @@ export default function MyUploads({ pro, onCount }: { pro: boolean; onCount?: (n
                 { href:"/promo", label:"Send a demo", icon:<path d="M4 12l16-8-6 16-2.5-6.5L4 12z" /> },
               ].map((t) => (
                 <button key={t.href} onClick={() => router.push(t.href)}
-                  style={{ ...glass, borderRadius:20, padding:"14px 16px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", color:"#fff", fontFamily:"inherit", textAlign:"left" }}>
+                  style={{ ...glass, borderRadius:20, padding:"14px 16px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", color:"#fff", fontFamily:"inherit", textAlign:"left" , ...FLAT_ROW }}>
                   <span style={{ width:36, height:36, borderRadius:12, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center",
                     background:"rgba(245,207,104,0.12)", border:"1px solid rgba(245,207,104,0.25)" }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.gold} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{t.icon}</svg>
@@ -185,5 +185,5 @@ export default function MyUploads({ pro, onCount }: { pro: boolean; onCount?: (n
   );
 }
 
-const weekCard: React.CSSProperties = { ...glass, borderRadius:24, padding:"14px 16px 16px", display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:0 };
+const weekCard: React.CSSProperties = { ...glass, borderRadius:24, padding:"14px 16px 16px", display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:0, ...FLAT };
 const weekLine: React.CSSProperties = { display:"flex", alignItems:"center", gap:10, fontSize:14, color:C.text2, minWidth:0, borderTop:`1px solid ${C.lineSoft}`, paddingTop:14, marginTop:14 };

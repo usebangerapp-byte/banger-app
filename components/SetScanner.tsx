@@ -6,7 +6,7 @@ import { getRegion } from "@/lib/scan/getRegion";
 import { fmtTime, parseTime, parseTracklist } from "@/lib/setlists";
 import { authFetch } from "@/lib/authFetch";
 import { titleKey } from "@/lib/titleKey";
-import { ui, C, glass } from "@/lib/ui";
+import { ui, C, glass, FLAT } from "@/lib/ui";
 
 type Sample = { t: number; est?: number; title: string | null; artist: string | null };
 export type DraftRow = { start: string; title: string; artist: string; id: boolean; flag?: string; scan?: { title: string; artist: string; heard: number } };
@@ -257,7 +257,7 @@ export default function SetScanner({ player, duration, initial, sourceUrl, onSav
   const scanning = mode !== "idle";
 
   return (
-    <section style={{ ...glass, borderRadius: 22, padding: 16, display: "grid", gap: 12, border: "1px solid rgba(245,207,104,0.35)" }}>
+    <section style={{ ...glass, borderRadius: 22, padding: 16, display: "grid", gap: 12, border: "1px solid rgba(245,207,104,0.35)" , ...FLAT }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{ flex: 1, fontSize: 16, fontWeight: 800 }}>🎙 Scan this set</div>
         <button onClick={onClose} disabled={scanning} style={{ ...ui.pillSmall, color: C.text3 }}>Close</button>

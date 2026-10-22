@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { getBrowserRole } from "@/lib/auth/getBrowserRole";
-import { ui, C, glass } from "@/lib/ui";
+import { ui, C, glass, FLAT } from "@/lib/ui";
 
 
 const SCENES = [
@@ -134,7 +134,7 @@ export default function UpgradePage() {
         </section>
 
         {/* ── THE VAULT: real hidden chart, blurred ── */}
-        <section style={{ ...glass, borderRadius: 24, padding: "16px 16px 18px", position: "relative", overflow: "hidden" }}>
+        <section style={{ ...glass, borderRadius: 24, padding: "16px 16px 18px", position: "relative", overflow: "hidden" , ...FLAT }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
             <span style={{ fontSize: 15, fontWeight: 600 }}>The vault</span>
             <span style={{ fontSize: 12, color: C.text3 }}>Unreleased chart</span>
@@ -161,7 +161,7 @@ export default function UpgradePage() {
         {/* ── WHAT CHANGES ── */}
         <section style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
           {SCENES.map((sc) => (
-            <div key={sc.title} style={{ ...glass, borderRadius: 20, padding: 14, display: "grid", gap: 8, alignContent: "start" }}>
+            <div key={sc.title} style={{ ...glass, borderRadius: 20, padding: 14, display: "grid", gap: 8, alignContent: "start" , ...FLAT }}>
               <SceneIcon name={sc.icon} />
               <div style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.25 }}>{sc.title}</div>
               <div style={{ fontSize: 13, color: C.text3, lineHeight: 1.4 }}>{sc.text}</div>

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { authFetch } from "@/lib/authFetch";
 import PageHeader from "@/components/PageHeader";
 import { parseTracklist, fmtTime } from "@/lib/setlists";
-import { ui, C, glass } from "@/lib/ui";
+import { ui, C, glass, FLAT } from "@/lib/ui";
 
 /** Admins: add a set — link, names, and the tracklist ("0:00 Artist - Title", "34:10 ID"). */
 export default function NewSetPage() {
@@ -47,7 +47,7 @@ export default function NewSetPage() {
     <main style={ui.page}>
       <div style={ui.shell}>
         <PageHeader back title="Add a set" />
-        <section style={{ ...glass, borderRadius: 22, padding: 16, display: "grid", gap: 10 }}>
+        <section style={{ ...glass, borderRadius: 22, padding: 16, display: "grid", gap: 10 , ...FLAT }}>
           <label style={lab}>YouTube / SoundCloud / Mixcloud link<input value={f.source_url} onChange={set("source_url")} placeholder="https://youtu.be/…" style={ui.input} /></label>
           {auto && (
             <div style={{ fontSize: 13, color: auto.busy ? C.text3 : C.gold, lineHeight: 1.5 }}>

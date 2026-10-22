@@ -6,7 +6,7 @@ import { authFetch } from "@/lib/authFetch";
 import PageHeader from "@/components/PageHeader";
 import { fmtTitle, fmtArtist } from "@/lib/format";
 import { fmtTime } from "@/lib/setlists";
-import { ui, C, glass, tag } from "@/lib/ui";
+import { ui, C, glass, tag, FLAT_ROW } from "@/lib/ui";
 
 type Proposal = { key: string; title: string; artist: string; users: number; weight: number; scan: number; verified: boolean; on_banger: boolean; by: string[]; match: boolean };
 type Item = { track_id: string; set: { id: string; title?: string; venue?: string | null; cover_url?: string | null }; position: number; start_sec: number | null; asks: number; proposals: Proposal[]; conflict: boolean };
@@ -50,7 +50,7 @@ export default function SetsReviewPage() {
           : error ? <div style={ui.empty}>{error}</div>
           : items.length === 0 ? <div style={ui.empty}>Nothing to review.</div>
           : items.map((it) => (
-            <section key={it.track_id} style={{ ...glass, borderRadius: 22, padding: 14, display: "grid", gap: 10 }}>
+            <section key={it.track_id} style={{ ...glass, borderRadius: 22, padding: 14, display: "grid", gap: 10 , ...FLAT_ROW }}>
               <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                 <div style={{ width: 48, height: 48, borderRadius: 12, flexShrink: 0, background: it.set.cover_url ? `center/cover no-repeat url(${it.set.cover_url})` : "linear-gradient(160deg,#3a2c12,#0b0b0b)" }} />
                 <div style={{ flex: 1, minWidth: 0 }}>

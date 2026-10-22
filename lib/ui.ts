@@ -45,6 +45,17 @@ export const glass: CSSProperties = {
   boxShadow: "inset 0 1px 0 rgba(255,255,255,0.10)",
 };
 
+/**
+ * The "chart look" (Radar): no boxes. Content sits on the background, separated by thin lines.
+ * Spread LAST into a style that used `glass` to make it flat.
+ */
+export const FLAT: CSSProperties = {
+  background: "transparent", border: "none", borderRadius: 0, boxShadow: "none",
+  backdropFilter: "none", WebkitBackdropFilter: "none", paddingLeft: 0, paddingRight: 0,
+};
+/** Same, for an item in a list: a thin line under it. */
+export const FLAT_ROW: CSSProperties = { ...FLAT, borderBottom: `1px solid ${C.lineSoft}`, paddingTop: 14, paddingBottom: 14 };
+
 export const ui: Record<string, CSSProperties> = {
   page: { minHeight: "100vh", background: "transparent", color: C.fg, padding: "18px 0 150px", overflowX: "hidden", fontFamily: SANS, position: "relative" },
   shell: { position: "relative", maxWidth: 560, margin: "0 auto", padding: "0 18px", display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 18, boxSizing: "border-box", width: "100%" },
@@ -55,9 +66,10 @@ export const ui: Record<string, CSSProperties> = {
   subtitle: { margin: "6px 0 0", fontSize: 14, lineHeight: 1.5, color: C.text2 },
 
   // Glass card section: label on top, rows inside
-  card: { ...glass, borderRadius: 22, padding: 18, minWidth: 0, gridTemplateColumns: "minmax(0, 1fr)", boxSizing: "border-box" },
-  section: { ...glass, borderRadius: 22, padding: "2px 16px", display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 0, minWidth: 0 },
-  label: { fontSize: 13, fontWeight: 600, color: C.text3, padding: "14px 0 10px", borderBottom: `1px solid ${C.lineSoft}` },
+  // Sections: no box (chart look) — a big white heading over a thin line, rows below
+  card: { padding: "6px 0", minWidth: 0, gridTemplateColumns: "minmax(0, 1fr)", boxSizing: "border-box" },
+  section: { padding: 0, display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 0, minWidth: 0 },
+  label: { fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em", color: C.fg, padding: "10px 0 10px", borderBottom: `1px solid ${C.line}` },
 
   // List rows
   row: { display: "flex", alignItems: "center", gap: 14, padding: "13px 0", borderBottom: `1px solid ${C.lineSoft}`, minWidth: 0 },
