@@ -105,10 +105,18 @@ export default function UpgradePage() {
       {([["monthly", "Monthly", "€9.99 / month"], ["yearly", "Yearly", "€99 / year · 2 months free"]] as const).map(([k, label, price]) => (
         <button key={k} onClick={() => setPlan(k)} style={{ ...glass, borderRadius: 18, padding: "12px 10px", cursor: "pointer", fontFamily: "inherit", color: "#fff", textAlign: "center",
           border: plan === k ? "1px solid rgba(245,207,104,0.7)" : `1px solid ${C.glassBorder}`, boxShadow: plan === k ? "0 0 18px rgba(245,207,104,0.25)" : "none" }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: plan === k ? C.gold : "#fff" }}>{label}</div>
-          <div style={{ fontSize: 12, color: C.text2, marginTop: 3 }}>{price}</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: plan === k ? C.gold : C.text2 }}>{label}</div>
+          <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em", marginTop: 4, color: "#fff" }}>{price.split(" · ")[0]}</div>
+          {price.includes(" · ") && <div style={{ fontSize: 11.5, color: C.gold, marginTop: 3 }}>{price.split(" · ")[1]}</div>}
         </button>
       ))}
+    </div>
+  );
+  // The price, big, right above the button (when only the monthly plan exists, no picker is shown)
+  const priceBlock = !isPro && !hasYearly && (
+    <div style={{ display: "grid", justifyItems: "center", gap: 2 }}>
+      <div><span style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.03em" }}>€9.99</span><span style={{ fontSize: 16, color: C.text2 }}> / month</span></div>
+      <div style={{ fontSize: 13, color: C.gold }}>after a 3-day free trial</div>
     </div>
   );
   const priceLine = plan === "yearly" ? "3 days free, then €99/year. Cancel anytime." : "3 days free, then €9.99/month. Cancel anytime.";
@@ -133,7 +141,7 @@ export default function UpgradePage() {
         <section style={{ display: "grid", justifyItems: "center", textAlign: "center", gap: 14, padding: "26px 6px 6px" }}>
           <h1 style={headline}>Go deeper.<br /><span style={shine}>Go Pro.</span></h1>
           <p style={intro}>For DJs and producers.</p>
-          <div style={{ width: "100%", marginTop: 6, display: "grid", gap: 10 }}>{planPicker}{cta}</div>
+          <div style={{ width: "100%", marginTop: 6, display: "grid", gap: 10 }}>{priceBlock}{planPicker}{cta}</div>
           <div style={{ fontSize: 12, color: C.text3 }}>{isPro ? "Secure payment with Stripe" : `${priceLine} · Secure payment with Stripe`}</div>
         </section>
 
