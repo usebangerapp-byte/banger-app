@@ -169,6 +169,7 @@ export default function ProfilePageV2() {
   const previews = usePreviewIndex();
   const [tracks,   setTracks]   = useState<any[]>([]);
   const [sparkData,setSparkData]= useState<number[]>([]);
+  const [dropped, setDropped] = useState<{ title: string; artist: string; at: string }[]>([]);
   const [topScan,  setTopScan]  = useState<{ title: string; subtitle?: string; n: number } | null>(null);
   const [promoLine, setPromoLine] = useState<string | null>(null);
   const [proStats, setProStats] = useState<{ uploadScans7d: number; topUpload: { title: string; scans: number } | null } | null>(null);
@@ -351,6 +352,18 @@ export default function ProfilePageV2() {
   }, [activeConv, userId]);
 
   useEffect(() => { msgEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+
+  // Followed tracks that just came out (from my "is out now" notifications, last 30 days)
+  useEffect(() => {
+    if (!userId) return;
+    authFetch("/api/notifications").then(r => r.json()).then(j => {
+      const since = Date.now() - 30 * 86400000;
+      const rows = (j?.notifications || []).filter((n: any) => n.type === "track_released" && n.track_title && new Date(n.created_at).getTime() >= since);
+      const seen = new Set<string>();
+      setDropped(rows.filter((n: any) => { const k = String(n.track_title).toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; })
+        .slice(0, 5).map((n: any) => ({ title: n.track_title, artist: String(n.message || "").split(" — ")[0].replace(/^Out now.*/, ""), at: n.created_at })));
+    }).catch(() => {});
+  }, [userId]);
 
   // PRO: how your uploaded IDs were scanned this week
   useEffect(() => {
@@ -625,33 +638,16 @@ export default function ProfilePageV2() {
             </Section>
           )}
 
-          {/* ── YOUR ACTIVITY: my own scans ── */}
-          {tab==="profile" && (sparkData.some(v => v > 0) || topScan) && (
-            <div style={weekCard}>
-              <div style={{ ...sectionTitleStyle, padding:"0 0 10px" }}>Your activity</div>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end", gap:12, paddingTop:14 }}>
-                <div style={{ display:"grid", gap:4 }}>
-                  <div style={{ fontSize:26, fontWeight:700, letterSpacing:"-0.02em", lineHeight:1 }}>
-                    {sparkData.reduce((a, b) => a + b, 0)} <span style={{ fontSize:14, fontWeight:500, color:C.text3 }}>scan{sparkData.reduce((a, b) => a + b, 0) === 1 ? "" : "s"}</span>
-                  </div>
-                  <div style={{ fontSize:12, color:C.text4 }}>last 7 days</div>
-                </div>
-                <div style={{ display:"flex", alignItems:"flex-end", gap:5, height:40 }} aria-label="Scans over the last 7 days">
-                  {sparkData.map((v, i) => {
-                    const max = Math.max(1, ...sparkData);
-                    return <div key={i} style={{ width:10, borderRadius:4, height: Math.max(4, (v / max) * 40),
-                      background: i === sparkData.length - 1 ? C.goldGrad : "rgba(255,255,255,0.16)" }} />;
-                  })}
-                </div>
+          {/* ── JUST DROPPED: tracks I followed that came out (last 30 days) — only when there are some ── */}
+          {tab==="profile" && dropped.length > 0 && (
+            <Section title="Just dropped">
+              <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)" }}>
+                {dropped.map((d, i) => (
+                  <TrackRow key={d.title + i} title={d.title} artist={d.artist} released status="rel"
+                    meta={timeAgoShort(d.at)} last={i === dropped.length - 1} />
+                ))}
               </div>
-              {topScan && (
-                <div style={weekLine}>
-                  <span style={{ color:C.text3, flexShrink:0 }}>Most scanned</span>
-                  <span style={{ flex:1, minWidth:0 }}><MarqueeText text={topScan.title} style={{ fontWeight:600 }} /></span>
-                  <span style={{ color:C.text3, flexShrink:0 }}>{topScan.n}×</span>
-                </div>
-              )}
-            </div>
+            </Section>
           )}
 
           {/* ── YOUR TRACKS (Pro): how often others scanned my uploads ── */}
@@ -1022,3 +1018,8 @@ const backBtn: React.CSSProperties = { background:"none", border:"none", color:C
 const emptyStyle: React.CSSProperties = { ...ui.empty };
 const showMoreBtn: React.CSSProperties = { ...ui.more };
 // 1781652265
+
+function timeAgoShort(iso: string) {
+  const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  return d <= 0 ? "Out today" : d === 1 ? "Out yesterday" : `Out ${d} days ago`;
+}
