@@ -43,6 +43,13 @@ export default function PromoPage() {
   const [banger, setBanger] = useState<Person | null>(null);
   useEffect(() => {
     fetch("/api/promo/banger").then((r) => r.json()).then((j) => { if (j?.ok) setBanger({ id: j.id, display_name: j.display_name, avatar_url: j.avatar_url }); }).catch(() => {});
+    // /promo?to=<user id> (from a DJ profile's "Send a demo"): that person is already picked
+    try {
+      const to = new URLSearchParams(window.location.search).get("to");
+      if (to) fetch(`/api/profile/get?user_id=${encodeURIComponent(to)}`).then((r) => r.json()).then((j) => {
+        if (j?.ok && j.profile) setPicked((l) => l.some((x) => x.id === to) ? l : [...l, { id: to, display_name: j.profile.display_name || "BANGER", avatar_url: j.profile.avatar_url || null }]);
+      }).catch(() => {});
+    } catch {}
   }, []);
   const [busy, setBusy] = useState(false);
   const [stage, setStage] = useState<"" | "prepare" | "compress" | "upload" | "send">("");

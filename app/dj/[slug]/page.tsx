@@ -39,6 +39,9 @@ export default function DJProfilePage() {
   const [notFound,   setNotFound]   = useState(false);
   const [showAllTracks, setShowAllTracks] = useState(false);
   const [peopleList, setPeopleList] = useState<"followers" | "following" | null>(null);
+  // The official BANGER account (the host): its page offers "Send a demo"
+  const [hostId, setHostId] = useState<string | null>(null);
+  useEffect(() => { fetch("/api/promo/banger").then((r) => r.json()).then((j) => { if (j?.ok) setHostId(j.id); }).catch(() => {}); }, []);
 
   useEffect(() => {
     if (!slug) return;
@@ -192,6 +195,11 @@ export default function DJProfilePage() {
                 style={pillGhost}>
                 ✉︎ Message
               </button>
+              {hostId === profile.id && (
+                <button onClick={() => router.push(`/promo?to=${profile.id}`)} style={{ ...pillSolid, flexBasis: "100%", padding: "13px 16px", fontSize: 15 }}>
+                  Send a demo
+                </button>
+              )}
             </div>
           )}
           {isOwnProfile && (
