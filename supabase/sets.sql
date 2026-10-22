@@ -57,3 +57,8 @@ alter table setlist_tracks add column if not exists released boolean;
 alter table setlist_tracks add column if not exists release_date date;
 alter table setlist_tracks add column if not exists release_label text;
 alter table setlist_tracks add column if not exists release_checked_at timestamptz;
+
+-- Review queue: what the set scan heard is stored as a proposal (never renames an ID by itself)
+alter table setlist_suggestions add column if not exists source text default 'user';   -- user | scan
+alter table setlist_suggestions add column if not exists heard int;                     -- scan: heard 1× or 2×
+alter table setlist_suggestions alter column track_id drop not null;

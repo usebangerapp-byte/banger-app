@@ -41,7 +41,7 @@ async function checkUnlocked(sb: any, setId: string) {
  *  3+ rejected names = 0 (someone trying to mess with the sets stops counting).
  */
 async function trustWeight(sb: any, user: any) {
-  const { count: rejected } = await sb.from("setlist_suggestions").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("status", "rejected");
+  const { count: rejected } = await sb.from("setlist_suggestions").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("status", "rejected").or("source.is.null,source.neq.scan");
   if ((rejected || 0) >= 3) return 0;
   if (await isPro(sb, user.id)) return 2;
   const age = Date.now() - new Date(user.created_at || Date.now()).getTime();
@@ -57,9 +57,11 @@ async function load(sb: any, id: string, user: any) {
     sb.from("setlist_reactions").select("user_id,kind,track_id,at_sec").eq("setlist_id", id).limit(20000),
   ]);
   const trackIds = (tracks || []).map((t: any) => t.id);
-  const { data: sug } = trackIds.length ? await sb.from("setlist_suggestions").select("track_id,user_id,title,artist,key,weight,verified").eq("status", "open").in("track_id", trackIds) : { data: [] };
+  const { data: sug0 } = trackIds.length ? await sb.from("setlist_suggestions").select("*").eq("status", "open").in("track_id", trackIds) : { data: [] };
   const pro = user ? await isPro(sb, user.id) : false;
   const admin = isAdmin(user);
+  // proposals from the set scan are for the admins only (they need a manual check)
+  const sug = ((sug0 || []) as any[]).filter((s) => admin || s.source !== "scan");
   const r = (reacts || []) as any[];
   const fires = r.filter((x) => x.kind === "fire" && x.at_sec != null).map((x) => x.at_sec as number);
   const list = (tracks || []) as any[];
@@ -67,8 +69,10 @@ async function load(sb: any, id: string, user: any) {
     const end = list[i + 1]?.start_sec ?? Infinity;
     const groups = new Map<string, any>();
     for (const s of (sug || []).filter((s: any) => s.track_id === t.id)) {
-      const g = groups.get(s.key) || { key: s.key, title: s.title, artist: s.artist, count: 0, weight: 0, verified: false, mine: false };
-      g.count++; g.weight += Number(s.weight ?? 1); g.verified = g.verified || !!s.verified;
+      const g = groups.get(s.key) || { key: s.key, title: s.title, artist: s.artist, count: 0, weight: 0, verified: false, mine: false, scan: 0 };
+      g.verified = g.verified || !!s.verified;
+      if (s.source === "scan") { g.scan = Math.max(g.scan, Number(s.heard || 1)); groups.set(s.key, g); continue; }
+      g.count++; g.weight += Number(s.weight ?? 1);
       if (user && s.user_id === user.id) g.mine = true; groups.set(s.key, g);
     }
     const row: any = {
@@ -76,7 +80,7 @@ async function load(sb: any, id: string, user: any) {
       asks: r.filter((x) => x.kind === "ask" && x.track_id === t.id).length,
       asked: !!user && r.some((x) => x.kind === "ask" && x.track_id === t.id && x.user_id === user.id),
       fires: t.start_sec == null ? 0 : fires.filter((f) => f >= t.start_sec && f < end).length,
-      suggestions: [...groups.values()].sort((a, b) => b.count - a.count),
+      suggestions: [...groups.values()].sort((a, b) => b.count + b.scan - (a.count + a.scan)),
       named: !!(t.named_by && t.named_by.length),
     };
     // Free accounts: the first tracks in full; after that the KNOWN titles are locked,
@@ -171,7 +175,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
       // Anti-abuse: a daily cap, and a trust weight per account
       const since = new Date(Date.now() - 86400000).toISOString();
-      const { count: today } = await sb.from("setlist_suggestions").select("id", { count: "exact", head: true }).eq("user_id", user.id).gte("created_at", since);
+      const { count: today } = await sb.from("setlist_suggestions").select("id", { count: "exact", head: true }).eq("user_id", user.id).gte("created_at", since).or("source.is.null,source.neq.scan");
       if ((today || 0) >= 30) return Response.json({ ok: false, error: "Daily limit reached — try again tomorrow" }, { status: 429 });
       const weight = await trustWeight(sb, user);
 
@@ -209,9 +213,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       if (!t) return Response.json({ ok: false, error: "Track not found" }, { status: 404 });
       let title = clean(b.title), artist = clean(b.artist), namedBy: string[] = [];
       if (b.action === "validate") {
-        const { data: s } = await sb.from("setlist_suggestions").select("user_id,title,artist").eq("track_id", t.id).eq("key", b.key).eq("status", "open");
+        const { data: s } = await sb.from("setlist_suggestions").select("*").eq("track_id", t.id).eq("key", b.key).eq("status", "open");
         if (!s?.length) return Response.json({ ok: false, error: "Suggestion not found" }, { status: 404 });
-        title = s[0].title; artist = s[0].artist; namedBy = [...new Set(s.map((x: any) => x.user_id))] as string[];
+        title = s[0].title; artist = s[0].artist; namedBy = [...new Set(s.filter((x: any) => x.source !== "scan").map((x: any) => x.user_id))] as string[];
       }
       if (!title) return Response.json({ ok: false, error: "Title required" }, { status: 400 });
       await sb.from("setlist_tracks").update({ title, artist: artist || null, named_by: namedBy, validated_at: new Date().toISOString() }).eq("id", t.id);
@@ -223,26 +227,56 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     }
     if (b.action === "replace_tracks") {
       // New tracklist from the set scanner / editor. Rows keep their validation credits when the name stays the same.
+      // The scan never names an ID by itself: what it heard is stored as a proposal for an admin to check.
       const rows = (Array.isArray(b.rows) ? b.rows : []).slice(0, 400).map((r: any) => ({
         start_sec: r.start_sec == null || !isFinite(Number(r.start_sec)) ? null : Math.max(0, Math.floor(Number(r.start_sec))),
         title: clean(r.title) || null, artist: clean(r.artist) || null,
+        scan: !clean(r.title) && clean(r.scan_title) ? { title: clean(r.scan_title), artist: clean(r.scan_artist), heard: Math.min(9, Math.max(1, Number(r.scan_heard) || 1)) } : null,
       })).sort((x: any, y: any) => (x.start_sec ?? 0) - (y.start_sec ?? 0));
-      const { data: old } = await sb.from("setlist_tracks").select("id,title,artist,named_by,validated_at").eq("setlist_id", id);
+      const { data: old } = await sb.from("setlist_tracks").select("id,start_sec,title,artist,named_by,validated_at").eq("setlist_id", id);
       const keep = new Map<string, any>();
       for (const o of old || []) if (o.title) keep.set(dupKey(o.title, o.artist || ""), o);
-      await sb.from("setlist_tracks").delete().eq("setlist_id", id);
+      // 1) new rows first (old ones still there, so nobody's proposal is lost on the way)
+      let fresh: any[] = [];
       if (rows.length) {
-        const { error } = await sb.from("setlist_tracks").insert(rows.map((r: any, i: number) => {
+        const { data, error } = await sb.from("setlist_tracks").insert(rows.map(({ scan: _s, ...r }: any, i: number) => {
           const o = r.title ? keep.get(dupKey(r.title, r.artist || "")) : null;
           return { ...r, setlist_id: id, position: i + 1, named_by: o?.named_by || [], validated_at: o?.validated_at || null };
-        }));
+        })).select("id,start_sec,title,position");
         if (error) throw error;
+        fresh = (data || []).sort((x: any, y: any) => x.position - y.position);
+      }
+      // 2) people's proposals move to the ID at the same moment of the set (±90 s); the others are kept detached
+      const oldIds = (old || []).filter((o: any) => !o.title);
+      for (const o of oldIds) {
+        const near = fresh.filter((f) => !f.title && o.start_sec != null && f.start_sec != null && Math.abs(f.start_sec - o.start_sec) <= 90)
+          .sort((x, y) => Math.abs(x.start_sec - o.start_sec) - Math.abs(y.start_sec - o.start_sec))[0];
+        await sb.from("setlist_suggestions").update({ track_id: near ? near.id : null }).eq("track_id", o.id);
+      }
+      // old scan proposals are replaced by this scan's
+      if (rows.some((r: any) => r.scan)) { try { await sb.from("setlist_suggestions").delete().in("track_id", fresh.map((f) => f.id)).eq("source", "scan").eq("status", "open"); } catch {} }
+      // detach anything still pointing at old named rows, then drop the old rows
+      const oldTrackIds = (old || []).map((o: any) => o.id);
+      if (oldTrackIds.length) {
+        await sb.from("setlist_suggestions").update({ track_id: null }).in("track_id", oldTrackIds);
+        await sb.from("setlist_tracks").delete().in("id", oldTrackIds);
+      }
+      // 3) this scan's proposals → review queue
+      const scans = rows.map((r: any, i: number) => (r.scan && fresh[i] ? { ...r.scan, track_id: fresh[i].id } : null)).filter(Boolean) as any[];
+      for (const sc of scans.slice(0, 60)) {
+        const key = dupKey(sc.title, sc.artist);
+        const { data: up } = await sb.from("bpro_tracks").select("id").eq("dup_key", key).limit(1);
+        let verified = !!up?.length;
+        if (!verified) { try { verified = !!(await Promise.race([lookupRelease(sc.title, sc.artist), new Promise((r) => setTimeout(() => r(null), 3000))])); } catch {} }
+        const row = { track_id: sc.track_id, user_id: user.id, title: sc.title, artist: sc.artist || "", key, weight: 0, verified, status: "open", source: "scan", heard: sc.heard };
+        const { error } = await sb.from("setlist_suggestions").insert([row]);
+        if (error) { if (/source|heard|column/i.test(error.message)) return Response.json({ ok: false, error: "Run the new Sets SQL (review queue) first" }, { status: 500 }); throw error; }
       }
       // reopen the set if new IDs appeared, or unlock it if everything is known
       if (rows.some((r: any) => !r.title)) await sb.from("setlists").update({ unlocked_at: null }).eq("id", id);
       else await checkUnlocked(sb, id);
       await checkSetTracks(sb, { setId: id, limit: 30 }).catch(() => 0);
-      return Response.json({ ok: true, count: rows.length });
+      return Response.json({ ok: true, count: rows.length, proposals: scans.length });
     }
     // One row: fix its time / name, or remove it (admins)
     if (b.action === "edit_track" || b.action === "delete_track") {

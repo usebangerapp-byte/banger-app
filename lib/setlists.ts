@@ -4,7 +4,7 @@ export type SetTrack = {
   id: string; position: number; start_sec: number | null;
   title: string | null; artist: string | null;            // null title = still an ID
   locked?: boolean; asks?: number; fires?: number; asked?: boolean;
-  suggestions?: { key: string; title: string; artist: string; count: number; weight?: number; verified?: boolean; mine: boolean }[];
+  suggestions?: { key: string; title: string; artist: string; count: number; weight?: number; verified?: boolean; mine: boolean; scan?: number }[];
   named_by?: string[];
 };
 

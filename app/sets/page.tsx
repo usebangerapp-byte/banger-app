@@ -29,6 +29,7 @@ export default function SetsPage() {
     <main style={ui.page}>
       <div style={ui.shell}>
         <PageHeader title="Sets" code={isAdmin ? <Link href="/sets/new" style={{ color: C.gold, textDecoration: "none" }}>+ Add a set</Link> : undefined} />
+        {isAdmin && <Link href="/sets/review" style={{ ...ui.pill, justifyContent: "center", color: C.gold, borderColor: "rgba(245,207,104,0.35)", textDecoration: "none" }}>🔎 Review IDs</Link>}
 
         <div style={{ ...glass, display: "grid", gridTemplateColumns: "1fr 1fr", padding: 4, borderRadius: 999 }}>
           {(["unlocking", "unlocked"] as const).map((t) => (

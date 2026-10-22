@@ -9,7 +9,7 @@ import { titleKey } from "@/lib/titleKey";
 import { ui, C, glass } from "@/lib/ui";
 
 type Sample = { t: number; est?: number; title: string | null; artist: string | null };
-export type DraftRow = { start: string; title: string; artist: string; id: boolean; flag?: string };
+export type DraftRow = { start: string; title: string; artist: string; id: boolean; flag?: string; scan?: { title: string; artist: string; heard: number } };
 
 const SAMPLE_MS = 10_000;     // listen 10 s per sample
 const STEP_SEC = 90;          // fast scan: one sample every 1:30 of the set
@@ -40,9 +40,17 @@ export function buildDraft(samples: Sample[]): DraftRow[] {
   return rows.map(({ k: _k, n, sec: _s, ...r }) => ({ ...r, flag: !r.id && n < 2 ? "heard once — check" : undefined }));
 }
 
-/** Scan results fill the IDs of an existing tracklist (imported / typed) instead of replacing it. */
+/**
+ * The scan never renames an ID by itself. What it heard is attached to the ID as a proposal;
+ * on save it goes to the review queue (/sets/review) next to the users' names, and an admin validates.
+ */
+const propose = (r: DraftRow, sc: DraftRow, heard: number): DraftRow => {
+  if (r.scan && r.scan.heard >= heard) return r;
+  return { ...r, id: true, scan: { title: sc.title, artist: sc.artist, heard }, flag: `scan heard ${sc.artist ? sc.artist + " - " : ""}${sc.title} (${heard}×) → goes to review` };
+};
 function mergeScan(base: DraftRow[], scanned: DraftRow[]): DraftRow[] {
-  if (!base.length) return scanned;
+  // no tracklist before the scan: tracks heard twice stay as a draft to check, single hits become IDs with a proposal
+  if (!base.length) return scanned.map((r) => (!r.id && r.flag ? propose({ ...r, title: "", artist: "" }, r, 1) : r));
   const out = base.map((r) => ({ ...r }));
   for (const sc of scanned) {
     if (sc.id) continue;
@@ -50,9 +58,7 @@ function mergeScan(base: DraftRow[], scanned: DraftRow[]): DraftRow[] {
     let best = -1, bestD = Infinity;
     out.forEach((r, i) => { const d = Math.abs((parseTime(r.start) ?? 0) - t); if (r.id && d < bestD) { best = i; bestD = d; } });
     if (best < 0 || bestD > 120) continue;
-    // Heard twice the same → fill the ID. Heard only once → just a hint, the row stays an ID.
-    if (!sc.flag) out[best] = { ...out[best], id: false, title: sc.title, artist: sc.artist, flag: "found by the scan (heard twice) — check" };
-    else out[best] = { ...out[best], flag: `maybe ${sc.artist ? sc.artist + " - " : ""}${sc.title} (heard once) — tap Known to use it` , title: out[best].title || sc.title, artist: out[best].artist || sc.artist };
+    out[best] = propose(out[best], sc, sc.flag ? 1 : 2);
   }
   return out;
 }
@@ -271,7 +277,7 @@ export default function SetScanner({ player, duration, initial, sourceUrl, onSav
           <button onClick={() => applyText(paste)} disabled={!paste.trim()} style={{ ...ui.pill, justifyContent: "center" }}>Use this tracklist</button>
         </div>
       )}
-      <div style={{ fontSize: 13, color: C.text2, lineHeight: 1.5 }}>Then scan to fill the missing ones: turn the video sound up, BANGER listens through the microphone. Scan results only fill the IDs.</div>
+      <div style={{ fontSize: 13, color: C.text2, lineHeight: 1.5 }}>Then scan to fill the missing ones: turn the video sound up, BANGER listens through the microphone. Scan results never rename an ID: they go to “Review IDs” for you to confirm.</div>
       {!scanning ? (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           {rows.some((r) => r.id && parseTime(r.start) != null) && (
@@ -292,7 +298,7 @@ export default function SetScanner({ player, duration, initial, sourceUrl, onSav
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             <span style={{ ...ui.rank, width: 22 }}>{String(i + 1).padStart(2, "0")}</span>
             <input value={r.start} onChange={(e) => set(i, { start: e.target.value })} style={{ ...inp, width: 74 }} aria-label="Start time" />
-            <button onClick={() => set(i, { id: !r.id })} style={{ ...ui.pillSmall, color: r.id ? C.gold : C.text3, borderColor: r.id ? "rgba(245,207,104,0.4)" : C.glassBorder }}>{r.id ? "ID" : "Known"}</button>
+            <button onClick={() => set(i, r.id && r.scan && !r.title ? { id: false, title: r.scan.title, artist: r.scan.artist, scan: undefined } : { id: !r.id })} style={{ ...ui.pillSmall, color: r.id ? C.gold : C.text3, borderColor: r.id ? "rgba(245,207,104,0.4)" : C.glassBorder }}>{r.id ? "ID" : "Known"}</button>
             <span style={{ flex: 1 }} />
             <button onClick={() => setRows((l) => l.filter((_, j) => j !== i))} aria-label="Remove" style={{ background: "none", border: "none", color: C.text4, fontSize: 16, cursor: "pointer", padding: 4 }}>✕</button>
           </div>

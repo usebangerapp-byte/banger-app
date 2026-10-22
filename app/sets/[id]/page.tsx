@@ -189,8 +189,8 @@ export default function SetPage() {
             initial={d.tracks.filter((t) => !t.locked).map((t): DraftRow => ({ start: fmtTime(t.start_sec) || "0:00", title: t.title || "", artist: t.artist || "", id: !t.title }))}
             onClose={() => setScanOpen(false)}
             onSave={async (rows) => {
-              const j = await act({ action: "replace_tracks", rows: rows.map((r) => ({ start_sec: parseTime(r.start), title: r.id ? null : r.title, artist: r.id ? null : r.artist })) });
-              if (j) { say(`Tracklist saved · ${j.count} tracks`); reload(); return true; }
+              const j = await act({ action: "replace_tracks", rows: rows.map((r) => ({ start_sec: parseTime(r.start), title: r.id ? null : r.title, artist: r.id ? null : r.artist, ...(r.id && r.scan ? { scan_title: r.scan.title, scan_artist: r.scan.artist, scan_heard: r.scan.heard } : {}) })) });
+              if (j) { say(`Tracklist saved · ${j.count} tracks${j.proposals ? ` · ${j.proposals} scan proposals to review` : ""}`); reload(); return true; }
               return false;
             }} />
         )}
@@ -245,9 +245,9 @@ export default function SetPage() {
                 <div key={s.key} style={{ marginLeft: 86, padding: "10px 12px", borderRadius: 14, background: "rgba(245,207,104,0.08)", border: "1px solid rgba(245,207,104,0.25)", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                   <div style={{ flex: 1, minWidth: 140 }}>
                     <div style={{ fontSize: 14, fontWeight: 600 }}>{fmtTitle(s.title)} — {fmtArtist(s.artist)}</div>
-                    <div style={{ fontSize: 12, color: C.text3 }}>{`suggested by ${s.count} DJ${s.count > 1 ? "s" : ""}`}{(s.weight || 0) >= 2 ? " · waiting for validation" : ""}{d.admin && s.verified ? " · ✓ found in catalogues" : d.admin ? " · not found in catalogues" : ""}</div>
+                    <div style={{ fontSize: 12, color: C.text3 }}>{[s.scan ? `🎙 scan heard it ${s.scan}×` : "", s.count ? `suggested by ${s.count} DJ${s.count > 1 ? "s" : ""}` : ""].filter(Boolean).join(" · ")}{(s.weight || 0) >= 2 ? " · waiting for validation" : ""}{d.admin && s.verified ? " · ✓ found in catalogues" : d.admin ? " · not found in catalogues" : ""}</div>
                   </div>
-                  {!s.mine && <button onClick={async () => { if (await act({ action: "suggest", track_id: t.id, title: s.title, artist: s.artist })) { say("Confirmed 👍"); reload(); } }} style={{ ...ui.pillSmall }}>👍 Confirm</button>}
+                  {!s.mine && s.count > 0 && <button onClick={async () => { if (await act({ action: "suggest", track_id: t.id, title: s.title, artist: s.artist })) { say("Confirmed 👍"); reload(); } }} style={{ ...ui.pillSmall }}>👍 Confirm</button>}
                   {d.admin && <>
                     <button onClick={async () => { if (await act({ action: "validate", track_id: t.id, key: s.key })) { say("Validated ✓"); reload(); } }} style={{ ...ui.pillSmall, color: C.goldInk, background: C.goldGrad, border: "1px solid transparent" }}>Validate</button>
                     <button onClick={async () => { if (await act({ action: "reject", track_id: t.id, key: s.key })) reload(); }} style={{ ...ui.pillSmall, color: C.text3 }}>Reject</button>
