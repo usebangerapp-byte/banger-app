@@ -111,9 +111,18 @@ export async function notifyFollow(sb: SupabaseClient, followedId: string, follo
   });
 }
 
+async function promoAlreadyNotified(sb: SupabaseClient, userId: string, type: string, actorId: string, trackTitle: string) {
+  try {
+    const { data } = await sb.from("notifications").select("id").eq("user_id", userId).eq("type", type)
+      .eq("actor_id", actorId).ilike("message", `%"${trackTitle.replace(/[\\%_]/g, (m) => "\\" + m)}"%`).limit(1);
+    return !!data?.length;
+  } catch { return false; }
+}
+
 /** A DJ opened and played a private promo for the first time → tell the producer. */
 export async function notifyPromoListened(sb: SupabaseClient, senderId: string, listenerId: string, trackTitle: string) {
   if (senderId === listenerId || !(await notificationsEnabled(sb, senderId))) return;
+  if (await promoAlreadyNotified(sb, senderId, "promo_listened", listenerId, trackTitle)) return;   // once per person, track and action
   const name = await displayName(sb, listenerId);
   await insertNotification(sb, {
     user_id: senderId, type: "promo_listened", actor_id: listenerId, track_title: name,
@@ -124,6 +133,7 @@ export async function notifyPromoListened(sb: SupabaseClient, senderId: string, 
 /** A DJ liked a private promo → tell the producer. */
 export async function notifyPromoLiked(sb: SupabaseClient, senderId: string, likerId: string, trackTitle: string) {
   if (senderId === likerId || !(await notificationsEnabled(sb, senderId))) return;
+  if (await promoAlreadyNotified(sb, senderId, "promo_liked", likerId, trackTitle)) return;   // once per person, track and action
   const name = await displayName(sb, likerId);
   await insertNotification(sb, {
     user_id: senderId, type: "promo_liked", actor_id: likerId, track_title: name,
@@ -134,6 +144,7 @@ export async function notifyPromoLiked(sb: SupabaseClient, senderId: string, lik
 /** A DJ downloaded a private promo → tell the producer. */
 export async function notifyPromoDownloaded(sb: SupabaseClient, senderId: string, dlId: string, trackTitle: string) {
   if (senderId === dlId || !(await notificationsEnabled(sb, senderId))) return;
+  if (await promoAlreadyNotified(sb, senderId, "promo_downloaded", dlId, trackTitle)) return;   // once per person, track and action
   const name = await displayName(sb, dlId);
   await insertNotification(sb, {
     user_id: senderId, type: "promo_downloaded", actor_id: dlId, track_title: name,

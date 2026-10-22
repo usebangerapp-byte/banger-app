@@ -40,23 +40,34 @@ export async function GET(req: Request) {
   const groups = new Map<string, any>();
   const rows: any[] = [];
   for (const n of raw) {
-    const groupable = n.type === "message" || n.type === "follow";
+    const isPromo = typeof n.type === "string" && n.type.startsWith("promo_");
+    const groupable = n.type === "message" || n.type === "follow" || isPromo;
     const who = n.actor_id || n.track_title;
     if (!groupable || !who) { rows.push(n); continue; }
-    const key = `${n.type}:${who}`;
+    // Promo activity: one line per person AND track (listened + liked + downloaded together)
+    const promoTrack = isPromo ? ((n.message || "").match(/"(.+)"/)?.[1] || "") : "";
+    const key = isPromo ? `promo:${who}:${promoTrack}` : `${n.type}:${who}`;
     const g = groups.get(key);
     if (!g) {
-      const first = { ...n, count: n.count || 1, ids: [n.id] };
+      const first = { ...n, count: n.count || 1, ids: [n.id], acts: new Set<string>(isPromo ? [n.type] : []), promoTrack };
       groups.set(key, first); rows.push(first);
     } else {
       g.count += n.count || 1;
       g.ids.push(n.id);
+      if (isPromo) g.acts.add(n.type);
       if (!n.read) g.read = false;
     }
   }
   for (const g of groups.values()) {
     if (g.type === "message") g.message = g.count > 1 ? `${g.count} messages` : (g.message && !/notification/i.test(g.message) ? g.message : "Sent you a message");
     if (g.type === "follow") g.message = "Started following you";
+    if (g.type.startsWith("promo_")) {
+      const words = [["promo_listened", "listened"], ["promo_liked", "liked"], ["promo_downloaded", "downloaded"]]
+        .filter(([t]) => g.acts.has(t)).map(([, w]) => w);
+      const said = words.length > 1 ? `${words.slice(0, -1).join(", ")} & ${words[words.length - 1]}` : words[0] || "listened";
+      g.message = `${said.charAt(0).toUpperCase()}${said.slice(1)} "${g.promoTrack}"${g.acts.has("promo_liked") ? " ♥" : ""}`;
+    }
+    delete g.acts;
   }
   rows.splice(30);
   const actorIds = [...new Set(rows.map((n) => n.actor_id).filter(Boolean))];
