@@ -112,8 +112,11 @@ function TrackView() {
       )}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         {info?.snippet && <PreviewButton id={`track-${title}`} snippetPath={info.snippet} />}
+        {/* An unreleased ID isn't on Spotify / Beatport yet — no store links until it's out */}
+        {info?.released !== false && (<>
         <a href={info?.spotify || `https://open.spotify.com/search/${q}`} target="_blank" rel="noreferrer" style={ui.pillSmall}><SpotifyLogo /> Spotify</a>
         <a href={info?.beatport || `https://www.beatport.com/search?q=${q}`} target="_blank" rel="noreferrer" style={ui.pillSmall}><BeatportLogo /> Beatport</a>
+        </>)}
 {info?.released === false && (
         <button onClick={toggleFollow} disabled={busy}
           style={following ? { ...ui.pillSmall, color: C.text3 } : { ...ui.pillSmall, color: C.gold, background: "rgba(245,207,104,0.12)", borderColor: "rgba(245,207,104,0.30)" }}>

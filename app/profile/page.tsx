@@ -173,7 +173,8 @@ export default function ProfilePageV2() {
   const [promoLine, setPromoLine] = useState<string | null>(null);
   const [proStats, setProStats] = useState<{ uploadScans7d: number; topUpload: { title: string; scans: number } | null } | null>(null);
   const [shared,   setShared]   = useState(false);
-  const [tab,      setTab]      = useState<"profile"|"messages"|"settings">("profile");
+  const [tab,      setTab]      = useState<"profile"|"studio"|"messages"|"settings">("profile");
+  const [showSearch, setShowSearch] = useState(false);
   const [showMoreTracks, setShowMoreTracks] = useState(false);
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<{ id: string; title: string; artist: string; busy?: boolean; error?: string } | null>(null);
@@ -487,17 +488,17 @@ export default function ProfilePageV2() {
           code={<span style={{ color: role==="pro" ? C.gold : undefined }}>{role==="pro" ? "PRO" : "Free"}</span>} />
 
         <div style={tabBarStyle}>
-          {(["profile","messages"] as const).map(t => (
+          {(role === "pro" ? (["profile","studio","messages"] as const) : (["profile","messages"] as const)).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{ ...tabBtn, ...(tab===t?tabActive:{}) }}>
-              {t==="profile" ? "Overview" : t==="settings" ? "Settings" : `Messages${convs.reduce((a,c)=>a+c.unread,0)>0?` · ${convs.reduce((a,c)=>a+c.unread,0)}`:""}`}
+              {t==="profile" ? "Activity" : t==="studio" ? "Studio" : `Messages${convs.reduce((a,c)=>a+c.unread,0)>0?` · ${convs.reduce((a,c)=>a+c.unread,0)}`:""}`}
             </button>
           ))}
         </div>
 
-        {tab==="profile" && (<>
+        {(tab==="profile" || tab==="studio") && (<>
 
           {/* ── IDENTITY ── */}
-          <section style={{ ...glass, borderRadius:24, padding:18, display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:16, minWidth:0 }}>
+          {tab==="profile" && <section style={{ ...glass, borderRadius:24, padding:18, display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:16, minWidth:0 }}>
 
             <div style={{ display:"flex", alignItems:"center", gap:16, minWidth:0 }}>
               {/* Avatar — tap to change the photo */}
@@ -544,6 +545,12 @@ export default function ProfilePageV2() {
                   </div>
                 )}
               </div>
+              <button onClick={() => setShowSearch(v => !v)} aria-label="Find people"
+                style={{ width:36, height:36, borderRadius:"50%", flexShrink:0, alignSelf:"flex-start", cursor:"pointer",
+                  border:`1px solid ${showSearch ? "rgba(245,207,104,0.4)" : C.glassBorder}`, background: showSearch ? "rgba(245,207,104,0.12)" : "rgba(255,255,255,0.06)",
+                  color: showSearch ? C.gold : C.text2, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
+              </button>
             </div>
 
             {profile?.bio && (
@@ -570,13 +577,13 @@ export default function ProfilePageV2() {
               )}
 
             </div>
-          </section>
+          </section>}
 
-          {/* ── PRO TOOLS: two tiles, side by side ── */}
-          {!loading && role === "pro" && (
+          {/* ── STUDIO (Pro): send a demo · Set mode ── */}
+          {tab==="studio" && !loading && role === "pro" && (
             <div style={{ display:"grid", gridTemplateColumns:"repeat(2, minmax(0,1fr))", gap:10 }}>
               {[
-                { href:"/promo", label:"Promo", icon:<path d="M4 12l16-8-6 16-2.5-6.5L4 12z" /> },
+                { href:"/promo", label:"Send a demo", icon:<path d="M4 12l16-8-6 16-2.5-6.5L4 12z" /> },
                 { href:"/set", label:"Set mode", icon:<><path d="M4 6h16M4 12h10M4 18h7" /><circle cx="18" cy="16" r="3" /></> },
               ].map((t) => (
                 <button key={t.href} onClick={() => router.push(t.href)}
@@ -592,12 +599,12 @@ export default function ProfilePageV2() {
           )}
 
           {/* ── FIND PEOPLE (discreet) ── */}
-          <PeopleSearch selfId={userId} />
+          {tab==="profile" && showSearch && <PeopleSearch selfId={userId} />}
           {peopleList && userId && (
             <PeopleSheet userId={userId} list={peopleList} onClose={() => setPeopleList(null)} />
           )}
 
-          {editing && (
+          {tab==="profile" && editing && (
             <Section title="Edit profile">
               <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:10 }}>
                 {[{label:"Display name",value:editName,set:setEditName,ph:"DJ Banger"},
@@ -619,7 +626,7 @@ export default function ProfilePageV2() {
           )}
 
           {/* ── YOUR ACTIVITY: my own scans ── */}
-          {(sparkData.some(v => v > 0) || topScan) && (
+          {tab==="profile" && (sparkData.some(v => v > 0) || topScan) && (
             <div style={weekCard}>
               <div style={{ ...sectionTitleStyle, padding:"0 0 10px" }}>Your activity</div>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end", gap:12, paddingTop:14 }}>
@@ -648,7 +655,7 @@ export default function ProfilePageV2() {
           )}
 
           {/* ── YOUR TRACKS (Pro): how often others scanned my uploads ── */}
-          {proStats && (
+          {tab==="studio" && proStats && (
             <div style={weekCard}>
               <div style={{ ...sectionTitleStyle, padding:"0 0 10px" }}>Your tracks</div>
               <div style={{ display:"grid", gap:4, paddingTop:14 }}>
@@ -659,7 +666,7 @@ export default function ProfilePageV2() {
               </div>
               {promoLine && (
                 <button onClick={() => router.push("/promo")} style={{ ...weekLine, width:"100%", background:"none", border:"none", borderTop: (weekLine as any).borderTop, paddingLeft:0, paddingRight:0, paddingBottom:0, cursor:"pointer", color:"#fff", fontFamily:"inherit", textAlign:"left" }}>
-                  <span style={{ color:C.gold, flexShrink:0 }}>Promos</span>
+                  <span style={{ color:C.gold, flexShrink:0 }}>Demos</span>
                   <span style={{ flex:1, minWidth:0, fontSize:13, color:C.text2 }}>{promoLine}</span>
                   <span style={{ color:C.text4, flexShrink:0 }}>›</span>
                 </button>
@@ -675,7 +682,7 @@ export default function ProfilePageV2() {
           )}
 
           {/* ── SCANS LIST ── */}
-          {scans.length > 0 && (
+          {tab==="profile" && scans.length > 0 && (
             <Section title="Recent scans">
               <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:2 }}>
                 {(showMoreScans ? scans : scans.slice(0,3)).map((s,i) => (
@@ -692,7 +699,7 @@ export default function ProfilePageV2() {
           )}
 
           {/* ── FOLLOWS LIST ── */}
-          {follows.length > 0 && (
+          {tab==="profile" && follows.length > 0 && (
             <Section title="Followed tracks" id="followed-tracks">
               <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:2 }}>
                 {(showMoreFollows ? follows : follows.slice(0,3)).map((f,i) => (
@@ -710,7 +717,7 @@ export default function ProfilePageV2() {
           )}
 
           {/* ── MES TRACKS (en dernier) ── */}
-          {tracks.length > 0 && (
+          {tab==="studio" && tracks.length > 0 && (
             <Section title="My uploads">
               <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:4 }}>
                 {(showMoreTracks ? tracks : tracks.slice(0,3)).map((t) => renaming?.id === t.id ? (
