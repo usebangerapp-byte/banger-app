@@ -1,4 +1,6 @@
 import { userFromRequest } from "@/lib/server/notify";
+import { isPro } from "@/lib/server/pro";
+import { FREE } from "@/lib/plan";
 import { createClient } from "@supabase/supabase-js"
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } })
@@ -35,6 +37,11 @@ export async function POST(req: Request) {
   }
   const { data: existing } = await supabase.from("track_followers").select("id").eq("user_id", user_id).eq("track_title", track_title).limit(1);
   if (existing && existing.length > 0) return json({ ok: true, following: true });
+  // Free accounts follow up to FREE.follows tracks
+  if (!(await isPro(supabase, user_id))) {
+    const { count } = await supabase.from("track_followers").select("id", { count: "exact", head: true }).eq("user_id", user_id);
+    if ((count || 0) >= FREE.follows) return json({ error: "limit", limit: FREE.follows }, 402);
+  }
   const { error } = await supabase.from("track_followers").insert([{ user_id, track_title, track_subtitle }]);
   if (error) return json({ error: error.message }, 500);
   return json({ ok: true, following: true });

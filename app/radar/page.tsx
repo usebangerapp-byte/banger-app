@@ -9,9 +9,10 @@ import SharedTrackRow from "@/components/TrackRow"
 import Link from "next/link"
 import { usePreviewIndex, PreviewButton, trackKey, trackHref } from "@/lib/preview"
 import { ui, C } from "@/lib/ui"
+import { LockedRow, openPro } from "@/components/ProSheet"
 
-type RadarTrack = { track_title: string; track_subtitle?: string; scans: number }
-type WantedTrack = { track_title: string; track_subtitle?: string; followers: number }
+type RadarTrack = { track_title: string; track_subtitle?: string; scans: number; locked?: boolean }
+type WantedTrack = { track_title: string; track_subtitle?: string; followers: number; locked?: boolean }
 type RadarData = { hot: RadarTrack | null; trending: RadarTrack[]; mostWanted: WantedTrack[] }
 const empty: RadarData = { hot: null, trending: [], mostWanted: [] }
 
@@ -25,6 +26,7 @@ export default function RadarPage() {
   const [followLoading, setFollowLoading] = useState<Set<string>>(new Set())
   const [toast, setToast] = useState<string | null>(null)
   const previews = usePreviewIndex()
+  const locked = data.trending.some((t) => t.locked) || data.mostWanted.some((t) => t.locked)
 
   useEffect(() => {
     const sb = createSupabaseBrowser()
@@ -44,7 +46,7 @@ export default function RadarPage() {
   }, [])
 
   useEffect(() => {
-    fetch("/api/radar", { cache: "no-store" })
+    authFetch("/api/radar", { cache: "no-store" })
       .then(r => r.json())
       .then(json => setData({
         hot: json.hot || null,
@@ -112,11 +114,15 @@ export default function RadarPage() {
             {data.trending.length === 0 ? (
               <div style={ui.empty}>Nothing yet.</div>
             ) : (<>
-              {(showMoreTrending ? data.trending : data.trending.slice(0, 3)).map((t, i) => (
-                <SharedTrackRow key={i} rank={i + 2} title={t.track_title} artist={t.track_subtitle || ""}
+              {(locked ? data.trending.slice(0, 5) : showMoreTrending ? data.trending : data.trending.slice(0, 3)).map((t, i, arr) => t.locked
+                ? <LockedRow key={i} rank={i + 2} kind="radar" last={i === arr.length - 1} />
+                : <SharedTrackRow key={i} rank={i + 2} title={t.track_title} artist={t.track_subtitle || ""}
                   meta={`${t.scans} scan${t.scans === 1 ? "" : "s"}`} last={!(data.trending.length > 3) && i === Math.min(3, data.trending.length) - 1} />
-              ))}
-              {data.trending.length > 3 && (
+              )}
+              {locked && data.trending.length > 5 && (
+                <button onClick={() => openPro("radar")} style={{ ...ui.more, color: C.gold }}>{`+${data.trending.length - 5} more with Pro`}</button>
+              )}
+              {!locked && data.trending.length > 3 && (
                 <button onClick={() => setShowMoreTrending(v => !v)} style={ui.more}>
                   {showMoreTrending ? "Show less" : `Show ${data.trending.length - 3} more`}
                 </button>
@@ -130,13 +136,14 @@ export default function RadarPage() {
             {data.mostWanted.length === 0 ? (
               <div style={ui.empty}>No followers yet — be the first to follow a track.</div>
             ) : (<>
-              {(showMoreWanted ? data.mostWanted : data.mostWanted.slice(0, 3)).map((t, i) => (
+              {locked ? data.mostWanted.slice(0, 3).map((_, i, arr) => <LockedRow key={i} rank={i + 1} kind="radar" last={i === arr.length - 1} />)
+              : (showMoreWanted ? data.mostWanted : data.mostWanted.slice(0, 3)).map((t, i) => (
                 <SharedTrackRow key={i} rank={i + 1} title={t.track_title} artist={t.track_subtitle || ""}
                   meta={`${t.followers} following`} last={!(data.mostWanted.length > 3) && i === Math.min(3, data.mostWanted.length) - 1}
                   onFollowChange={(on) => setData((d) => ({ ...d, mostWanted: d.mostWanted.map((w) =>
                     w.track_title === t.track_title ? { ...w, followers: Math.max(0, w.followers + (on ? 1 : -1)) } : w) }))} />
               ))}
-              {data.mostWanted.length > 3 && (
+              {!locked && data.mostWanted.length > 3 && (
                 <button onClick={() => setShowMoreWanted(v => !v)} style={ui.more}>
                   {showMoreWanted ? "Show less" : `Show ${data.mostWanted.length - 3} more`}
                 </button>

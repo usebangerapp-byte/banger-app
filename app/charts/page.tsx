@@ -4,6 +4,7 @@ import { authFetch } from "@/lib/authFetch";
 import { useEffect, useMemo, useState } from "react";
 import MarqueeText from "@/components/MarqueeText";
 import SharedTrackRow from "@/components/TrackRow";
+import { LockedRow, openPro } from "@/components/ProSheet";
 import { trackHref } from "@/lib/preview";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import PageHeader from "@/components/PageHeader";
@@ -88,6 +89,7 @@ export default function ChartsPage() {
   const [toast, setToast] = useState<string | null>(null);
   // null = role still loading (treated as free until known)
   const [isPro, setIsPro] = useState<boolean | null>(null);
+  const [lockedFromServer, setLockedFromServer] = useState({ released: 0, unreleased: 0 });
 
   useEffect(() => {
     let alive = true;
@@ -123,7 +125,7 @@ export default function ChartsPage() {
     (async () => {
       try {
         // 1) Charts toujours en premier (source principale)
-        const chartsRes = await fetch("/api/charts", { cache: "no-store" }).then(r => r.json()).catch(() => []);
+        const chartsRes = await authFetch("/api/charts", { cache: "no-store" }).then(r => r.json()).catch(() => []);
         if (!mounted) return;
 
         const scanList = Array.isArray(chartsRes) ? chartsRes : [];
@@ -153,7 +155,9 @@ export default function ChartsPage() {
         // Agréger par titre normalisé pour éviter les doublons unreleased+world
         const mergeMap = new Map<string, TrackRow>();
 
+        const lockedN = { released: 0, unreleased: 0 };
         for (const s of scanList) {
+          if (s.locked) { lockedN[s.result_type === "recognized_world" ? "released" : "unreleased"]++; continue; }
           if (!s.track_title || String(s.track_title).trim().toLowerCase() === "unknown") continue;
 
           const title  = String(s.track_title  || "").trim();
@@ -194,6 +198,7 @@ export default function ChartsPage() {
           .sort((a, b) => Number(b.scan_count || 0) - Number(a.scan_count || 0));
 
         setTracks(merged);
+        setLockedFromServer(lockedN);
 
         // (follows are loaded once by the effect above — no second request here)
       } catch (e: any) {
@@ -234,12 +239,14 @@ export default function ChartsPage() {
     [rows]
   );
 
-  const unreleasedLocked = activeChart === "unreleased" && isPro !== true;
-  const lockedCount = unreleasedLocked ? Math.max(0, unreleasedBase.length - FREE_UNRELEASED_LIMIT) : 0;
+  // Free: Top 3 of each chart, the rest locked (the server doesn't even send those titles)
+  const unreleasedLocked = isPro !== true;
+  const activeAll = activeChart === "unreleased" ? unreleasedBase : releasedBase;
+  const lockedCount = unreleasedLocked ? Math.max(0, activeAll.length - FREE_UNRELEASED_LIMIT) + lockedFromServer[activeChart] : 0;
 
   const activeBase = activeChart === "unreleased"
     ? (unreleasedLocked ? unreleasedBase.slice(0, FREE_UNRELEASED_LIMIT) : unreleasedBase)
-    : releasedBase;
+    : (unreleasedLocked ? releasedBase.slice(0, FREE_UNRELEASED_LIMIT) : releasedBase);
   const suggestions = useMemo(() => buildSuggestions(activeBase), [activeBase]);
 
   const filteredRows = useMemo(
@@ -336,6 +343,8 @@ export default function ChartsPage() {
                     setSearch(e.target.value);
                     setVisibleCount(10);
                   }}
+                  readOnly={unreleasedLocked}
+                  onFocus={(e) => { if (unreleasedLocked) { e.currentTarget.blur(); openPro("charts"); } }}
                   list="charts-search-list"
                   placeholder="Search a track or artist…"
                   style={searchInputStyle}
@@ -358,14 +367,13 @@ export default function ChartsPage() {
                   {renderTrackList(visibleRows, activeChart)}
 
                   {unreleasedLocked && lockedCount > 0 && (
-                    <div style={lockedBox}>
-                      <div style={{ fontSize: 16, fontWeight: 600 }}>
-                        {lockedCount} more unreleased ID{lockedCount > 1 ? "s" : ""} waiting
-                      </div>
-                      <div style={{ fontSize: 13, color: C.text2 }}>
-                        The full chart is for Pro members.
-                      </div>
-                      <Link href="/upgrade" style={unlockBtn}>Go Pro</Link>
+                    <div style={{ ...rowStyle, padding: "0 14px", marginTop: 10 }}>
+                      {Array.from({ length: Math.min(3, lockedCount) }).map((_, i, arr) => (
+                        <LockedRow key={i} rank={FREE_UNRELEASED_LIMIT + i + 1} kind="charts" last={i === arr.length - 1} />
+                      ))}
+                      {lockedCount > 3 && (
+                        <button onClick={() => openPro("charts")} style={{ ...showMoreBtn, color: C.gold, padding: "12px 0" }}>{`+${lockedCount - 3} more with Pro`}</button>
+                      )}
                     </div>
                   )}
 

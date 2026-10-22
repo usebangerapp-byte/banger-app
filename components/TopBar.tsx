@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import SettingsPanel from "@/components/SettingsPanel";
+import { ProSheetHost } from "@/components/ProSheet";
 import { C, glass } from "@/lib/ui";
 
 const HIDDEN_PATHS = ["/", "/login", "/unlock", "/onboarding", "/auth/callback", "/privacy", "/terms", "/contact"];
@@ -102,6 +103,7 @@ export default function TopBar() {
 
   return (
     <>
+      <ProSheetHost />
       {/* TopBar strip */}
       <div style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,

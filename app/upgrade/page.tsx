@@ -39,6 +39,9 @@ export default function UpgradePage() {
   const [loading, setLoading] = useState(false);
   const [authed, setAuthed] = useState(false);
   const [isPro, setIsPro] = useState(false);
+  const [plan, setPlan] = useState<"monthly" | "yearly">("yearly");
+  const [hasYearly, setHasYearly] = useState(false);
+  useEffect(() => { fetch("/api/stripe/plans").then((r) => r.json()).then((j) => { setHasYearly(!!j.yearly); if (!j.yearly) setPlan("monthly"); }).catch(() => setPlan("monthly")); }, []);
   const [vault, setVault] = useState<{ titles: string[]; total: number }>({ titles: [], total: 0 });
 
   // Tease the real hidden part of the unreleased chart (blurred)
@@ -46,14 +49,16 @@ export default function UpgradePage() {
     fetch("/api/charts").then((r) => r.json()).then((rows) => {
       const seen = new Set<string>();
       const titles: string[] = [];
+      let lockedN = 0;
       for (const r of Array.isArray(rows) ? rows : []) {
         if (r.result_type !== "recognized_unreleased") continue;
+        if (r.locked) { lockedN++; continue; }
         const t = String(r.track_title || "").trim();
         const k = t.toLowerCase();
         if (!t || k === "unknown" || seen.has(k)) continue;
         seen.add(k); titles.push(r.track_subtitle ? `${r.track_subtitle} - ${t}` : t);
       }
-      setVault({ titles: titles.slice(3, 8), total: Math.max(0, titles.length - 3) });
+      setVault({ titles: titles.slice(3, 8), total: Math.max(0, titles.length - 3) + lockedN });
     }).catch(() => {});
   }, []);
 
@@ -75,7 +80,8 @@ export default function UpgradePage() {
       const { data: { session } } = await sb.auth.getSession();
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
-        headers: { Authorization: `Bearer ${session?.access_token}` },
+        headers: { Authorization: `Bearer ${session?.access_token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ plan }),
       });
       const json = await res.json();
       if (json.url) window.location.href = json.url;
@@ -87,11 +93,23 @@ export default function UpgradePage() {
     }
   };
 
+  const planPicker = !isPro && hasYearly && (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, width: "100%" }}>
+      {([["monthly", "Monthly", "€9.99 / month"], ["yearly", "Yearly", "€79 / year · save 34%"]] as const).map(([k, label, price]) => (
+        <button key={k} onClick={() => setPlan(k)} style={{ ...glass, borderRadius: 18, padding: "12px 10px", cursor: "pointer", fontFamily: "inherit", color: "#fff", textAlign: "center",
+          border: plan === k ? "1px solid rgba(245,207,104,0.7)" : `1px solid ${C.glassBorder}`, boxShadow: plan === k ? "0 0 18px rgba(245,207,104,0.25)" : "none" }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: plan === k ? C.gold : "#fff" }}>{label}</div>
+          <div style={{ fontSize: 12, color: C.text2, marginTop: 3 }}>{price}</div>
+        </button>
+      ))}
+    </div>
+  );
+  const priceLine = plan === "yearly" ? "7 days free, then €79/year. Cancel anytime." : "7 days free, then €9.99/month. Cancel anytime.";
   const cta = isPro ? (
     <div style={alreadyPro}>You&apos;re Pro ✦ Enjoy the vault.</div>
   ) : (
     <button style={{ ...ui.cta, opacity: loading ? 0.6 : 1 }} onClick={handleUpgrade} disabled={loading}>
-      {loading ? "Redirecting…" : authed ? "Unlock Pro · €9.99 / month" : "Sign in to go Pro"}
+      {loading ? "Redirecting…" : authed ? "Start 7-day free trial" : "Sign in to go Pro"}
     </button>
   );
 
@@ -108,8 +126,8 @@ export default function UpgradePage() {
         <section style={{ display: "grid", justifyItems: "center", textAlign: "center", gap: 14, padding: "26px 6px 6px" }}>
           <h1 style={headline}>Go deeper.<br /><span style={shine}>Go Pro.</span></h1>
           <p style={intro}>For DJs and producers.</p>
-          <div style={{ width: "100%", marginTop: 6 }}>{cta}</div>
-          <div style={{ fontSize: 12, color: C.text3 }}>Cancel anytime · Secure payment with Stripe</div>
+          <div style={{ width: "100%", marginTop: 6, display: "grid", gap: 10 }}>{planPicker}{cta}</div>
+          <div style={{ fontSize: 12, color: C.text3 }}>{isPro ? "Secure payment with Stripe" : `${priceLine} · Secure payment with Stripe`}</div>
         </section>
 
         {/* ── THE VAULT: real hidden chart, blurred ── */}

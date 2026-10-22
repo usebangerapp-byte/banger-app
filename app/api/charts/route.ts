@@ -1,5 +1,9 @@
 import { createClient } from "@supabase/supabase-js"
 import { loadOverrides, ovFor } from "@/lib/server/overrides"
+import { adminClient, userFromRequest } from "@/lib/server/notify"
+import { isPro } from "@/lib/server/pro"
+import { FREE } from "@/lib/plan"
+import { titleKey } from "@/lib/titleKey"
 export const dynamic = "force-dynamic"
 
 type ResultType = "recognized_unreleased" | "recognized_world" | "not_found" | null
@@ -75,10 +79,27 @@ async function compute(): Promise<Response> {
 
 
 // Shared CDN cache: the chart is recomputed at most once a minute instead of on every visit.
-export async function GET() {
+// Free accounts: Top 3 of each chart in full; everything below comes back locked (no titles sent).
+export async function GET(req: Request) {
   const res = await compute()
-  if (res.status === 200) {
-    res.headers.set("Cache-Control", "no-store")
+  if (res.status !== 200) return res
+  const rows: any[] = await res.json()
+  const sb = adminClient()
+  const me = await userFromRequest(sb, req).catch(() => null)
+  const pro = me ? await isPro(sb, me.id) : false
+  let out = rows
+  if (!pro) {
+    const { data: cat } = await sb.from("bpro_tracks").select("title,is_released,release_status").limit(20000)
+    const rel = new Map<string, boolean>()
+    for (const t of (cat || []) as any[]) rel.set(titleKey(t.title), t.is_released === true || t.release_status === "released")
+    const seen = { rel: new Set<string>(), unrel: new Set<string>() }
+    out = rows.map((r) => {
+      const k = titleKey(r.track_title)
+      const released = rel.has(k) ? !!rel.get(k) : r.result_type === "recognized_world"
+      const bucket = released ? seen.rel : seen.unrel
+      if (bucket.has(k) || bucket.size < FREE.chartRows) { bucket.add(k); return r }
+      return { locked: true, result_type: released ? "recognized_world" : "recognized_unreleased", scans: 0 }
+    })
   }
-  return res
+  return Response.json(out, { headers: { "Cache-Control": "no-store" } })
 }

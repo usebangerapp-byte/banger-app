@@ -1,4 +1,5 @@
 "use client";
+import { openPro } from "@/components/ProSheet";
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -78,6 +79,7 @@ function TrackView() {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: following ? "unfollow" : "follow", user_id: userId, track_title: title, track_subtitle: info?.artist || null }),
     }).catch(() => null);
+    if (res?.status === 402) { setBusy(false); openPro("follow"); return; }
     if (res?.ok) { if (!following) showToast("We'll notify you the day it drops"); setFollowing((v) => !v); }
     setBusy(false);
   }

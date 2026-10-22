@@ -1,5 +1,8 @@
 import { createClient } from "@supabase/supabase-js"
 import { loadOverrides, ovFor } from "@/lib/server/overrides"
+import { adminClient, userFromRequest } from "@/lib/server/notify"
+import { isPro } from "@/lib/server/pro"
+import { FREE } from "@/lib/plan"
 export const dynamic = "force-dynamic"
 
 async function compute(): Promise<Response> {
@@ -95,11 +98,17 @@ async function compute(): Promise<Response> {
 }
 
 
-// Shared CDN cache: the chart is recomputed at most once a minute instead of on every visit.
-export async function GET() {
+// Free accounts: Hot (#1) + Trending #2–#3 in full; the rest and Most wanted come back locked (no titles sent).
+export async function GET(req: Request) {
   const res = await compute()
-  if (res.status === 200) {
-    res.headers.set("Cache-Control", "no-store")   // follows/scans must show up right away
+  if (res.status !== 200) return res
+  const data: any = await res.json()
+  const sb = adminClient()
+  const me = await userFromRequest(sb, req).catch(() => null)
+  const pro = me ? await isPro(sb, me.id) : false
+  if (!pro) {
+    data.trending = (data.trending || []).map((t: any, i: number) => (i < FREE.radarRows - 1 ? t : { locked: true }))
+    data.mostWanted = (data.mostWanted || []).map(() => ({ locked: true }))
   }
-  return res
+  return Response.json({ ...data, pro }, { headers: { "Cache-Control": "no-store" } })
 }

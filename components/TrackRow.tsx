@@ -8,6 +8,7 @@ import { ui, C, tag, TAG_TEXT } from "@/lib/ui";
 import { PreviewButton, trackKey, trackHref } from "@/lib/preview";
 import MarqueeText from "@/components/MarqueeText";
 import AdminTrackSheet, { useIsAdmin } from "@/components/AdminTrackSheet";
+import { openPro } from "@/components/ProSheet";
 
 /* ── Shared data, loaded once per session ─────────────────────────── */
 
@@ -126,6 +127,7 @@ export default function TrackRow({ title, artist, rank, meta, last, onFollowChan
         body: JSON.stringify({ action: next ? "follow" : "unfollow", track_title: title, track_subtitle: artist || null }),
       });
       if (res.status === 401) { window.location.href = "/"; return; }
+      if (res.status === 402) { openPro("follow"); return; }
       if (res.ok) {
         if (!followSet) followSet = new Set();
         if (next) followSet.add(key); else followSet.delete(key);
@@ -188,6 +190,7 @@ export function FollowButton({ title, artist, style }: { title: string; artist?:
         body: JSON.stringify({ action: next ? "follow" : "unfollow", track_title: title, track_subtitle: artist || null }),
       });
       if (res.status === 401) { window.location.href = "/"; return; }
+      if (res.status === 402) { openPro("follow"); return; }
       if (res.ok) {
         if (!followSet) followSet = new Set();
         if (next) followSet.add(key); else followSet.delete(key);
