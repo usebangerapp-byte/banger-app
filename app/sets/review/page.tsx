@@ -40,7 +40,7 @@ export default function SetsReviewPage() {
   return (
     <main style={ui.page}>
       <div style={ui.shell}>
-        <PageHeader title="Review IDs" code={<Link href="/sets" style={{ color: C.gold, textDecoration: "none" }}>Sets</Link>} />
+        <PageHeader back title="Review IDs" code={<Link href="/sets" style={{ color: C.gold, textDecoration: "none" }}>Sets</Link>} />
         <div style={{ fontSize: 13, color: C.text2, padding: "0 4px", lineHeight: 1.5 }}>
           Names proposed for IDs, by the set scan and by users. Nothing is renamed until you validate. Listen to the moment before deciding.
         </div>

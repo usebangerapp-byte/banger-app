@@ -308,7 +308,7 @@ export default function ChartsPage() {
       `}</style>
 
       <div style={ui.shell}>
-        <PageHeader title="Charts" sub="What the scene is playing right now." code="Unreleased · Top 100" />
+        <PageHeader back title="Charts" sub="Top 100 Unreleased" />
 
         {loading ? (
           <div style={cardStyle}>Loading…</div>
