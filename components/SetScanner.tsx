@@ -3,11 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { recognizeAudio } from "@/lib/scan/recognizeAudio";
 import { getRegion } from "@/lib/scan/getRegion";
-import { fmtTime, parseTime } from "@/lib/setlists";
+import { fmtTime, parseTime, parseTracklist } from "@/lib/setlists";
+import { authFetch } from "@/lib/authFetch";
 import { titleKey } from "@/lib/titleKey";
 import { ui, C, glass } from "@/lib/ui";
 
-type Sample = { t: number; title: string | null; artist: string | null };
+type Sample = { t: number; est?: number; title: string | null; artist: string | null };
 export type DraftRow = { start: string; title: string; artist: string; id: boolean; flag?: string };
 
 const SAMPLE_MS = 10_000;     // listen 10 s per sample
@@ -26,18 +27,35 @@ export function buildDraft(samples: Sample[]): DraftRow[] {
   const key = (x: Sample) => (x.title ? `${titleKey(x.title)}|${titleKey(x.artist || "")}` : "");
   // drop lone outliers: A X A → A A
   for (let i = 1; i < s.length - 1; i++) if (key(s[i - 1]) && key(s[i - 1]) === key(s[i + 1]) && key(s[i]) !== key(s[i - 1])) s[i] = { ...s[i - 1], t: s[i].t };
-  const rows: (DraftRow & { n: number; k: string })[] = [];
+  const rows: (DraftRow & { n: number; k: string; sec: number })[] = [];
   for (const x of s) {
     const k = key(x), last = rows[rows.length - 1];
-    if (last && last.k === k) { last.n++; continue; }
-    rows.push({ k, n: 1, start: fmtTime(x.t), title: x.title || "", artist: x.artist || "", id: !x.title });
+    // Real start of the track: the scan time minus how far into the track the sample was (from the recogniser)
+    const est = x.title && x.est != null ? x.est : x.t;
+    if (last && last.k === k) { last.n++; if (x.title && est < last.sec && est > (rows[rows.length - 2]?.sec ?? -1)) { last.sec = est; last.start = fmtTime(est); } continue; }
+    const sec = Math.max(est, last ? last.sec + 1 : 0);
+    rows.push({ k, n: 1, sec, start: fmtTime(sec), title: x.title || "", artist: x.artist || "", id: !x.title });
   }
   if (rows[0] && parseTime(rows[0].start)! < STEP_SEC) rows[0].start = "0:00";
-  return rows.map(({ k: _k, n, ...r }) => ({ ...r, flag: !r.id && n < 2 ? "heard once — check" : undefined }));
+  return rows.map(({ k: _k, n, sec: _s, ...r }) => ({ ...r, flag: !r.id && n < 2 ? "heard once — check" : undefined }));
 }
 
-export default function SetScanner({ player, duration, initial, onSave, onClose }: {
-  player: React.MutableRefObject<any>; duration: number; initial: DraftRow[];
+/** Scan results fill the IDs of an existing tracklist (imported / typed) instead of replacing it. */
+function mergeScan(base: DraftRow[], scanned: DraftRow[]): DraftRow[] {
+  if (!base.length) return scanned;
+  const out = base.map((r) => ({ ...r }));
+  for (const sc of scanned) {
+    if (sc.id) continue;
+    const t = parseTime(sc.start) ?? 0;
+    let best = -1, bestD = Infinity;
+    out.forEach((r, i) => { const d = Math.abs((parseTime(r.start) ?? 0) - t); if (r.id && d < bestD) { best = i; bestD = d; } });
+    if (best >= 0 && bestD <= 120) out[best] = { ...out[best], id: false, title: sc.title, artist: sc.artist, flag: "found by the scan — check" };
+  }
+  return out;
+}
+
+export default function SetScanner({ player, duration, initial, sourceUrl, onSave, onClose }: {
+  player: React.MutableRefObject<any>; duration: number; initial: DraftRow[]; sourceUrl: string;
   onSave: (rows: DraftRow[]) => Promise<boolean>; onClose: () => void;
 }) {
   const [mode, setMode] = useState<"idle" | "fast" | "live">("idle");
@@ -49,7 +67,23 @@ export default function SetScanner({ player, duration, initial, onSave, onClose 
   const stream = useRef<MediaStream | null>(null);
 
   useEffect(() => () => { stop.current = true; stream.current?.getTracks().forEach((t) => t.stop()); }, []);
-  useEffect(() => { if (samples.length) setRows(buildDraft(samples)); }, [samples]);
+  const base = useRef<DraftRow[]>(initial);   // the tracklist before the scan started
+  useEffect(() => { if (samples.length) setRows(mergeScan(base.current, buildDraft(samples))); }, [samples]);
+  const [paste, setPaste] = useState<string | null>(null);
+
+  async function importFromLink() {
+    setStatus("Looking for a tracklist in the description and comments…");
+    const r = await authFetch(`/api/setlists/preview?url=${encodeURIComponent(sourceUrl)}`).catch(() => null);
+    const j = await r?.json().catch(() => null);
+    if (!j?.tracklist) { setStatus(j?.note || j?.error || "No tracklist found — paste one below."); setPaste(""); return; }
+    applyText(j.tracklist); setStatus(j.note || "Tracklist imported — check it.");
+  }
+  function applyText(text: string) {
+    const parsed = parseTracklist(text);
+    if (!parsed.length) { setStatus("Nothing to import — one track per line, “0:00 Artist - Title”."); return; }
+    const next = parsed.map((p) => ({ start: fmtTime(p.start_sec) || "", title: p.title || "", artist: p.artist || "", id: !p.title }));
+    setRows(next); base.current = next; setPaste(null);
+  }
 
   async function listenOnce(): Promise<Blob | null> {
     const s = stream.current; if (!s) return null;
@@ -67,7 +101,9 @@ export default function SetScanner({ player, duration, initial, onSave, onClose 
     try {
       const j: any = await recognizeAudio(blob, blob.type, await getRegion(), { noLog: true });
       const found = j?.result_type && j.result_type !== "not_found" && j.track_title && j.track_title !== "Unknown";
-      setSamples((l) => [...l, { t: Math.floor(t), title: found ? j.track_title : null, artist: found ? (j.track_subtitle || null) : null }]);
+      const off = Number(j?.metadata?.custom_files?.[0]?.play_offset_ms ?? j?.metadata?.music?.[0]?.play_offset_ms ?? NaN);
+      const est = found && isFinite(off) && off / 1000 <= t + 5 ? Math.max(0, Math.floor(t - off / 1000)) : undefined;
+      setSamples((l) => [...l, { t: Math.floor(t), est, title: found ? j.track_title : null, artist: found ? (j.track_subtitle || null) : null }]);
       setStatus(found ? `${fmtTime(t)} · ${j.track_title}` : `${fmtTime(t)} · nothing recognised`);
     } catch { setSamples((l) => [...l, { t: Math.floor(t), title: null, artist: null }]); }
   }
@@ -78,7 +114,7 @@ export default function SetScanner({ player, duration, initial, onSave, onClose 
     try {
       stream.current = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } as MediaTrackConstraints });
     } catch { setStatus("Microphone access is needed."); return; }
-    stop.current = false; setMode(m); setSamples([]);
+    stop.current = false; setMode(m); setSamples([]); base.current = rows.filter((r) => r.title || r.id);
     try { p.unMute?.(); p.setVolume?.(100); } catch {}
     const end = duration || p.getDuration?.() || 0;
     if (m === "fast") {
@@ -113,7 +149,17 @@ export default function SetScanner({ player, duration, initial, onSave, onClose 
         <div style={{ flex: 1, fontSize: 16, fontWeight: 800 }}>🎙 Scan this set</div>
         <button onClick={onClose} disabled={scanning} style={{ ...ui.pillSmall, color: C.text3 }}>Close</button>
       </div>
-      <div style={{ fontSize: 13, color: C.text2, lineHeight: 1.5 }}>Turn the video sound up. BANGER listens through the microphone and notes the minute of each track.</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <button onClick={importFromLink} disabled={scanning} style={{ ...ui.cta, padding: "12px 8px", fontSize: 14 }}>⬇ Import tracklist</button>
+        <button onClick={() => setPaste(paste === null ? "" : null)} disabled={scanning} style={{ ...ui.pill, justifyContent: "center", padding: "12px 8px", fontSize: 14 }}>📋 Paste</button>
+      </div>
+      {paste !== null && (
+        <div style={{ display: "grid", gap: 8 }}>
+          <textarea value={paste} onChange={(e) => setPaste(e.target.value)} rows={8} placeholder={"Paste the tracklist (a YouTube comment, the description…)\n1. 00:00 Artist - Title\n2. 04:55 Artist - Title"} style={{ ...ui.input, fontFamily: "inherit", resize: "vertical" }} />
+          <button onClick={() => applyText(paste)} disabled={!paste.trim()} style={{ ...ui.pill, justifyContent: "center" }}>Use this tracklist</button>
+        </div>
+      )}
+      <div style={{ fontSize: 13, color: C.text2, lineHeight: 1.5 }}>Then scan to fill the missing ones: turn the video sound up, BANGER listens through the microphone. Scan results only fill the IDs.</div>
       {!scanning ? (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           <button onClick={() => start("fast")} style={{ ...ui.cta, padding: "12px 8px", fontSize: 14 }}>⚡ Fast scan</button>

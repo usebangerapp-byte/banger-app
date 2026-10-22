@@ -15,7 +15,7 @@ function splitTitle(raw: string) {
 
 /** Only lines that start with a time go into the tracklist ("00:00 Artist - Title", "1:02:30 ID"). */
 function tracklistFrom(desc: string) {
-  const lines = desc.split(/\r?\n/).map((l) => l.trim()).filter((l) => /^[\[(]?\d{1,2}:\d{2}(?::\d{2})?[\])]?\s/.test(l));
+  const lines = desc.split(/\r?\n/).map((l) => l.trim()).filter((l) => /^(?:\d{1,3}[.)]\s*)?[\[(]?\d{1,2}:\d{2}(?::\d{2})?[\])]?\s/.test(l));
   return lines.length >= 3 ? lines.join("\n") : "";
 }
 
@@ -44,8 +44,17 @@ export async function GET(req: Request) {
         if (sn) {
           Object.assign(out, splitTitle(sn.title || ""));
           out.played_on = String(sn.publishedAt || "").slice(0, 10);
-          out.tracklist = tracklistFrom(sn.description || "");
-          if (!out.tracklist) out.note = "No tracklist in the video description — add it, or use Set mode.";
+          // The tracklist: the description, or the best comment (DJs and fans often post it there)
+          const fromDesc = tracklistFrom(sn.description || "");
+          let best = fromDesc, bestSrc = fromDesc ? "the description" : "";
+          const c = await json(`https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=${yt}&order=relevance&maxResults=100&textFormat=plainText&key=${key}`);
+          for (const it of c?.items || []) {
+            const txt = it?.snippet?.topLevelComment?.snippet?.textOriginal || it?.snippet?.topLevelComment?.snippet?.textDisplay || "";
+            const tl = tracklistFrom(txt);
+            if (tl.split("\n").length > best.split("\n").filter(Boolean).length) { best = tl; bestSrc = "a comment"; }
+          }
+          out.tracklist = best;
+          out.note = best ? `Tracklist found in ${bestSrc} — check it.` : "No tracklist in the description or comments — paste one, or scan the set.";
         }
       } else {
         const o = await json(`https://www.youtube.com/oembed?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${yt}`)}&format=json`);

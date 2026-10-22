@@ -25,7 +25,7 @@ export function parseTime(t: string): number | null {
 export function parseTracklist(text: string) {
   const rows: { start_sec: number | null; title: string | null; artist: string | null }[] = [];
   for (const raw of text.split(/\r?\n/)) {
-    const line = raw.trim().replace(/^\d+[.)]\s+/, "");
+    const line = raw.trim().replace(/^\d{1,3}[.)]\s*(?=\[?\d{1,2}:\d{2})/, "").replace(/^\d+[.)]\s+/, "");
     if (!line) continue;
     const m = line.match(/^\[?(\d{1,2}:\d{2}(?::\d{2})?)\]?\s*[-–—]?\s*(.*)$/);
     const start_sec = m ? parseTime(m[1]) : null;

@@ -161,12 +161,12 @@ export default function SetPage() {
 
         {d.admin && yt && !scanOpen && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            <button onClick={() => setScanOpen(true)} style={{ ...ui.cta, padding: "12px 8px", fontSize: 14 }}>🎙 Scan this set</button>
+            <button onClick={() => setScanOpen(true)} style={{ ...ui.cta, padding: "12px 8px", fontSize: 14 }}>⬇ Tracklist &amp; scan</button>
             <button onClick={() => setScanOpen(true)} style={{ ...ui.pill, justifyContent: "center", fontSize: 14 }}>✎ Edit tracklist</button>
           </div>
         )}
         {scanOpen && (
-          <SetScanner player={player} duration={dur}
+          <SetScanner player={player} duration={dur} sourceUrl={d.set.source_url}
             initial={d.tracks.filter((t) => !t.locked).map((t): DraftRow => ({ start: fmtTime(t.start_sec) || "0:00", title: t.title || "", artist: t.artist || "", id: !t.title }))}
             onClose={() => setScanOpen(false)}
             onSave={async (rows) => {
