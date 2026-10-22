@@ -170,7 +170,6 @@ export default function ProfilePageV2() {
   const previews = usePreviewIndex();
   const [tracks,   setTracks]   = useState<any[]>([]);
   const [sparkData,setSparkData]= useState<number[]>([]);
-  const [dropped, setDropped] = useState<{ title: string; artist: string; at: string }[]>([]);
   const [topScan,  setTopScan]  = useState<{ title: string; subtitle?: string; n: number } | null>(null);
   const [promoLine, setPromoLine] = useState<string | null>(null);
   const [proStats, setProStats] = useState<{ uploadScans7d: number; topUpload: { title: string; scans: number } | null } | null>(null);
@@ -360,18 +359,6 @@ export default function ProfilePageV2() {
   }, [activeConv, userId]);
 
   useEffect(() => { msgEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
-
-  // Followed tracks that just came out (from my "is out now" notifications, last 30 days)
-  useEffect(() => {
-    if (!userId) return;
-    authFetch("/api/notifications").then(r => r.json()).then(j => {
-      const since = Date.now() - 30 * 86400000;
-      const rows = (j?.notifications || []).filter((n: any) => n.type === "track_released" && n.track_title && new Date(n.created_at).getTime() >= since);
-      const seen = new Set<string>();
-      setDropped(rows.filter((n: any) => { const k = String(n.track_title).toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; })
-        .slice(0, 5).map((n: any) => ({ title: n.track_title, artist: String(n.message || "").split(" — ")[0].replace(/^Out now.*/, ""), at: n.created_at })));
-    }).catch(() => {});
-  }, [userId]);
 
   // PRO: how your uploaded IDs were scanned this week
   useEffect(() => {
@@ -615,20 +602,26 @@ export default function ProfilePageV2() {
             </Section>
           )}
 
-          {/* ── JUST DROPPED: tracks I followed that came out (last 30 days) — only when there are some ── */}
-          {dropped.length > 0 && (
-            <Section title="Just dropped">
-              <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)" }}>
-                {dropped.map((d, i) => (
-                  <TrackRow key={d.title + i} title={d.title} artist={d.artist} released status="rel"
-                    meta={timeAgoShort(d.at)} last={i === dropped.length - 1} />
-                ))}
-              </div>
-            </Section>
-          )}
+          {/* ── MY LISTS: Scans · Follows · Uploads, one at a time ── */}
+          <div id="lists" style={{ display:"grid", gridTemplateColumns: showUploads ? "repeat(3, minmax(0,1fr))" : "repeat(2, minmax(0,1fr))", gap:8, scrollMarginTop:72 }}>
+            {(showUploads ? (["scans","follows","uploads"] as const) : (["scans","follows"] as const)).map((l) => {
+              const on = list === l;
+              const n = l==="scans" ? scans.length : l==="follows" ? follows.length : tracks.length;
+              return (
+                <button key={l} onClick={() => setList(l)} aria-pressed={on}
+                  style={{ display:"grid", gap:2, justifyItems:"center", padding:"10px 6px", borderRadius:16, cursor:"pointer", fontFamily:"inherit",
+                    border:`1px solid ${on ? "rgba(245,207,104,0.55)" : C.glassBorder}`,
+                    background: on ? "rgba(245,207,104,0.14)" : "rgba(255,255,255,0.06)",
+                    boxShadow: on ? "0 0 16px rgba(245,207,104,0.18)" : "inset 0 1px 0 rgba(255,255,255,0.06)" }}>
+                  <span style={{ fontSize:18, fontWeight:800, color: on ? C.gold : "#fff", lineHeight:1.1 }}>{n}</span>
+                  <span style={{ fontSize:12, fontWeight:600, color: on ? C.gold : C.text2 }}>{l==="scans" ? "Scans" : l==="follows" ? "Follows" : "Uploads"}</span>
+                </button>
+              );
+            })}
+          </div>
 
           {/* ── STUDIO (Pro): send a demo (Set mode lives in the Sets tab) ── */}
-          {!loading && role === "pro" && (
+          {list==="uploads" && !loading && role === "pro" && (
             <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:10 }}>
               {[
                 { href:"/promo", label:"Send a demo", icon:<path d="M4 12l16-8-6 16-2.5-6.5L4 12z" /> },
@@ -644,15 +637,6 @@ export default function ProfilePageV2() {
               ))}
             </div>
           )}
-
-          {/* ── MY LISTS: Scans · Follows · Uploads, one at a time ── */}
-          <div id="lists" style={{ ...tabBarStyle, gridTemplateColumns: showUploads ? "1fr 1fr 1fr" : "1fr 1fr", scrollMarginTop:72 }}>
-            {(showUploads ? (["scans","follows","uploads"] as const) : (["scans","follows"] as const)).map((l) => (
-              <button key={l} onClick={() => setList(l)} style={{ ...tabBtn, ...(list===l?tabActive:{}) }}>
-                {l==="scans" ? `Scans · ${scans.length}` : l==="follows" ? `Follows · ${follows.length}` : `Uploads · ${tracks.length}`}
-              </button>
-            ))}
-          </div>
 
           {/* ── YOUR TRACKS (Pro): how often others scanned my uploads ── */}
           {list==="uploads" && proStats && (
@@ -1025,8 +1009,3 @@ const backBtn: React.CSSProperties = { background:"none", border:"none", color:C
 const emptyStyle: React.CSSProperties = { ...ui.empty };
 const showMoreBtn: React.CSSProperties = { ...ui.more };
 // 1781652265
-
-function timeAgoShort(iso: string) {
-  const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
-  return d <= 0 ? "Out today" : d === 1 ? "Out yesterday" : `Out ${d} days ago`;
-}
