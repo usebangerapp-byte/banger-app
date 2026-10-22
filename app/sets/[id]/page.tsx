@@ -44,6 +44,7 @@ export default function SetPage() {
   const [flash, setFlash] = useState("");
   const [scanOpen, setScanOpen] = useState(false);
   const [rowEdit, setRowEdit] = useState<SetTrack | null>(null);
+  const [setEdit, setSetEdit] = useState(false);
   const player = useRef<any>(null);
   const boxRef = useRef<HTMLDivElement | null>(null);
 
@@ -120,7 +121,15 @@ export default function SetPage() {
               : <a href={d.set.source_url} target="_blank" rel="noreferrer" style={{ display: "grid", placeItems: "center", height: "100%", color: C.gold, textDecoration: "none", fontWeight: 600 }}>Open the set ↗</a>}
           </div>
           <div style={{ padding: "14px 16px 16px", display: "grid", gap: 6 }}>
-            <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: "-0.02em" }}>{fmtArtist(d.set.title)}</div>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+              <div style={{ flex: 1, minWidth: 0, fontSize: 21, fontWeight: 800, letterSpacing: "-0.02em" }}>{fmtArtist(d.set.title)}</div>
+              {d.admin && (
+                <button onClick={() => setSetEdit(true)} aria-label="Edit the set"
+                  style={{ width: 36, height: 36, borderRadius: "50%", flexShrink: 0, border: `1px solid ${C.glassBorder}`, background: "rgba(255,255,255,0.06)", color: C.text2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /></svg>
+                </button>
+              )}
+            </div>
             <div style={{ fontSize: 14, color: C.text2 }}>{[d.set.venue, d.set.played_on && new Date(d.set.played_on).toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" })].filter(Boolean).join(" · ")}</div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
               <div style={{ flex: 1, height: 6, borderRadius: 3, background: "rgba(255,255,255,0.12)", overflow: "hidden" }}>
@@ -260,6 +269,7 @@ export default function SetPage() {
         {d.admin && <button onClick={async () => { if (confirm("Delete this set?") && await act({ action: "delete" })) router.push("/sets"); }} style={{ ...ui.more, color: C.danger }}>Delete set</button>}
       </div>
 
+      {setEdit && <SetSheet set={d.set} onClose={() => setSetEdit(false)} act={act} onDone={(m) => { setSetEdit(false); say(m); reload(); }} />}
       {rowEdit && <RowSheet track={rowEdit} onClose={() => setRowEdit(null)} act={act} onDone={(m) => { setRowEdit(null); say(m); reload(); }} />}
       {naming && <NameSheet track={naming} isAdmin={d.admin} onClose={() => setNaming(null)} onDone={(msg) => { setNaming(null); say(msg); reload(); }} act={act} />}
     </main>
@@ -322,6 +332,35 @@ function RowSheet({ track, onClose, onDone, act }: { track: SetTrack; onClose: (
           setBusy(true); const j = await act({ action: "delete_track", track_id: track.id }); setBusy(false);
           if (j) onDone("Removed");
         }} style={{ ...ui.more, color: C.danger }}>{confirmDel ? "Tap again to remove this track" : "Remove this track"}</button>
+      </div>
+    </div>
+  );
+}
+
+/** Admins: fix the set's details — DJs, venue, date, link. */
+function SetSheet({ set, onClose, onDone, act }: { set: Data["set"]; onClose: () => void; onDone: (m: string) => void; act: (b: any) => Promise<any> }) {
+  const [title, setTitle] = useState(set.title || "");
+  const [venue, setVenue] = useState(set.venue || "");
+  const [date, setDate] = useState((set.played_on || "").slice(0, 10));
+  const [url, setUrl] = useState(set.source_url || "");
+  const [busy, setBusy] = useState(false);
+  const lab: React.CSSProperties = { display: "grid", gap: 6, fontSize: 13, color: C.text3 };
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 5000, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ ...glass, background: "rgba(20,20,20,0.97)", width: "100%", maxWidth: 520, borderRadius: "24px 24px 0 0", padding: "18px 18px calc(22px + env(safe-area-inset-bottom))", display: "grid", gap: 10 }}>
+        <div style={{ fontSize: 18, fontWeight: 800 }}>Edit the set</div>
+        <label style={lab}>DJs<input value={title} onChange={(e) => setTitle(e.target.value)} style={{ ...ui.input, fontWeight: 600 }} /></label>
+        <label style={lab}>Venue<input value={venue} onChange={(e) => setVenue(e.target.value)} style={ui.input} /></label>
+        <label style={lab}>Date<input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={ui.input} /></label>
+        <label style={lab}>Link<input value={url} onChange={(e) => setUrl(e.target.value)} style={ui.input} /></label>
+        <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+          <button onClick={onClose} style={{ ...ui.pill, flex: 1, justifyContent: "center" }}>Cancel</button>
+          <button disabled={busy || !title.trim()} onClick={async () => {
+            setBusy(true);
+            const j = await act({ action: "edit_set", title, venue, played_on: date, source_url: url });
+            setBusy(false); if (j) onDone("Saved ✓");
+          }} style={{ ...ui.cta, flex: 1 }}>{busy ? "…" : "Save"}</button>
+        </div>
       </div>
     </div>
   );

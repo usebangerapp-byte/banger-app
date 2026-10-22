@@ -4,6 +4,7 @@ import { ADMIN_EMAILS } from "@/lib/admins";
 import { dupKey } from "@/lib/dupKey";
 import { FREE } from "@/lib/plan";
 import { lookupRelease } from "@/lib/server/catalog";
+import { youtubeId } from "@/lib/setlists";
 import { checkSetTracks } from "@/lib/server/setRelease";
 import { titleKey } from "@/lib/titleKey";
 export const maxDuration = 60;
@@ -271,6 +272,21 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     if (b.action === "reject") {
       // kept as "rejected": people with several rejected names stop counting (see trustWeight)
       await sb.from("setlist_suggestions").update({ status: "rejected" }).eq("track_id", b.track_id).eq("key", b.key).eq("status", "open");
+      return Response.json({ ok: true });
+    }
+    // The set itself: DJs, venue, date, link (admins)
+    if (b.action === "edit_set") {
+      const upd: any = {};
+      if ("title" in b) { const t = clean(b.title); if (!t) return Response.json({ ok: false, error: "DJs are required" }, { status: 400 }); upd.title = t; }
+      if ("venue" in b) upd.venue = clean(b.venue, 120) || null;
+      if ("played_on" in b) upd.played_on = /^\d{4}-\d{2}-\d{2}$/.test(String(b.played_on || "")) ? b.played_on : null;
+      if ("source_url" in b && String(b.source_url || "").trim()) {
+        upd.source_url = String(b.source_url).trim();
+        const yt = youtubeId(upd.source_url);
+        upd.cover_url = yt ? `https://i.ytimg.com/vi/${yt}/hqdefault.jpg` : null;
+      }
+      const { error } = await sb.from("setlists").update(upd).eq("id", id);
+      if (error) throw error;
       return Response.json({ ok: true });
     }
     if (b.action === "delete") {
