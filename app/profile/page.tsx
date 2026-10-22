@@ -602,7 +602,7 @@ export default function ProfilePageV2() {
                     background: on ? "rgba(245,207,104,0.14)" : "rgba(255,255,255,0.06)",
                     boxShadow: on ? "0 0 16px rgba(245,207,104,0.18)" : "inset 0 1px 0 rgba(255,255,255,0.06)" }}>
                   <span style={{ fontSize:18, fontWeight:800, color: on ? C.gold : "#fff", lineHeight:1.1 }}>{n}</span>
-                  <span style={{ fontSize:12, fontWeight:600, color: on ? C.gold : C.text2 }}>{l==="scans" ? "Scans" : l==="follows" ? "Follows" : "Released"}</span>
+                  <span style={{ fontSize:12, fontWeight:600, color: on ? C.gold : C.text2 }}>{l==="scans" ? "Scans" : l==="follows" ? "Follows" : "Out now"}</span>
                 </button>
               );
             })}
