@@ -54,6 +54,47 @@ function mergeScan(base: DraftRow[], scanned: DraftRow[]): DraftRow[] {
   return out;
 }
 
+/** Photo → bigger, black & white, high contrast: the reader makes far fewer mistakes (blue timestamps included). */
+async function sharpen(file: File): Promise<Blob | File> {
+  try {
+    const img = await createImageBitmap(file);
+    const scale = Math.min(2, 2400 / Math.max(img.width, img.height)) || 1;
+    const c = document.createElement("canvas");
+    c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+    const g = c.getContext("2d")!; g.drawImage(img, 0, 0, c.width, c.height);
+    const d = g.getImageData(0, 0, c.width, c.height), px = d.data;
+    for (let i = 0; i < px.length; i += 4) {
+      const y = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+      const v = y < 170 ? 0 : 255;                 // light grey / blue text → black, background → white
+      px[i] = px[i + 1] = px[i + 2] = v;
+    }
+    g.putImageData(d, 0, 0);
+    return await new Promise<Blob>((res) => c.toBlob((b) => res(b || file), "image/png"));
+  } catch { return file; }
+}
+
+/** OCR text → "mm:ss Artist - Title" lines. Fixes "10.4121" (lost colon), "12 51:25 …" (number left in), stray dashes and dots. */
+export function cleanOcr(text: string): string[] {
+  const out: string[] = [];
+  for (let raw of text.split(/\r?\n/)) {
+    let l = raw.replace(/[|“”]/g, "").replace(/\s+/g, " ").trim();
+    if (!l) continue;
+    l = l.replace(/^\d{1,3}\s*[.,)]\s*/, "");                      // "10. " / "10."
+    l = l.replace(/^(\d{1,3})\s+(?=\d{1,2}[:.]\d{2})/, "");           // "12 51:25" → "51:25"
+    l = l.replace(/^(\d{1,2})[.,;](\d{2})[.,;:](\d{2})\b/, "$1:$2:$3"); // "1.04.22"
+    l = l.replace(/^(\d{1,2})[.,;](\d{2})\b/, "$1:$2");                 // "41.21"
+    l = l.replace(/^(\d)(\d{2})(\d{2})\b/, "$1:$2:$3");                 // "10422" → 1:04:22
+    l = l.replace(/^(\d{2})(\d{2})\b/, "$1:$2");                         // "4121" → 41:21
+    l = l.replace(/^(\d{1,2}:\d{2}(?::\d{2})?)(?=[^\s:\d])/, "$1 ");      // "41:21Betoko"
+    l = l.replace(/\s*[-–—]\s*/g, " - ").replace(/(\S)-(?=[A-Z])/g, "$1 - "); // "Betoko-USoFine" → "Betoko - USoFine"
+    l = l.replace(/[\s.,;:\-–—]+$/, "").trim();                          // trailing " -" / " ."
+    const hasTime = /^\d{1,2}:\d{2}/.test(l);
+    // keep lines with a time, or that look like "Artist - Title" (the time was unreadable)
+    if (hasTime || / - \S/.test(l)) out.push(l);
+  }
+  return out;
+}
+
 export default function SetScanner({ player, duration, initial, sourceUrl, onSave, onClose }: {
   player: React.MutableRefObject<any>; duration: number; initial: DraftRow[]; sourceUrl: string;
   onSave: (rows: DraftRow[]) => Promise<boolean>; onClose: () => void;
@@ -94,13 +135,13 @@ export default function SetScanner({ player, duration, initial, sourceUrl, onSav
       let text = "";
       for (let i = 0; i < list.length; i++) {
         setOcr(`Reading photo ${i + 1}/${list.length}…`);
-        const r = await w.Tesseract.recognize(list[i], "eng");
+        const r = await w.Tesseract.recognize(await sharpen(list[i]), "eng");
         text += "\n" + String(r?.data?.text || "");
       }
-      // keep only the lines that look like "1. 00:00 Artist - Title"
-      const lines = text.split(/\r?\n/).map((l) => l.replace(/[|]/g, "").trim()).filter((l) => /\d{1,2}[:.]\d{2}/.test(l))
-        .map((l) => l.replace(/(\d{1,2})\.(\d{2})(?=\s)/, "$1:$2"));
-      setPaste(lines.join("\n")); setOcr(lines.length ? `${lines.length} lines read — check them, then “Use this tracklist”.` : "Couldn't read a tracklist on these photos.");
+      const lines = cleanOcr(text);
+      setPaste(lines.join("\n"));
+      const noTime = lines.filter((l) => !/^\d{1,2}:\d{2}/.test(l)).length;
+      setOcr(lines.length ? `${lines.length} lines read${noTime ? ` · ${noTime} without a time — add it` : ""}. Check them, then “Use this tracklist”.` : "Couldn't read a tracklist on these photos.");
     } catch { setOcr("Couldn't read the photos — paste the text instead."); }
   }
 
