@@ -55,7 +55,7 @@ async function findSpotifyUrl(artist: string, title: string): Promise<string> {
 
 async function findBeatportUrl(artist: string, title: string): Promise<string> {
   const q = encodeURIComponent(`${artist} ${title}`.trim());
-  const fallback = `https://www.beatport.com/search?q=${q}`;
+  const fallback = `https://www.beatport.com/search/tracks?q=${q}`;
   try {
     const res = await fetch(
       `https://www.beatport.com/api/v4/catalog/search?q=${encodeURIComponent(`${artist} ${title}`)}&type=tracks&per_page=10`,

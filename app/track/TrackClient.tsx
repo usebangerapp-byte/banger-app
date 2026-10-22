@@ -117,7 +117,7 @@ function TrackView() {
         {/* An unreleased ID isn't on Spotify / Beatport yet — no store links until it's out */}
         {info?.released !== false && (<>
         <a href={info?.spotify || `https://open.spotify.com/search/${q}`} target="_blank" rel="noreferrer" style={ui.pillSmall}><SpotifyLogo /> Spotify</a>
-        <a href={info?.beatport || `https://www.beatport.com/search?q=${q}`} target="_blank" rel="noreferrer" style={ui.pillSmall}><BeatportLogo /> Beatport</a>
+        <a href={beatportHref(info?.beatport, info?.artist || "", title)} target="_blank" rel="noreferrer" style={ui.pillSmall}><BeatportLogo /> Beatport</a>
         </>)}
 {info?.released === false && (
         <button onClick={toggleFollow} disabled={busy}
@@ -141,4 +141,12 @@ export default function TrackClient() {
       </div>
     </main>
   );
+}
+
+/** Beatport opens on the TRACKS results (each row has its price / buy button), not the global search. */
+function beatportHref(saved: string | null | undefined, artist: string, title: string) {
+  if (saved && /beatport\.com\/(track|release)\//.test(saved)) return saved;        // a real track page: use it
+  const t = title.replace(/\s*\((original mix|extended mix|original)\)\s*/gi, " ").trim();
+  const q = encodeURIComponent(`${artist.split(/,|&| feat\.? | x /i)[0].trim()} ${t}`.trim());
+  return `https://www.beatport.com/search/tracks?q=${q}`;
 }

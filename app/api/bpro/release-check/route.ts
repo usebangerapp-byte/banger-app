@@ -73,7 +73,7 @@ export async function GET() {
         // Never downgrade an uploader's choice to "unknown"; only flip when a strict match is found.
         ...(isReleased ? { release_status: "released", is_released: true, release_source: source } : {}),
         ...(releaseDate?{release_date:releaseDate}:{}),
-        ...(isReleased?{beatport_url:`https://www.beatport.com/search?q=${encodeURIComponent(firstArtist(artist)+" "+cleanTitle(title))}`}:{}),
+        ...(isReleased?{beatport_url:`https://www.beatport.com/search/tracks?q=${encodeURIComponent(firstArtist(artist)+" "+cleanTitle(title))}`}:{}),
       }).eq("id",track.id);
 
       if (isReleased) {
