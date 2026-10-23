@@ -70,6 +70,8 @@ let pushStarted = false;
 /** Asks for permission (once) and sends the APNs device token to the server. */
 export async function registerPush(getToken: () => Promise<string | null>) {
   if (pushStarted) return;
+  // Android: push needs Firebase (google-services.json) first — without it, registering crashes the app
+  if (nativePlatform() === "android") return;
   const PushNotifications = await plugin("PushNotifications");
   if (!PushNotifications) return;
   pushStarted = true;
