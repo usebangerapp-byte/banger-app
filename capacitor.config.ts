@@ -18,6 +18,11 @@ const config: CapacitorConfig = {
     backgroundColor:   "#000000",
   },
 
+  android: {
+    backgroundColor: "#000000",
+    allowMixedContent: false,
+  },
+
   plugins: {
     Haptics: {},
     PushNotifications: { presentationOptions: ["badge", "sound", "alert"] },

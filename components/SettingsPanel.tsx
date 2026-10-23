@@ -1,6 +1,6 @@
 "use client";
 
-import { isNativeApp } from "@/lib/native";
+import { isNativeApp, nativePlatform } from "@/lib/native";
 import { useEffect, useState } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { authFetch } from "@/lib/authFetch";
@@ -76,8 +76,13 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
   }
 
   async function openPortal() {
-    // iPhone app: subscriptions are managed in the App Store (Apple's own page)
-    if (isNativeApp()) { window.location.href = "https://apps.apple.com/account/subscriptions"; return; }
+    // In the app: subscriptions are managed in the App Store / Google Play
+    if (isNativeApp()) {
+      window.location.href = nativePlatform() === "android"
+        ? "https://play.google.com/store/account/subscriptions?package=com.usebanger.app"
+        : "https://apps.apple.com/account/subscriptions";
+      return;
+    }
     setPortalLoading(true);
     try {
       const sb = createSupabaseBrowser();

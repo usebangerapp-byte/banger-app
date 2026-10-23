@@ -1,6 +1,6 @@
 "use client";
 
-import { isNativeApp, hasPlugin, plugin } from "@/lib/native";
+import { isNativeApp, hasPlugin, plugin, nativePlatform } from "@/lib/native";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { clearRoleCache } from "@/lib/auth/getBrowserRole";
 
@@ -9,14 +9,20 @@ import { clearRoleCache } from "@/lib/auth/getBrowserRole";
  * The website keeps Stripe. After a purchase / restore, /api/iap/sync asks RevenueCat and
  * turns the account Pro on the server (the RevenueCat webhook does the same for renewals and cancellations).
  *
- * Set in Vercel: NEXT_PUBLIC_REVENUECAT_IOS_KEY (RevenueCat public iOS SDK key, starts with "appl_").
+ * Set in Vercel: NEXT_PUBLIC_REVENUECAT_IOS_KEY ("appl_…") and NEXT_PUBLIC_REVENUECAT_ANDROID_KEY ("goog_…"),
+ * the RevenueCat public SDK keys.
  */
-const KEY = process.env.NEXT_PUBLIC_REVENUECAT_IOS_KEY || "";
+const IOS_KEY = process.env.NEXT_PUBLIC_REVENUECAT_IOS_KEY || "";
+const ANDROID_KEY = process.env.NEXT_PUBLIC_REVENUECAT_ANDROID_KEY || "";
+// iPhone → Apple's payment · Android → Google Play's payment (RevenueCat handles both)
+const keyFor = () => (nativePlatform() === "android" ? ANDROID_KEY : IOS_KEY);
 
 export type IapPlan = { kind: "monthly" | "yearly"; price: string; pkg: any };
 
 /** In the app: true = buy with Apple. (In the app WITHOUT the plugin, nothing is sold: no Stripe link in the app.) */
-export function iapAvailable() { return isNativeApp() && hasPlugin("Purchases") && !!KEY; }
+export function iapAvailable() { return isNativeApp() && hasPlugin("Purchases") && !!keyFor(); }
+/** "apple" | "google": whose payment the app uses. */
+export function iapStore() { return nativePlatform() === "android" ? "google" : "apple"; }
 
 let configured: Promise<any> | null = null;
 async function rc() {
@@ -27,7 +33,7 @@ async function rc() {
     const uid = (await sb?.auth.getSession())?.data?.session?.user?.id;
     if (!uid) throw new Error("Sign in first");
     // the RevenueCat customer = the BANGER account, so the server can check it
-    await P.configure({ apiKey: KEY, appUserID: uid });
+    await P.configure({ apiKey: keyFor(), appUserID: uid });
   })().catch((e) => { configured = null; throw e; });
   await configured;
   return P;

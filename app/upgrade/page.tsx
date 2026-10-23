@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { getBrowserRole } from "@/lib/auth/getBrowserRole";
 import { isNativeApp } from "@/lib/native";
-import { iapAvailable, iapPlans, iapBuy, iapRestore, type IapPlan } from "@/lib/iap";
+import { iapAvailable, iapPlans, iapBuy, iapRestore, iapStore, type IapPlan } from "@/lib/iap";
 import { ui, C, glass, FLAT } from "@/lib/ui";
 
 
@@ -176,9 +176,11 @@ export default function UpgradePage() {
                 <button onClick={async () => { setIapMsg(""); try { const ok = await iapRestore(); setIsPro(ok); setIapMsg(ok ? "Purchases restored ✦" : "No purchase to restore."); } catch { setIapMsg("Couldn't restore. Try again."); } }}
                   style={{ background: "none", border: "none", color: C.text2, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", padding: 6 }}>Restore purchases</button>
               )}
-              {/* Required by Apple on a subscription screen */}
+              {/* Required by Apple / Google on a subscription screen */}
               <div style={{ fontSize: 11, color: C.text4, lineHeight: 1.5, maxWidth: 360 }}>
-                Payment is charged to your Apple ID. The subscription renews automatically unless cancelled at least 24 hours before the end of the period. Manage or cancel it in your App Store settings.{" "}
+                {iapStore() === "google"
+                  ? "Payment is charged to your Google Play account. The subscription renews automatically unless cancelled before the end of the period. Manage or cancel it in Google Play > Subscriptions."
+                  : "Payment is charged to your Apple ID. The subscription renews automatically unless cancelled at least 24 hours before the end of the period. Manage or cancel it in your App Store settings."}{" "}
                 <a href="/terms" style={{ color: C.text3 }}>Terms</a> · <a href="/privacy" style={{ color: C.text3 }}>Privacy</a>
               </div>
             </div>
