@@ -69,3 +69,14 @@ alter table track_followers add column if not exists release_checked_at timestam
 
 -- Apple In-App Purchase (RevenueCat): Pro that comes from the App Store
 alter table profiles add column if not exists iap_active boolean;
+
+-- Set tracks: status set by hand, and Pro members reporting "it's out"
+alter table setlist_tracks add column if not exists release_source text;   -- manual | community | null
+create table if not exists setlist_release_reports (
+  id bigserial primary key,
+  track_id uuid references setlist_tracks(id) on delete cascade,
+  user_id uuid not null,
+  created_at timestamptz default now(),
+  unique (track_id, user_id)
+);
+alter table setlist_release_reports enable row level security;

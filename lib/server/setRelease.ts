@@ -13,7 +13,7 @@ export async function checkSetTracks(sb: any, opts: { setId?: string; limit?: nu
   let q = sb.from("setlist_tracks").select("id,setlist_id,title,artist,released,release_checked_at")
     .not("title", "is", null).or("released.is.null,released.eq.false")
     .or(`release_checked_at.is.null,release_checked_at.lt.${weekAgo}`)
-    .or("release_source.is.null,release_source.neq.manual").limit(limit);   // a status set by hand is kept
+    .or("release_source.is.null,release_source.not.in.(manual,community)").limit(limit);   // a status set by hand / by the community is kept
   if (opts.setId) q = q.eq("setlist_id", opts.setId);
   const { data: rows, error } = await q;
   if (error || !rows?.length) return 0;

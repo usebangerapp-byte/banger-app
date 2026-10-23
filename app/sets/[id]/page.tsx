@@ -226,9 +226,12 @@ export default function SetPage() {
                     {t.title && (t as any).released != null && (
                       <span style={{ ...tag((t as any).released ? "rel" : "unrel"), fontSize: 11, padding: "3px 8px" }}>{(t as any).released ? TAG_TEXT.rel : TAG_TEXT.unrel}</span>
                     )}
-                    {/* checked, found in no catalogue: most likely not out (an ID, an edit, a mashup) */}
-                    {t.title && (t as any).released == null && (t as any).checked && (
-                      <span style={{ ...tag("unrel"), fontSize: 11, padding: "3px 8px", opacity: 0.6 }}>Unreleased?</span>
+                    {/* Pro: a discreet "it's out" on an Unreleased track (2 Pro members = Released) */}
+                    {t.title && (t as any).released === false && d.pro && !(t as any).manual && (
+                      (t as any).reported
+                        ? <span style={{ fontSize: 11, color: C.text4 }}>Out? sent</span>
+                        : <button onClick={async () => { const j = await act({ action: "report_out", track_id: t.id }); if (j) { say(j.released ? "Marked as released ✓" : "Thanks, noted"); reload(); } }}
+                            style={{ background: "none", border: "none", padding: "2px 2px", fontFamily: "inherit", fontSize: 11, fontWeight: 600, color: C.text4, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 }}>Out?</button>
                     )}
                     {t.title
                       ? <Link href={trackHref(t.title, t.artist)} style={{ ...ui.pillSmall, fontSize: 12, padding: "4px 10px" }}>Info</Link>

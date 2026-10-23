@@ -88,6 +88,9 @@ async function load(sb: any, id: string, user: any) {
     if (!pro && i >= FREE.chartRows && t.title) return { id: t.id, position: t.position, start_sec: t.start_sec, locked: true, known: true };
     return row;
   });
+  // "It's out" reports I already sent (Pro)
+  let myReports = new Set<string>();
+  if (user && trackIds.length) { try { const { data: rp } = await sb.from("setlist_release_reports").select("track_id").eq("user_id", user.id).in("track_id", trackIds); myReports = new Set((rp || []).map((x: any) => x.track_id)); } catch {} }
   // Status of named tracks: BANGER base first (scannable = uploaded on BANGER), else the stored catalogue check
   const named = list.filter((t) => t.title);
   const { data: base } = named.length ? await sb.from("bpro_tracks").select("title,is_released,release_status").limit(20000) : { data: [] };
@@ -102,8 +105,11 @@ async function load(sb: any, id: string, user: any) {
     row.scannable = !!b;
     row.released = b ? (b.is_released === true || b.release_status === "released") : (t?.released ?? null);
     row.release_date = t?.release_date || null; row.release_label = t?.release_label || null;
-    row.checked = !!t?.release_checked_at;                 // checked but not found anywhere → "Unreleased?"
+    row.checked = !!t?.release_checked_at;
     row.manual = t?.release_source === "manual";
+    // found in no catalogue → shown as Unreleased; Pro members can say "it's out"
+    if (row.released == null && row.checked) row.released = false;
+    row.reported = myReports.has(row.id);
     row.wanted = (row.asks || 0) + (fol || []).filter((f: any) => f.track_title === row.title).length;
   }
 
@@ -200,6 +206,19 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         await notify(sb, (admins || []).map((a: any) => a.id), `set_suggestion:${id}`, `${artist} — ${title}`, `An ID was named in ${set.title}${verified ? " (found in catalogues)" : ""}. Tap to validate.`);
       }
       return Response.json({ ok: true });
+    }
+
+    // A Pro member says an Unreleased track is out. 2 different Pro members (or an admin) → Released.
+    if (b.action === "report_out") {
+      if (!admin && !(await isPro(sb, user.id))) return Response.json({ ok: false, error: "Pro only" }, { status: 402 });
+      const { data: t } = await sb.from("setlist_tracks").select("id,title,released,release_source").eq("id", b.track_id).eq("setlist_id", id).maybeSingle();
+      if (!t?.title) return Response.json({ ok: false, error: "Track not found" }, { status: 404 });
+      if (t.release_source === "manual" && !admin) return Response.json({ ok: true, released: !!t.released });
+      await sb.from("setlist_release_reports").upsert({ track_id: t.id, user_id: user.id }, { onConflict: "track_id,user_id" });
+      const { count } = await sb.from("setlist_release_reports").select("id", { count: "exact", head: true }).eq("track_id", t.id);
+      const out = admin || (count || 0) >= 2;
+      if (out) await sb.from("setlist_tracks").update({ released: true, release_source: admin ? "manual" : "community", release_checked_at: new Date().toISOString() }).eq("id", t.id);
+      return Response.json({ ok: true, released: out });
     }
 
     // Anyone opening a set fills in the release status of tracks never checked yet
