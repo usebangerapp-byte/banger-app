@@ -66,3 +66,6 @@ alter table setlist_suggestions alter column track_id drop not null;
 -- Followed tracks: release status (profile Follows / Out now)
 alter table track_followers add column if not exists released boolean;
 alter table track_followers add column if not exists release_checked_at timestamptz;
+
+-- Apple In-App Purchase (RevenueCat): Pro that comes from the App Store
+alter table profiles add column if not exists iap_active boolean;

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { isNativeApp } from "@/lib/native";
 import { ui, C, tag } from "@/lib/ui";
 import PageHeader from "@/components/PageHeader";
 
@@ -63,6 +64,8 @@ export default function OnboardingView() {
   // Pro: monthly or yearly (yearly only shown when it is set up in Stripe)
   const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
   const [hasYearly, setHasYearly] = useState(false);
+  const [native, setNative] = useState(false);
+  useEffect(() => { setNative(isNativeApp()); }, []);
   useEffect(() => { fetch("/api/stripe/plans").then((r) => r.json()).then((j) => setHasYearly(!!j?.yearly)).catch(() => {}); }, []);
 
   async function choosePlan(plan: Plan) {
@@ -93,6 +96,9 @@ export default function OnboardingView() {
         router.replace("/home");
         return;
       }
+
+      // iPhone app: Pro is bought with Apple, on the Pro page
+      if (isNativeApp()) { router.push("/upgrade"); return; }
 
       // PRO → redirect to Stripe Checkout
       const { data: sessionData } = await supabase.auth.getSession();
@@ -140,7 +146,7 @@ export default function OnboardingView() {
                 <span style={{ fontSize: 15 }}>{feature}</span>
               </div>
             ))}
-            {plan.key === "pro" && hasYearly && (
+            {plan.key === "pro" && hasYearly && !native && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 14 }}>
                 {([["monthly", "Monthly", "€9.99 / month"], ["yearly", "Yearly", "€99 / year · 2 months free"]] as const).map(([k, label, price]) => (
                   <button key={k} type="button" onClick={() => setBilling(k)} aria-pressed={billing === k}

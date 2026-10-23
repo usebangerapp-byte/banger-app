@@ -16,7 +16,7 @@ function core() {
   return corePromise;
 }
 const pluginCache: Record<string, AnyPlugin> = {};
-async function plugin(name: string): Promise<AnyPlugin | null> {
+export async function plugin(name: string): Promise<AnyPlugin | null> {
   if (!hasPlugin(name)) return null;
   if (!pluginCache[name]) {
     const { registerPlugin } = await core();

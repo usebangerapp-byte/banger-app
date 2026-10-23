@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { getBrowserRole } from "@/lib/auth/getBrowserRole";
+import { isNativeApp } from "@/lib/native";
+import { iapAvailable, iapPlans, iapBuy, iapRestore, type IapPlan } from "@/lib/iap";
 import { ui, C, glass, FLAT } from "@/lib/ui";
 
 
@@ -49,6 +51,17 @@ export default function UpgradePage() {
   const [plan, setPlan] = useState<"monthly" | "yearly">("yearly");
   const [hasYearly, setHasYearly] = useState(false);
   useEffect(() => { fetch("/api/stripe/plans").then((r) => r.json()).then((j) => { setHasYearly(!!j.yearly); if (!j.yearly) setPlan("monthly"); }).catch(() => setPlan("monthly")); }, []);
+  // iPhone app: Pro is bought with Apple (In-App Purchase), never with Stripe
+  const [native, setNative] = useState(false);
+  const [iap, setIap] = useState<IapPlan[] | null>(null);
+  const [iapMsg, setIapMsg] = useState("");
+  useEffect(() => { setNative(isNativeApp()); }, []);
+  useEffect(() => {
+    if (!native || !authed || !iapAvailable()) return;
+    iapPlans().then((l) => { setIap(l); if (!l.some((p) => p.kind === plan)) setPlan(l.at(0)?.kind || "monthly"); }).catch(() => setIap([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [native, authed]);
+  const iapPrice = (k: "monthly" | "yearly") => iap?.find((p) => p.kind === k)?.price || "";
   const [vault, setVault] = useState<{ titles: string[]; total: number }>({ titles: [], total: 0 });
 
   // Tease the real hidden part of the unreleased chart (blurred)
@@ -81,6 +94,15 @@ export default function UpgradePage() {
 
   const handleUpgrade = async () => {
     if (!authed) { router.push("/login"); return; }
+    if (native) {
+      const p = iap?.find((x) => x.kind === plan);
+      if (!p) { setIapMsg("Plans are loading. Try again in a moment."); return; }
+      setLoading(true); setIapMsg("");
+      try { if (await iapBuy(p)) { setIsPro(true); setIapMsg("You're Pro ✦"); } }
+      catch { setIapMsg("The purchase didn't go through. Try again."); }
+      finally { setLoading(false); }
+      return;
+    }
     setLoading(true);
     try {
       const sb = createSupabaseBrowser()!;
@@ -100,9 +122,9 @@ export default function UpgradePage() {
     }
   };
 
-  const planPicker = !isPro && hasYearly && (
+  const planPicker = !isPro && (native ? (iap?.length || 0) > 1 : hasYearly) && (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, width: "100%" }}>
-      {([["monthly", "Monthly", "€9.99 / month"], ["yearly", "Yearly", "€99 / year · 2 months free"]] as const).map(([k, label, price]) => (
+      {([["monthly", "Monthly", native ? `${iapPrice("monthly")} / month` : "€9.99 / month"], ["yearly", "Yearly", native ? `${iapPrice("yearly")} / year · 2 months free` : "€99 / year · 2 months free"]] as const).map(([k, label, price]) => (
         <button key={k} onClick={() => setPlan(k)} style={{ ...glass, borderRadius: 18, padding: "12px 10px", cursor: "pointer", fontFamily: "inherit", color: "#fff", textAlign: "center",
           border: plan === k ? "1px solid rgba(245,207,104,0.7)" : `1px solid ${C.glassBorder}`, boxShadow: plan === k ? "0 0 18px rgba(245,207,104,0.25)" : "none" }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: plan === k ? C.gold : C.text2 }}>{label}</div>
@@ -113,15 +135,19 @@ export default function UpgradePage() {
     </div>
   );
   // The price, big, right above the button (when only the monthly plan exists, no picker is shown)
-  const priceBlock = !isPro && !hasYearly && (
+  const priceBlock = !isPro && !native && !hasYearly && (
     <div style={{ display: "grid", justifyItems: "center", gap: 2 }}>
       <div><span style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.03em" }}>€9.99</span><span style={{ fontSize: 16, color: C.text2 }}> / month</span></div>
       <div style={{ fontSize: 13, color: C.gold }}>after a 3-day free trial</div>
     </div>
   );
-  const priceLine = plan === "yearly" ? "3 days free, then €99/year. Cancel anytime." : "3 days free, then €9.99/month. Cancel anytime.";
+  const priceLine = native
+    ? (iapPrice(plan) ? `3 days free, then ${iapPrice(plan)}/${plan === "yearly" ? "year" : "month"}. Cancel anytime.` : "")
+    : plan === "yearly" ? "3 days free, then €99/year. Cancel anytime." : "3 days free, then €9.99/month. Cancel anytime.";
   const cta = isPro ? (
     <div style={alreadyPro}>You&apos;re Pro ✦ Enjoy the vault.</div>
+  ) : native && !iapAvailable() ? (
+    <div style={{ fontSize: 13, color: C.text3, textAlign: "center" }}>Update the app to go Pro.</div>
   ) : (
     <button style={{ ...ui.cta, opacity: loading ? 0.6 : 1 }} onClick={handleUpgrade} disabled={loading}>
       {loading ? "Redirecting…" : authed ? "Start 3-day free trial" : "Sign in to go Pro"}
@@ -142,7 +168,23 @@ export default function UpgradePage() {
           <h1 style={headline}>Go deeper.<br /><span style={shine}>Go Pro.</span></h1>
           <p style={intro}>For DJs and producers.</p>
           <div style={{ width: "100%", marginTop: 6, display: "grid", gap: 10 }}>{priceBlock}{planPicker}{cta}</div>
-          <div style={{ fontSize: 12, color: C.text3 }}>{isPro ? "Secure payment with Stripe" : `${priceLine} · Secure payment with Stripe`}</div>
+          {native ? (
+            <div style={{ display: "grid", gap: 8, justifyItems: "center" }}>
+              {!isPro && priceLine && <div style={{ fontSize: 12, color: C.text3 }}>{priceLine}</div>}
+              {iapMsg && <div style={{ fontSize: 13, color: C.gold }}>{iapMsg}</div>}
+              {authed && !isPro && (
+                <button onClick={async () => { setIapMsg(""); try { const ok = await iapRestore(); setIsPro(ok); setIapMsg(ok ? "Purchases restored ✦" : "No purchase to restore."); } catch { setIapMsg("Couldn't restore. Try again."); } }}
+                  style={{ background: "none", border: "none", color: C.text2, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", padding: 6 }}>Restore purchases</button>
+              )}
+              {/* Required by Apple on a subscription screen */}
+              <div style={{ fontSize: 11, color: C.text4, lineHeight: 1.5, maxWidth: 360 }}>
+                Payment is charged to your Apple ID. The subscription renews automatically unless cancelled at least 24 hours before the end of the period. Manage or cancel it in your App Store settings.{" "}
+                <a href="/terms" style={{ color: C.text3 }}>Terms</a> · <a href="/privacy" style={{ color: C.text3 }}>Privacy</a>
+              </div>
+            </div>
+          ) : (
+            <div style={{ fontSize: 12, color: C.text3 }}>{isPro ? "Secure payment with Stripe" : `${priceLine} · Secure payment with Stripe`}</div>
+          )}
         </section>
 
         {/* ── THE VAULT: real hidden chart, blurred ── */}
