@@ -35,6 +35,20 @@ function sameWords(found: string, wanted: string) {
 /** The part of a typed title worth searching: before "(", "[", " - ", " /w ", " w/ ". */
 const core = (t: string) => t.split(/\(|\[| - | \/\s?w | w\/ |\/w /i)[0].trim();
 
+/**
+ * The remix / rework credit of a title, with or without brackets ("(Luch Remix)", "Luch Remix", "- Luch Rework").
+ * "" = the original. Two titles are the same release only if their credits match: the original being out
+ * says nothing about a remix of it.
+ */
+const credit = (t: string) => {
+  const n = norm((t || "").replace(/[()\[\]]/g, " ").replace(/\s[-–—]\s/g, " "));
+  const m = n.match(/((?:[a-z0-9]+ ){0,3})(remix|rework|bootleg|vip|flip|dub|re edit|reedit|edit)\b/);
+  if (!m) return "";
+  if (m[2] === "edit" && /\b(radio|extended|club|original)\s*$/.test(m[1].trim())) return "";   // Radio Edit = the original
+  return (m[1] + m[2]).replace(/\b(the|feat|ft|extended|original|mix)\b/g, "").replace(/\s+/g, " ").trim();
+};
+const sameCredit = (found: string, wanted: string) => credit(found) === credit(wanted);
+
 const artistOk = (found: string, wanted: string) => {
   const f = norm(found), w = norm(firstArtist(wanted));
   return !!w && (f === w || f.split(" ").join(" ").includes(w) || w.includes(f));
@@ -52,7 +66,7 @@ async function deezer(title: string, artist: string) {
     const r = await fetch(`https://api.deezer.com/search?q=${encodeURIComponent(q)}&limit=15`, { signal: AbortSignal.timeout(6000) });
     const data = (await r.json())?.data || [];
     hit = data.find((t: any) => (titleOk(t.title || "", title) || sameWords(t.title || "", title)) && artistOk(t.artist?.name || "", artist))
-      || data.find((t: any) => base(t.title || "") === base(title) && artistOk(t.artist?.name || "", artist));
+      || data.find((t: any) => base(t.title || "") === base(title) && sameCredit(t.title || "", title) && artistOk(t.artist?.name || "", artist));
     if (hit) break;
   }
   if (!hit?.album?.id) return null;
@@ -65,7 +79,7 @@ async function itunes(title: string, artist: string) {
   const r = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&media=music&entity=song&limit=10`, { signal: AbortSignal.timeout(6000) });
   const j = await r.json();
   const hit = (j?.results || []).find((t: any) => (titleOk(t.trackName || "", title) || sameWords(t.trackName || "", title)) && artistOk(t.artistName || "", artist))
-    || (j?.results || []).find((t: any) => base(t.trackName || "") === base(title) && artistOk(t.artistName || "", artist));
+    || (j?.results || []).find((t: any) => base(t.trackName || "") === base(title) && sameCredit(t.trackName || "", title) && artistOk(t.artistName || "", artist));
   if (!hit) return null;
   let label: string | null = null;
   try {
