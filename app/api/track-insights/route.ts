@@ -68,7 +68,7 @@ export async function GET(req: Request) {
   let also: { title: string; artist: string }[] | null = null;
   if (pro) {
     const tally = new Map<string, number>();
-    for (const s of scans) { const place = s.region || s.country; if (place) tally.set(place, (tally.get(place) || 0) + 1); }
+    for (const s of scans) { const place = s.region && !/^unknown$/i.test(s.region) ? s.region : s.country; if (place && !/^unknown$/i.test(place)) tally.set(place, (tally.get(place) || 0) + 1); }
     regions = [...tally.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([p]) => p);
     firstSpotted = scans.at(0)?.created_at || null;
     if (shown >= SHOW_COUNT_FROM) {
