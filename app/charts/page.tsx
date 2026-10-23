@@ -20,6 +20,7 @@ type TrackRow = {
   title: string | null;
   artist: string | null;
   scan_count: number | null;
+  badge?: string;   // under 10 scans: "Staff pick" / "New on BANGER" / "" instead of the count
   snippet_path: string | null;
   allow_preview?: boolean | null;
   release_date?: string | null;
@@ -183,6 +184,7 @@ export default function ChartsPage() {
               title:         title || null,
               artist:        artist || null,
               scan_count:    s.scans || 0,
+              badge:         typeof s.badge === "string" ? s.badge : undefined,
               snippet_path:  bpro?.snippet_path || null,
               allow_preview: bpro?.allow_preview ?? null,
               release_date:  null,
@@ -194,7 +196,7 @@ export default function ChartsPage() {
         }
 
         const merged: TrackRow[] = Array.from(mergeMap.values())
-          .filter(t => (t.scan_count || 0) > 0)
+          .filter(t => (t.scan_count || 0) > 0 || typeof (t as any).badge === "string")
           .sort((a, b) => Number(b.scan_count || 0) - Number(a.scan_count || 0));
 
         setTracks(merged);
@@ -294,7 +296,7 @@ export default function ChartsPage() {
           return (
             <SharedTrackRow key={track.id} bigRank rank={index + 1} title={cleanTitle} artist={artistText} released={kind === "released"}
               last={index === list.length - 1 && !(unreleasedLocked && lockedCount > 0)}
-              meta={`${Number(track.scan_count || 0)} scan${Number(track.scan_count || 0) === 1 ? "" : "s"}`} />
+              meta={typeof track.badge === "string" ? (track.badge || undefined) : `${Number(track.scan_count || 0)} scan${Number(track.scan_count || 0) === 1 ? "" : "s"}`} />
           );
         })}
       </div>

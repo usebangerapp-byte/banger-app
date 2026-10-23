@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js"
-import { loadOverrides, ovFor, shownScans } from "@/lib/server/overrides"
+import { loadOverrides, ovFor, shownScans, fillTracks, SHOW_COUNT_FROM } from "@/lib/server/overrides"
 import { adminClient, userFromRequest } from "@/lib/server/notify"
 import { isPro } from "@/lib/server/pro"
 import { FREE } from "@/lib/plan"
@@ -87,8 +87,15 @@ async function compute(): Promise<Response> {
     .map((r) => ({ ...r, scans: shownScans(ovFor(ov, r.track_title), r.scans) }))
     .sort((a, b) => b.scans - a.scans)
     .slice(0, 200)
+    // under 10 scans the number isn't shown: a label instead (or nothing)
+    .map((r) => ({ ...r, badge: r.scans < SHOW_COUNT_FROM ? (ovFor(ov, r.track_title)?.pick ? "Staff pick" : "") : undefined }))
 
-  return Response.json(result)
+  // Launch: the Unreleased Top 100 is completed with BANGER uploads (Staff picks, then the newest), 0 scans, labelled
+  const unrelCount = result.filter((r) => r.result_type === "recognized_unreleased").length
+  const fill = await fillTracks(supabase, ov, new Set(result.map((r) => titleKey(r.track_title || ""))), 100 - unrelCount)
+  const all = [...result, ...fill.map((f) => ({ track_title: f.track_title, track_subtitle: f.track_subtitle, result_type: "recognized_unreleased" as ResultType, scans: 0, badge: f.badge }))]
+
+  return Response.json(all)
 }
 
 

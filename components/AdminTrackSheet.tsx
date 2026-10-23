@@ -28,6 +28,8 @@ export default function AdminTrackSheet({ title, artist, onClose }: { title: str
   const [a, setA] = useState(artist || "");
   const [scans, setScans] = useState("");
   const [hidden, setHidden] = useState(false);
+  const [pick, setPick] = useState(false);
+  const [pick0, setPick0] = useState(false);
   const [released, setReleased] = useState<boolean | null>(null);
   const [inBanger, setInBanger] = useState(false);
   const [real, setReal] = useState<number | null>(null);
@@ -38,7 +40,7 @@ export default function AdminTrackSheet({ title, artist, onClose }: { title: str
   useEffect(() => {
     authFetch(`/api/admin/track?title=${encodeURIComponent(title)}`).then((r) => r.json()).then((j) => {
       if (!j?.ok) return;
-      setInBanger(!!j.inBanger); setReleased(j.released); setHidden(!!j.hidden); setReal(typeof j.realScans === "number" ? j.realScans : null);
+      setInBanger(!!j.inBanger); setReleased(j.released); setHidden(!!j.hidden); setPick(!!j.pick); setPick0(!!j.pick); setReal(typeof j.realScans === "number" ? j.realScans : null);
       setScans(j.scans == null ? "" : String(j.scans));
       if (!artist && j.artist) setA(j.artist);
       setInitial({ scans: j.scans == null ? "" : String(j.scans), hidden: !!j.hidden, released: j.released });
@@ -49,6 +51,7 @@ export default function AdminTrackSheet({ title, artist, onClose }: { title: str
     setBusy(true); setErr("");
     const body: any = { title, artist: artist || "" };
     if (t.trim() !== title || a.trim() !== (artist || "")) { body.newTitle = t.trim(); body.newArtist = a.trim(); }
+    if (pick !== pick0) body.pick = pick;
     if (scans !== initial.scans || hidden !== initial.hidden) { body.hidden = hidden; body.scans = scans.trim() === "" ? null : Number(scans); }
     if (released !== null && released !== initial.released) body.released = released;
     const r = await authFetch("/api/admin/track", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).catch(() => null);
@@ -88,6 +91,10 @@ export default function AdminTrackSheet({ title, artist, onClose }: { title: str
         <label style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 14 }}>
           <input type="checkbox" checked={hidden} onChange={(e) => setHidden(e.target.checked)} style={{ accentColor: "#e9b844", width: 18, height: 18 }} />
           Hide from Radar & Charts
+        </label>
+        <label style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 14 }}>
+          <input type="checkbox" checked={pick} onChange={(e) => setPick(e.target.checked)} style={{ accentColor: "#e9b844", width: 18, height: 18 }} />
+          Staff pick (shown first in quiet lists)
         </label>
         {err && <div style={{ fontSize: 13, color: C.danger }}>{err}</div>}
         <div style={{ display: "flex", gap: 8 }}>

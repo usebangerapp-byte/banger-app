@@ -122,12 +122,12 @@ export default function RadarPage() {
             {!data.hot && data.trending.length === 0 && <div style={ui.empty}>Nothing scanned this week yet. Be first.</div>}
             {data.hot && (
               <SharedTrackRow bigRank rank={1} title={data.hot.track_title} artist={data.hot.track_subtitle || ""}
-                meta={`${data.hot.scans} scan${data.hot.scans === 1 ? "" : "s"}`} last={data.trending.length === 0} />
+                meta={typeof (data.hot as any).badge === "string" ? ((data.hot as any).badge || undefined) : `${data.hot.scans} scan${data.hot.scans === 1 ? "" : "s"}`} last={data.trending.length === 0} />
             )}
             {(locked ? data.trending.slice(0, 9) : showMoreTrending ? data.trending : data.trending.slice(0, 9)).map((t, i, arr) => t.locked
               ? <LockedRow bigRank key={i} rank={i + 2} kind="radar" last={i === arr.length - 1} />
               : <SharedTrackRow bigRank key={i} rank={i + 2} title={t.track_title} artist={t.track_subtitle || ""}
-                meta={`${t.scans} scan${t.scans === 1 ? "" : "s"}`} last={i === arr.length - 1} />
+                meta={typeof (t as any).badge === "string" ? ((t as any).badge || undefined) : `${t.scans} scan${t.scans === 1 ? "" : "s"}`} last={i === arr.length - 1} />
             )}
             {locked && data.trending.length > 9 && (
               <button onClick={() => openPro("radar")} style={{ ...ui.more, color: C.gold }}>{`+${data.trending.length - 9} more with Pro`}</button>
@@ -144,7 +144,7 @@ export default function RadarPage() {
             {(locked ? data.mostWanted.slice(0, 8) : showMoreWanted ? data.mostWanted : data.mostWanted.slice(0, 10)).map((t: any, i, arr) => t.locked
               ? <LockedRow bigRank key={i} rank={i + 1} kind="radar" last={i === arr.length - 1} />
               : <SharedTrackRow bigRank key={i} rank={i + 1} title={t.track_title} artist={t.track_subtitle || ""}
-                meta={`${t.followers} waiting`} last={i === arr.length - 1}
+                meta={typeof t.badge === "string" ? (t.badge || undefined) : `${t.followers} waiting`} last={i === arr.length - 1}
                 onFollowChange={(on) => setData((d) => ({ ...d, mostWanted: d.mostWanted.map((w) =>
                   w.track_title === t.track_title ? { ...w, followers: Math.max(0, w.followers + (on ? 1 : -1)) } : w) }))} />
             )}

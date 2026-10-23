@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js"
-import { loadOverrides, ovFor, shownScans } from "@/lib/server/overrides"
+import { titleKey } from "@/lib/titleKey"
+import { loadOverrides, ovFor, shownScans, fillTracks, SHOW_COUNT_FROM } from "@/lib/server/overrides"
 import { adminClient, userFromRequest } from "@/lib/server/notify"
 import { isPro } from "@/lib/server/pro"
 import { FREE } from "@/lib/plan"
@@ -103,7 +104,17 @@ async function compute(): Promise<Response> {
     .sort((a, b) => b.followers - a.followers)
     .slice(0, 30)
 
-  return Response.json({ hot, trending, mostWanted })
+  // Under 10, the number isn't shown (a label instead). Quiet lists are completed at launch with
+  // BANGER uploads (Staff picks, then the newest): 0 scans, labelled — never a made-up number.
+  const label = (title: string, n: number) => (n < SHOW_COUNT_FROM ? (ovFor(ov, title)?.pick ? "Staff pick" : "") : undefined)
+  const hotList: any[] = [hot, ...trending].filter(Boolean).map((t: any) => ({ ...t, badge: label(t.track_title, t.scans) }))
+  const hotFill = await fillTracks(supabase, ov, new Set(hotList.map((t) => titleKey(t.track_title))), 30 - hotList.length)
+  const hotAll = [...hotList, ...hotFill.map((f) => ({ track_title: f.track_title, track_subtitle: f.track_subtitle, scans: 0, release_status: "unreleased", badge: f.badge }))]
+  const wanted: any[] = mostWanted.map((w: any) => ({ ...w, badge: label(w.track_title, w.followers) }))
+  const wantedFill = await fillTracks(supabase, ov, new Set(wanted.map((w) => titleKey(w.track_title))), 30 - wanted.length)
+  const wantedAll = [...wanted, ...wantedFill.map((f) => ({ track_title: f.track_title, track_subtitle: f.track_subtitle, followers: 0, badge: f.badge }))]
+
+  return Response.json({ hot: hotAll[0] || null, trending: hotAll.slice(1), mostWanted: wantedAll })
 }
 
 

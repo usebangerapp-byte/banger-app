@@ -77,6 +77,16 @@ export async function POST(req: Request) {
     if (fk !== key) await sb.from("track_overrides").delete().eq("key", key);
   }
 
+  // 4) Staff pick: shown first when a list is completed at launch (picked earlier = higher)
+  if (typeof b.pick === "boolean") {
+    const fk = titleKey(finalTitle);
+    const { data: cur } = await sb.from("track_overrides").select("key,staff_pick").eq("key", fk).maybeSingle();
+    const value = b.pick ? (cur?.staff_pick || new Date().toISOString()) : null;
+    const { error } = cur ? await sb.from("track_overrides").update({ staff_pick: value, updated_at: new Date().toISOString() }).eq("key", fk)
+      : await sb.from("track_overrides").insert({ key: fk, hidden: false, staff_pick: value, updated_at: new Date().toISOString() });
+    if (error) return Response.json({ ok: false, error: error.message }, { status: 500 });
+  }
+
   return Response.json({ ok: true, inBanger: !!track });
 }
 
@@ -90,13 +100,13 @@ export async function GET(req: Request) {
   const realScans = await realCount(sb, title);
   let ov: any = null;
   try {
-    const r = await sb.from("track_overrides").select("hidden,scans,scan_bonus").eq("key", titleKey(title)).maybeSingle();
+    const r = await sb.from("track_overrides").select("hidden,scans,scan_bonus,staff_pick").eq("key", titleKey(title)).maybeSingle();
     ov = r.error ? (await sb.from("track_overrides").select("hidden,scans").eq("key", titleKey(title)).maybeSingle()).data : r.data;
   } catch {}
   return Response.json({
     ok: true, inBanger: !!t, artist: t?.artist || null,
     released: t ? (t.is_released === true || t.release_status === "released") : null,
-    hidden: !!ov?.hidden, realScans,
+    hidden: !!ov?.hidden, realScans, pick: !!ov?.staff_pick,
     scans: ov?.scan_bonus != null ? Math.max(0, realScans + ov.scan_bonus) : (ov?.scans ?? null),
   });
 }
