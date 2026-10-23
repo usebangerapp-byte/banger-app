@@ -12,7 +12,8 @@ export async function checkSetTracks(sb: any, opts: { setId?: string; limit?: nu
   const weekAgo = new Date(Date.now() - 6 * 86400000).toISOString();
   let q = sb.from("setlist_tracks").select("id,setlist_id,title,artist,released,release_checked_at")
     .not("title", "is", null).or("released.is.null,released.eq.false")
-    .or(`release_checked_at.is.null,release_checked_at.lt.${weekAgo}`).limit(limit);
+    .or(`release_checked_at.is.null,release_checked_at.lt.${weekAgo}`)
+    .or("release_source.is.null,release_source.neq.manual").limit(limit);   // a status set by hand is kept
   if (opts.setId) q = q.eq("setlist_id", opts.setId);
   const { data: rows, error } = await q;
   if (error || !rows?.length) return 0;
@@ -23,8 +24,8 @@ export async function checkSetTracks(sb: any, opts: { setId?: string; limit?: nu
 
   let changed = 0;
   // a few at a time so one run stays short
-  for (let i = 0; i < rows.length; i += 5) {
-    await Promise.all(rows.slice(i, i + 5).map(async (t: any) => {
+  for (let i = 0; i < rows.length; i += 8) {
+    await Promise.all(rows.slice(i, i + 8).map(async (t: any) => {
       const b = inBase.get(titleKey(t.title));
       // true = out · false = known unreleased (BANGER upload, or a release date still to come)
       // null = not found in the catalogues: we don't know, so no "Unreleased" label is shown

@@ -226,6 +226,10 @@ export default function SetPage() {
                     {t.title && (t as any).released != null && (
                       <span style={{ ...tag((t as any).released ? "rel" : "unrel"), fontSize: 11, padding: "3px 8px" }}>{(t as any).released ? TAG_TEXT.rel : TAG_TEXT.unrel}</span>
                     )}
+                    {/* checked, found in no catalogue: most likely not out (an ID, an edit, a mashup) */}
+                    {t.title && (t as any).released == null && (t as any).checked && (
+                      <span style={{ ...tag("unrel"), fontSize: 11, padding: "3px 8px", opacity: 0.6 }}>Unreleased?</span>
+                    )}
                     {t.title
                       ? <Link href={trackHref(t.title, t.artist)} style={{ ...ui.pillSmall, fontSize: 12, padding: "4px 10px" }}>Info</Link>
                       : <button onClick={() => setNaming(t)} style={{ ...ui.pillSmall, fontSize: 12, padding: "4px 10px", color: C.gold, borderColor: "rgba(245,207,104,0.35)" }}>✏️ Name it</button>}
@@ -305,6 +309,8 @@ function RowSheet({ track, onClose, onDone, act }: { track: SetTrack; onClose: (
   const [title, setTitle] = useState(track.title || "");
   const [busy, setBusy] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
+  const st0: "auto" | "rel" | "unrel" = (track as any).manual ? ((track as any).released ? "rel" : "unrel") : "auto";
+  const [st, setSt] = useState<"auto" | "rel" | "unrel">(st0);
   const badTime = time.trim() !== "" && parseTime(time) == null;
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 5000, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
@@ -319,11 +325,22 @@ function RowSheet({ track, onClose, onDone, act }: { track: SetTrack; onClose: (
         <label style={{ display: "grid", gap: 6, fontSize: 13, color: C.text3 }}>Title — leave empty to make it an ID
           <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" style={{ ...ui.input, fontWeight: 600 }} />
         </label>
+        {title.trim() && (
+          <div style={{ display: "grid", gap: 6, fontSize: 13, color: C.text3 }}>Status
+            <div style={{ display: "flex", gap: 6 }}>
+              {([["auto", "Auto"], ["rel", "Released"], ["unrel", "Unreleased"]] as const).map(([k, l]) => (
+                <button key={k} onClick={() => setSt(k)} style={{ ...ui.pillSmall, flex: 1, justifyContent: "center", padding: "9px 8px", fontSize: 13,
+                  ...(st === k ? { color: C.goldInk, background: C.goldGrad, border: "1px solid transparent" } : {}) }}>{l}</button>
+              ))}
+            </div>
+          </div>
+        )}
         <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
           <button onClick={onClose} style={{ ...ui.pill, flex: 1, justifyContent: "center" }}>Cancel</button>
           <button disabled={busy || badTime} onClick={async () => {
             setBusy(true);
-            const j = await act({ action: "edit_track", track_id: track.id, start_sec: time.trim() ? parseTime(time) : null, title, artist });
+            const j = await act({ action: "edit_track", track_id: track.id, start_sec: time.trim() ? parseTime(time) : null, title, artist,
+              ...(st !== st0 ? { released: st === "auto" ? "auto" : st === "rel" } : {}) });
             setBusy(false); if (j) onDone("Saved ✓");
           }} style={{ ...ui.cta, flex: 1 }}>{busy ? "…" : "Save"}</button>
         </div>

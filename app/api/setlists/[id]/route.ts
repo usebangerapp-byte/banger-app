@@ -102,6 +102,8 @@ async function load(sb: any, id: string, user: any) {
     row.scannable = !!b;
     row.released = b ? (b.is_released === true || b.release_status === "released") : (t?.released ?? null);
     row.release_date = t?.release_date || null; row.release_label = t?.release_label || null;
+    row.checked = !!t?.release_checked_at;                 // checked but not found anywhere → "Unreleased?"
+    row.manual = t?.release_source === "manual";
     row.wanted = (row.asks || 0) + (fol || []).filter((f: any) => f.track_title === row.title).length;
   }
 
@@ -202,7 +204,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
     // Anyone opening a set fills in the release status of tracks never checked yet
     if (b.action === "refresh_status") {
-      const n = await checkSetTracks(sb, { setId: id, limit: 12 }).catch(() => 0);
+      const n = await checkSetTracks(sb, { setId: id, limit: 40 }).catch(() => 0);
       return Response.json({ ok: true, changed: n });
     }
 
@@ -287,9 +289,14 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         const { title, artist } = cleanNames(clean(b.title), clean(b.artist));
         const start = b.start_sec == null || !isFinite(Number(b.start_sec)) ? null : Math.max(0, Math.floor(Number(b.start_sec)));
         const renamed = (title || "") !== (t.title || "") || (artist || "") !== (t.artist || "");
+        // status set by hand: true / false (kept, never overwritten by the check) · "auto" = let the check decide again
+        const manual = b.released === true || b.released === false
+          ? { released: b.released, release_source: "manual", release_checked_at: new Date().toISOString() }
+          : b.released === "auto" ? { released: null, release_source: null, release_checked_at: null, release_date: null, release_label: null } : null;
         await sb.from("setlist_tracks").update({
           start_sec: start, title, artist: title ? artist : null,
-          ...(renamed ? { released: null, release_checked_at: null } : {}),
+          ...(renamed ? { released: null, release_checked_at: null, release_source: null } : {}),
+          ...(manual || {}),
           ...(title && !t.title ? { validated_at: new Date().toISOString() } : {}),
         }).eq("id", t.id);
         if (title && !t.title) await sb.from("setlist_suggestions").update({ status: "closed" }).eq("track_id", t.id).eq("status", "open");
