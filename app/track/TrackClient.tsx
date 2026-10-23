@@ -38,6 +38,11 @@ function TrackView() {
   const [following, setFollowing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [playedIn, setPlayedIn] = useState<{ id: string; title: string; venue: string | null; at: number | null }[]>([]);
+  const [ins, setIns] = useState<Insights | null>(null);
+  useEffect(() => {
+    if (!title) return;
+    authFetch(`/api/track-insights?t=${encodeURIComponent(title)}`).then((r) => r.json()).then((j) => { if (j?.ok) setIns(j); }).catch(() => {});
+  }, [title]);
   useEffect(() => {
     if (!title) return;
     fetch(`/api/setlists?track=${encodeURIComponent(title)}`).then((r) => r.json()).then((j) => setPlayedIn(j?.sets || [])).catch(() => {});
@@ -145,8 +150,81 @@ function TrackView() {
           ))}
         </div>
       )}
+      <TrackFacts ins={ins} releaseDate={info?.releaseDate || null} released={info?.released ?? null} />
     </section>
   );
+}
+
+type Insights = {
+  pro: boolean; admin: boolean; scans: number | null; waiting: number; chartRank: number | null; hotRank: number | null;
+  regions: string[] | null; firstSpotted: string | null; weeks: number[] | null; also: { title: string; artist: string }[] | null;
+  uploader: { id: string; name: string } | null;
+};
+
+const dayFmt = (d: string) => new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+
+/** What BANGER knows about the track — real data only. Pro: where, when first, the curve, "also scanned". */
+function TrackFacts({ ins, releaseDate, released }: { ins: Insights | null; releaseDate: string | null; released: boolean | null }) {
+  if (!ins) return null;
+  const facts: { k: string; text: string; href?: string; gold?: boolean }[] = [];
+  if (ins.chartRank) facts.push({ k: "chart", text: `#${ins.chartRank} in the Unreleased Charts`, href: "/charts", gold: true });
+  if (ins.hotRank) facts.push({ k: "hot", text: `#${ins.hotRank} most scanned this week`, href: "/radar" });
+  if (ins.scans) facts.push({ k: "scans", text: `Scanned ${ins.scans.toLocaleString("en-US")} times on BANGER` });
+  if (ins.waiting > 0) facts.push({ k: "wait", text: `${ins.waiting} DJ${ins.waiting > 1 ? "s" : ""} waiting for it` });
+  const rd = releaseDate ? new Date(releaseDate) : null;
+  const days = rd && !Number.isNaN(rd.getTime()) ? Math.ceil((rd.getTime() - Date.now()) / 86400000) : null;
+  if (days != null && days > 0) facts.push({ k: "soon", text: days === 1 ? "Out tomorrow" : `Out in ${days} days`, gold: true });
+  const before = ins.firstSpotted && rd && released !== false ? Math.floor((rd.getTime() - new Date(ins.firstSpotted).getTime()) / (7 * 86400000)) : null;
+  const max = Math.max(1, ...(ins.weeks || [0]));
+  const label: React.CSSProperties = { fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", color: C.text3 };
+  const line: React.CSSProperties = { display: "flex", alignItems: "center", gap: 10, fontSize: 14, color: "#fff", textDecoration: "none" };
+  return (<>
+    {facts.length > 0 && (
+      <div style={{ display: "grid", gap: 9, borderTop: `1px solid ${C.lineSoft}`, paddingTop: 12 }}>
+        {facts.map((f) => {
+          const body = <><span style={{ width: 6, height: 6, borderRadius: 3, background: f.gold ? C.gold : C.text4, flexShrink: 0 }} /><span style={{ flex: 1, color: f.gold ? C.gold : "#fff", fontWeight: f.gold ? 700 : 500 }}>{f.text}</span>{f.href && <span style={{ color: C.text4 }}>›</span>}</>;
+          return f.href ? <a key={f.k} href={f.href} style={line}>{body}</a> : <div key={f.k} style={line}>{body}</div>;
+        })}
+      </div>
+    )}
+    {ins.pro ? (
+      (ins.regions?.length || ins.firstSpotted || ins.weeks || ins.also?.length) ? (
+        <div style={{ display: "grid", gap: 10, borderTop: `1px solid ${C.lineSoft}`, paddingTop: 12 }}>
+          <div style={label}>INSIGHTS</div>
+          {!!ins.regions?.length && <div style={line}><span style={{ color: C.text3, width: 92, flexShrink: 0 }}>Hot in</span><span>{ins.regions.join(", ")}</span></div>}
+          {ins.firstSpotted && <div style={line}><span style={{ color: C.text3, width: 92, flexShrink: 0 }}>First spotted</span><span>{dayFmt(ins.firstSpotted)}{before != null && before >= 1 ? <span style={{ color: C.gold }}>{` · ${before} week${before > 1 ? "s" : ""} before release`}</span> : null}</span></div>}
+          {ins.weeks && (
+            <div style={{ display: "grid", gap: 6 }}>
+              <span style={{ fontSize: 13, color: C.text3 }}>Scans, last 8 weeks</span>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 54 }} aria-label="Scans per week, last 8 weeks">
+                {ins.weeks.map((n, i) => <div key={i} title={`${n} scan${n === 1 ? "" : "s"}`} style={{ flex: 1, height: `${Math.max(4, (n / max) * 100)}%`, borderRadius: 4, background: i === 7 ? C.gold : "rgba(245,207,104,0.35)" }} />)}
+              </div>
+            </div>
+          )}
+          {!!ins.also?.length && (
+            <div style={{ display: "grid", gap: 6 }}>
+              <span style={{ fontSize: 13, color: C.text3 }}>DJs who scanned this also scanned</span>
+              {ins.also.map((a) => (
+                <a key={a.title} href={`/track?t=${encodeURIComponent(a.title)}${a.artist ? `&a=${encodeURIComponent(a.artist)}` : ""}`} style={line}>
+                  <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fmtTitle(a.title)}{a.artist ? <span style={{ color: C.text3 }}> · {fmtArtist(a.artist)}</span> : null}</span>
+                  <span style={{ color: C.text4 }}>›</span>
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : null
+    ) : (
+      <button onClick={() => openPro("charts")} style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 0 0", background: "none", border: "none", borderTop: `1px solid ${C.lineSoft}`, cursor: "pointer", fontFamily: "inherit", color: C.gold, fontSize: 13, fontWeight: 600, textAlign: "left" }}>
+        🔒 Where it&apos;s scanned, first spotted, the scan curve · Pro
+      </button>
+    )}
+    {ins.admin && ins.uploader && (
+      <a href={`/dj/${ins.uploader.id}`} style={{ ...line, borderTop: `1px solid ${C.lineSoft}`, paddingTop: 12, fontSize: 13 }}>
+        <span style={{ color: C.text3 }}>Uploaded by (admin)</span><span style={{ flex: 1, fontWeight: 600 }}>{ins.uploader.name}</span><span style={{ color: C.text4 }}>›</span>
+      </a>
+    )}
+  </>);
 }
 
 export default function TrackClient() {
