@@ -75,6 +75,26 @@ function mapWorldRecognition(payload: any, fallbackCountry = "", early = false) 
   };
 }
 
+/**
+ * Melody match ("humming"): the recogniser didn't find this exact recording, but the tune of a known
+ * song — typically a remix, an edit or a cover. Shown as "Sounds like".
+ */
+function mapMelodyRecognition(payload: any, fallbackCountry = "") {
+  const h = payload?.metadata?.humming?.[0] || null;
+  if (!h?.title) return null;
+  const raw = Number(h.score ?? 0), score = raw <= 1 ? raw * 100 : raw;
+  if (score < 70) return null;
+  return {
+    result_type: "recognized_world",
+    track_title: clean(h.title) || "Unknown",
+    track_subtitle: clean(h?.artists?.[0]?.name) || "Unknown",
+    acr_code: clean(h.acrid) || null,
+    country: clean(fallbackCountry) || null,
+    melody: true,
+    score,
+  };
+}
+
 function mapNotFound(fallbackCountry = "") {
   return {
     result_type: "not_found",
@@ -197,8 +217,10 @@ export async function POST(req: Request) {
     const cTop = privateResult.payload?.metadata?.custom_files?.[0], wTop = worldResult.payload?.metadata?.music?.[0];
     const cScore = cTop ? Number(cTop.score ?? 100) : -1, wScore = wTop ? Number(wTop.score ?? 0) : -1;
     const best = cScore >= wScore ? (cTop ? { t: `${cTop.artist || ""} - ${cTop.title}`, s: cScore, k: "custom" } : null) : (wTop ? { t: `${wTop.artists?.[0]?.name || ""} - ${wTop.title}`, s: wScore, k: "world" } : null);
-    const scoreOf = mappedPrivate ? cScore : mappedWorld ? wScore : best ? best.s : null;
-    const mapped = mappedPrivate || mappedWorld || mapNotFound(country);
+    const scoreOf = mappedPrivate ? cScore : mappedWorld ? wScore : mappedMelody ? mappedMelody.score : best ? best.s : null;
+    // no exact recording found → the melody (remix / edit / cover of a known song)
+    const mappedMelody = !mappedPrivate && !mappedWorld ? (mapMelodyRecognition(worldResult.payload, country) || mapMelodyRecognition(privateResult.payload, country)) : null;
+    const mapped: any = mappedPrivate || mappedWorld || mappedMelody || mapNotFound(country);
 
     const responsePayload = mappedPrivate
       ? privateResult.payload
@@ -278,9 +300,10 @@ export async function POST(req: Request) {
       score: scoreOf == null || !isFinite(scoreOf) ? null : Math.round(scoreOf),
       early,
       // nothing found: what was proposed, or the recogniser's own status (e.g. a quota or audio error)
-      candidate: !mappedPrivate && !mappedWorld
+      candidate: mappedMelody ? "melody match" : !mappedPrivate && !mappedWorld
         ? (best ? `${best.k}: ${best.t} (${Math.round(best.s)})`
-          : `acr world ${worldResult.payload?.status?.code ?? worldResult.status} [${Object.keys(worldResult.payload?.metadata || {}).join(",")}] · custom ${privateResult.payload?.status?.code ?? privateResult.status} [${Object.keys(privateResult.payload?.metadata || {}).join(",")}] · ${arrayBuffer.byteLength}b`).slice(0, 200)
+          : (() => { const h = worldResult.payload?.metadata?.humming?.[0] || privateResult.payload?.metadata?.humming?.[0];
+              return h ? `melody (too low): ${h.artists?.[0]?.name || ""} - ${h.title} (${h.score})` : `acr ${worldResult.payload?.status?.code ?? worldResult.status}/${privateResult.payload?.status?.code ?? privateResult.status} nothing · ${arrayBuffer.byteLength}b`; })()).slice(0, 200)
         : null,
     };
 
@@ -304,6 +327,7 @@ export async function POST(req: Request) {
       {
         ...responsePayload,
         scan_id: scanId,
+        melody: !!mappedMelody,
         result_type: effectiveResultType,
         track_title: mapped.track_title,
         track_subtitle: finalSubtitle,

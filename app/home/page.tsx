@@ -114,7 +114,8 @@ export default function Home() {
   const [tag, setTag] = useState<Tag>("NOT FOUND");
 
   const [success, setSuccess] = useState(false);
-  const [scanId, setScanId] = useState<string | number | null>(null);   // admins: say if the result was right
+  const [scanId, setScanId] = useState<string | number | null>(null);
+  const [melody, setMelody] = useState(false);   // matched by the tune only: probably a remix / edit   // admins: say if the result was right
   const [failPulse, setFailPulse] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
   const [kick, setKick] = useState(0);
@@ -354,7 +355,7 @@ export default function Home() {
           setSnippetPath(mapped.snippetPath);
           setAllowPreview(mapped.allowPreview);
           setSuccess(mapped.success);
-          setScanId((data as any)?.scan_id ?? null);
+          setScanId((data as any)?.scan_id ?? null); setMelody(!!(data as any)?.melody);
 
           if (mapped.success) {
             vib([18, 60, 18, 60, 80]);  // double pulse succès
@@ -396,7 +397,7 @@ export default function Home() {
           const mapped = mapRecognizeResult(data);
           if (!mapped.success || earlyHit || mr.state === "inactive") return;
           earlyHit = true;
-          setTitle(mapped.title); setSubtitle(mapped.subtitle); setTag(mapped.tag); setScanId((data as any)?.scan_id ?? null);
+          setTitle(mapped.title); setSubtitle(mapped.subtitle); setTag(mapped.tag); setScanId((data as any)?.scan_id ?? null); setMelody(!!(data as any)?.melody);
           setBeatportUrl(mapped.beatportUrl); setSpotifyUrl(mapped.spotifyUrl);
           setSnippetPath(mapped.snippetPath); setAllowPreview(mapped.allowPreview);
           setSuccess(true);
@@ -614,7 +615,7 @@ export default function Home() {
 
           {/* ── RESULT ── */}
           {title !== "—" && status === "idle" && (
-            <ScanResult key={title + String(scanId)} title={title} subtitle={subtitle} tag={tag} scanId={scanId}
+            <ScanResult key={title + String(scanId)} title={title} subtitle={subtitle} tag={tag} scanId={scanId} melody={melody}
               snippet={allowPreview !== false ? snippetPath : null} />
           )}
         </div>{/* end center */}
@@ -625,8 +626,8 @@ export default function Home() {
 }
 
 /** Scan result card: ▶ preview · title / artist / status, then Follow · Info · Share on one line. */
-function ScanResult({ title, subtitle, tag, snippet, scanId }: {
-  title: string; subtitle: string; tag: string; snippet: string | null; scanId?: string | number | null;
+function ScanResult({ title, subtitle, tag, snippet, scanId, melody }: {
+  title: string; subtitle: string; tag: string; snippet: string | null; scanId?: string | number | null; melody?: boolean;
 }) {
   const isAdmin = useIsAdmin();
   const [sharing, setSharing] = useState(false);
@@ -687,6 +688,9 @@ function ScanResult({ title, subtitle, tag, snippet, scanId }: {
             <Link href="/charts" style={{ display: "inline-block", marginTop: 6, fontSize: 12, fontWeight: 600, color: C.gold, textDecoration: "none", opacity: 0.85 }}>
               #{rank} in the Unreleased Charts ›
             </Link>
+          )}
+          {melody && found && (
+            <div style={{ marginTop: 6, fontSize: 12, fontWeight: 600, color: C.gold, opacity: 0.85 }}>Melody match · this may be a remix or an edit of it</div>
           )}
         </div>
       </div>
