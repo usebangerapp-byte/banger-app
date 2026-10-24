@@ -43,7 +43,8 @@ function clean(v: unknown) {
  * Confidence needed before showing a result. A quick try (3 s of audio) is stricter: a short or noisy
  * sample can look like another track, and a wrong answer is worse than waiting 3 more seconds.
  */
-const MIN_SCORE = { world: { early: 20, final: 20 }, custom: { early: 0, final: 0 } };   // back to what worked; tuned later with the admins' ✓ / ✗
+// From the admins' ✓ / ✗ (24 Oct): right answers scored 52, 63, 66 · wrong ones 19, 22. Bar between the two.
+const MIN_SCORE = { world: { early: 50, final: 40 }, custom: { early: 40, final: 30 } };
 
 function mapPrivateRecognition(payload: any, fallbackCountry = "", early = false) {
   const custom = payload?.metadata?.custom_files?.[0] || null;
