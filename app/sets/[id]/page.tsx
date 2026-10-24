@@ -104,6 +104,8 @@ export default function SetPage() {
   const heatMax = Math.max(1, ...heat);
   const lockedN = d.tracks.filter((t) => t.locked).length;
   const pct = d.total ? Math.round((d.known / d.total) * 100) : 0;
+  // The track playing right now in the video: the last one that started before the current time
+  const playing = now > 0 ? [...d.tracks].filter((t) => t.start_sec != null && t.start_sec <= now + 1).sort((a, b) => (b.start_sec ?? 0) - (a.start_sec ?? 0)).at(0) || null : null;
   const pill = (on?: boolean): React.CSSProperties => ({ flex: 1, height: 44, borderRadius: 999, cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 600,
     border: `1px solid ${on ? "rgba(245,207,104,0.45)" : C.glassBorder}`, background: on ? "rgba(245,207,104,0.14)" : "rgba(255,255,255,0.06)", color: on ? C.gold : "#fff" });
   const big: React.CSSProperties = { height: 52, borderRadius: 16, border: `1px solid ${C.glassBorder}`, background: "rgba(255,255,255,0.06)", color: "#fff", fontFamily: "inherit", fontSize: 14, fontWeight: 700, cursor: "pointer" };
@@ -120,6 +122,17 @@ export default function SetPage() {
             {yt ? <div ref={boxRef} style={{ width: "100%", height: "100%" }} />
               : <a href={d.set.source_url} target="_blank" rel="noreferrer" style={{ display: "grid", placeItems: "center", height: "100%", color: C.gold, textDecoration: "none", fontWeight: 600 }}>Open the set ↗</a>}
           </div>
+          {/* Now playing, discreetly under the video — tap = jump to its row in the tracklist */}
+          {yt && playing && (
+            <button onClick={() => document.getElementById(`row-${playing.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
+              style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "9px 2px 0", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left", minWidth: 0 }}>
+              <span aria-hidden style={{ width: 6, height: 6, borderRadius: 3, background: C.gold, flexShrink: 0, boxShadow: "0 0 8px rgba(245,207,104,0.8)" }} />
+              <span style={{ fontSize: 12, color: C.text3, flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>{String(playing.position).padStart(2, "0")} · {fmtTime(playing.start_sec)}</span>
+              <span style={{ fontSize: 13, color: C.text2, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {playing.locked ? "🔒 Pro" : playing.title ? <>{fmtTitle(playing.title)}{playing.artist ? <span style={{ color: C.text3 }}> · {fmtArtist(playing.artist)}</span> : null}</> : <span style={{ color: C.gold }}>ID · help name it</span>}
+              </span>
+            </button>
+          )}
           <div style={{ padding: "14px 16px 16px", display: "grid", gap: 6 }}>
             <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
               <div style={{ flex: 1, minWidth: 0, fontSize: 21, fontWeight: 800, letterSpacing: "-0.02em" }}>{fmtArtist(d.set.title)}</div>
@@ -206,7 +219,8 @@ export default function SetPage() {
               <span style={{ fontSize: 12, fontWeight: 600, color: C.gold }}>🔒 Pro</span>
             </button>
           ) : (
-            <div key={t.id} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr)", minWidth: 0, gap: 10, padding: "13px 0", borderBottom: i === d.tracks.length - 1 && !lockedN ? "none" : `1px solid ${C.lineSoft}` }}>
+            <div key={t.id} id={`row-${t.id}`} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr)", minWidth: 0, gap: 10, padding: "13px 0", scrollMarginTop: 90, borderBottom: i === d.tracks.length - 1 && !lockedN ? "none" : `1px solid ${C.lineSoft}`,
+              ...(playing?.id === t.id ? { boxShadow: `inset 2px 0 0 ${C.gold}`, paddingLeft: 10 } : {}) }}>
               <div style={{ display: "flex", alignItems: "flex-start", gap: 12, minWidth: 0, cursor: t.start_sec != null ? "pointer" : "default" }} onClick={() => seek(t.start_sec)}>
                 {/* number above the time: leaves the width to the title */}
                 <div style={{ width: 44, flexShrink: 0, display: "grid", gap: 2, paddingTop: 1 }}>
