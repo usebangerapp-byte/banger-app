@@ -86,7 +86,8 @@ function mapMelodyRecognition(payload: any, fallbackCountry = "") {
   const h = payload?.metadata?.humming?.[0] || null;
   if (!h?.title) return null;
   const raw = Number(h.score ?? 0), score = raw <= 1 ? raw * 100 : raw;
-  if (score < 70) return null;
+  // admins' verdicts (24 Oct): melody right at 83 · wrong at 70 and 79
+  if (score < 80) return null;
   return {
     result_type: "recognized_world",
     track_title: clean(h.title) || "Unknown",
