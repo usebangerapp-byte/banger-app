@@ -38,6 +38,7 @@ export default function DJProfilePage() {
   const [msgBusy,    setMsgBusy]    = useState(false);
   const [notFound,   setNotFound]   = useState(false);
   const [showAllTracks, setShowAllTracks] = useState(false);
+  const [tracksPrivate, setTracksPrivate] = useState(false);   // admin view of someone's uploads
   const [peopleList, setPeopleList] = useState<"followers" | "following" | null>(null);
   // The official BANGER account (the host): its page offers "Send a demo"
   const [hostId, setHostId] = useState<string | null>(null);
@@ -46,13 +47,13 @@ export default function DJProfilePage() {
   useEffect(() => {
     if (!slug) return;
     let mounted = true;
-    fetch(`/api/profile/get?slug=${encodeURIComponent(slug)}`)
+    authFetch(`/api/profile/get?slug=${encodeURIComponent(slug)}`)
       .then(r => r.json())
       .then(j => {
         if (!mounted) return;
         if (!j.ok) { setNotFound(true); setLoading(false); return; }
         setProfile(j.profile);
-        setTracks(j.tracks || []);
+        setTracks(j.tracks || []); setTracksPrivate(!!j.tracksPrivate);
         setLoading(false);
       })
       .catch(() => { if (mounted) { setNotFound(true); setLoading(false); } });
@@ -152,7 +153,7 @@ export default function DJProfilePage() {
               <div style={statsLine}>
                 <button onClick={() => profile && setPeopleList("followers")} style={statBtn}><b style={statNum}>{profile?.follower_count || 0}</b> followers</button>
                 <button onClick={() => profile && setPeopleList("following")} style={statBtn}><b style={statNum}>{profile?.following_count || 0}</b> following</button>
-                <span><b style={statNum}>{tracks.length}</b> tracks</span>
+                {tracks.length > 0 && <span><b style={statNum}>{tracks.length}</b> tracks</span>}
               </div>
             </div>
           </div>
@@ -216,7 +217,7 @@ export default function DJProfilePage() {
 
         {tracks.length > 0 && (
           <div style={{ ...ui.section, paddingBottom: 4 }}>
-            <div style={secTitle}>Tracks</div>
+            <div style={secTitle}>Tracks{tracksPrivate && <span style={{ fontSize: 12, fontWeight: 600, color: C.text3, marginLeft: 8, letterSpacing: 0 }}>admin only · hidden from others</span>}</div>
             {(showAllTracks ? tracks : tracks.slice(0, 3)).map(t => (
               <SharedTrackRow key={t.id} title={t.title || "Untitled"} artist={t.artist} released={!!t.is_released} meta={t.is_released ? TAG_TEXT.rel : TAG_TEXT.unrel} />
             ))}

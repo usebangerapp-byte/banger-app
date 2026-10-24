@@ -237,7 +237,7 @@ export default function ProfilePageV2() {
         const r = await getBrowserRole();
         if (mounted) setRole(r);
 
-        const res = await fetch(`/api/profile/get?user_id=${uid}`);
+        const res = await authFetch(`/api/profile/get?user_id=${uid}`);
         const j   = await res.json().catch(() => null);
         if (j?.ok && mounted) {
           setProfile(j.profile);

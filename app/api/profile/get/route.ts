@@ -1,4 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
+import { userFromRequest } from "@/lib/server/notify";
+import { isAdminEmail } from "@/lib/admins";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET(req: Request) {
@@ -18,5 +20,15 @@ export async function GET(req: Request) {
     sb.from("profile_followers").select("*", { count: "exact", head: true }).eq("follower_id", profileId),
     sb.from("bpro_tracks").select("id,title,artist,release_status,is_released").eq("uploader_email", data.email).order("created_at", { ascending: false }).limit(10),
   ]);
-  return Response.json({ ok: true, profile: { ...data, follower_count: followerCount||0, following_count: followingCount||0 }, tracks: tracks||[] });
+  // Uploaded tracks (IDs) and the email stay private: only the person themself and the admins see them
+  const me = await userFromRequest(sb as any, req).catch(() => null);
+  const isSelf = !!me && me.id === profileId;
+  const isAdmin = !!me && isAdminEmail(me.email);
+  const { email: _email, ...publicProfile } = data as any;
+  return Response.json({
+    ok: true,
+    profile: { ...(isSelf || isAdmin ? data : publicProfile), follower_count: followerCount||0, following_count: followingCount||0 },
+    tracks: isSelf || isAdmin ? (tracks || []) : [],
+    tracksPrivate: !isSelf && isAdmin,   // the admin sees them, the public doesn't
+  });
 }
