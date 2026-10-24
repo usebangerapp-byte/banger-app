@@ -43,7 +43,7 @@ function clean(v: unknown) {
  * Confidence needed before showing a result. A quick try (3 s of audio) is stricter: a short or noisy
  * sample can look like another track, and a wrong answer is worse than waiting 3 more seconds.
  */
-const MIN_SCORE = { world: { early: 85, final: 60 }, custom: { early: 75, final: 50 } };
+const MIN_SCORE = { world: { early: 80, final: 50 }, custom: { early: 70, final: 40 } };
 
 function mapPrivateRecognition(payload: any, fallbackCountry = "", early = false) {
   const custom = payload?.metadata?.custom_files?.[0] || null;
