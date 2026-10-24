@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
+import { lookupRelease } from "@/lib/server/catalog";
 
 export const runtime = "nodejs";
 
@@ -269,8 +270,18 @@ export async function POST(req: Request) {
       mapped.result_type === "recognized_unreleased" &&
       (privateTrackRow?.release_status === "released" || privateTrackRow?.is_released === true)
 
+    // An edit / bootleg / rework / mashup the world catalogue knows is often a free download or a promo,
+    // not a store release: if Deezer / iTunes don't have it, it's shown (and counted) as Unreleased.
+    let editNotOut = false;
+    if (mapped.result_type === "recognized_world" && !mappedMelody && /\b(edit|bootleg|re-?work|flip|mash-?up|vip)\b/i.test(mapped.track_title || "")
+      && !/\b(radio|extended|single|album|clean|original)\s+edit\b/i.test(mapped.track_title || "")) {
+      const found: any = await Promise.race([lookupRelease(mapped.track_title, mapped.track_subtitle || ""), new Promise((r) => setTimeout(() => r("timeout"), 2500))]).catch(() => "timeout");
+      editNotOut = found !== "timeout" && !found?.releaseDate;   // too slow to tell → keep what the catalogue said
+    }
+
     const effectiveResultType = dbSaysReleased
       ? "recognized_world"
+      : editNotOut ? "recognized_unreleased"
       : mapped.result_type
 
     let finalSubtitle: string | null = mapped.track_subtitle
