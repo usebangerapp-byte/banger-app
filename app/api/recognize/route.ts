@@ -43,7 +43,7 @@ function clean(v: unknown) {
  * Confidence needed before showing a result. A quick try (3 s of audio) is stricter: a short or noisy
  * sample can look like another track, and a wrong answer is worse than waiting 3 more seconds.
  */
-const MIN_SCORE = { world: { early: 80, final: 50 }, custom: { early: 70, final: 40 } };
+const MIN_SCORE = { world: { early: 20, final: 20 }, custom: { early: 0, final: 0 } };   // back to what worked; tuned later with the admins' ✓ / ✗
 
 function mapPrivateRecognition(payload: any, fallbackCountry = "", early = false) {
   const custom = payload?.metadata?.custom_files?.[0] || null;
@@ -280,7 +280,7 @@ export async function POST(req: Request) {
       // nothing found: what was proposed, or the recogniser's own status (e.g. a quota or audio error)
       candidate: !mappedPrivate && !mappedWorld
         ? (best ? `${best.k}: ${best.t} (${Math.round(best.s)})`
-          : `acr world ${worldResult.payload?.status?.code ?? worldResult.status} ${worldResult.payload?.status?.msg || ""} · custom ${privateResult.payload?.status?.code ?? privateResult.status} ${privateResult.payload?.status?.msg || ""} · ${arrayBuffer.byteLength} bytes ${mimeType}`).slice(0, 200)
+          : `acr world ${worldResult.payload?.status?.code ?? worldResult.status} [${Object.keys(worldResult.payload?.metadata || {}).join(",")}] · custom ${privateResult.payload?.status?.code ?? privateResult.status} [${Object.keys(privateResult.payload?.metadata || {}).join(",")}] · ${arrayBuffer.byteLength}b`).slice(0, 200)
         : null,
     };
 

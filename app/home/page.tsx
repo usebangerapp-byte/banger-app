@@ -404,7 +404,8 @@ export default function Home() {
           stopRecording();
         } catch {}
       };
-      const earlyTimers = [3_000, 5_500, 8_500].map((ms) => window.setTimeout(tryNow, ms));
+      // back to what worked before tonight: one quick try at 6 s, then the full 12 s
+      const earlyTimers = [6_000].map((ms) => window.setTimeout(tryNow, ms));
 
       mr.start(1000);   // 1 s chunks (the size that always worked on iPhone); each quick try reads all recorded so far
       timerRef.current = window.setTimeout(() => stopRecording(), 12_000);
