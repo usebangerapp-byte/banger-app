@@ -193,8 +193,11 @@ export async function POST(req: Request) {
 
     const mappedWorld = mapWorldRecognition(worldResult.payload, country, early);
     const mappedPrivate = mapPrivateRecognition(privateResult.payload, country, early);
-    const scoreOf = mappedPrivate ? Number(privateResult.payload?.metadata?.custom_files?.[0]?.score ?? 100)
-      : mappedWorld ? Number(worldResult.payload?.metadata?.music?.[0]?.score ?? 0) : null;
+    // what the recogniser proposed, even below the bar — to tune the bar with the admins' ✓ / ✗
+    const cTop = privateResult.payload?.metadata?.custom_files?.[0], wTop = worldResult.payload?.metadata?.music?.[0];
+    const cScore = cTop ? Number(cTop.score ?? 100) : -1, wScore = wTop ? Number(wTop.score ?? 0) : -1;
+    const best = cScore >= wScore ? (cTop ? { t: `${cTop.artist || ""} - ${cTop.title}`, s: cScore, k: "custom" } : null) : (wTop ? { t: `${wTop.artists?.[0]?.name || ""} - ${wTop.title}`, s: wScore, k: "world" } : null);
+    const scoreOf = mappedPrivate ? cScore : mappedWorld ? wScore : best ? best.s : null;
     const mapped = mappedPrivate || mappedWorld || mapNotFound(country);
 
     const responsePayload = mappedPrivate
@@ -274,6 +277,7 @@ export async function POST(req: Request) {
       region: region || null,
       score: scoreOf == null || !isFinite(scoreOf) ? null : Math.round(scoreOf),
       early,
+      candidate: !mappedPrivate && !mappedWorld && best ? `${best.k}: ${best.t} (${Math.round(best.s)})`.slice(0, 200) : null,
     };
 
 
@@ -283,7 +287,7 @@ export async function POST(req: Request) {
     if (!noLog && !(early && effectiveResultType === "not_found")) {
       let { data: ins, error } = await supabase.from("scan_events").insert(row).select("id").single();
       if (error && /score|early|column/i.test(error.message)) {   // columns not created yet
-        const { score: _s, early: _e, ...base } = row as any;
+        const { score: _s, early: _e, candidate: _c, ...base } = row as any;
         ({ data: ins, error } = await supabase.from("scan_events").insert(base).select("id").single());
       }
       if (error) console.error("scan_events insert failed", error);
