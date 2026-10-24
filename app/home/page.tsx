@@ -334,7 +334,7 @@ export default function Home() {
         streamRef.current = null;
 
         stopMeters();
-        if (earlyTimer) window.clearTimeout(earlyTimer);
+        earlyTimers.forEach((t) => window.clearTimeout(t));
         if (earlyHit) { setStatus("idle"); return; }   // the quick try already found it
         vib([6, 30, 6]);  // pulse subtil : analyse en cours
         setStatus("recognizing");
@@ -385,16 +385,16 @@ export default function Home() {
         setStatus("idle");
       };
 
-      // Two tries in one scan: a quick one after 6 s (most tracks are found here), and if
-      // nothing matched, a longer one with 12 s of audio — more signal for noisy rooms.
+      // Like Shazam: a first try after 3 s, then 5.5 s and 8.5 s with more audio each time, and the
+      // last one with the full 12 s for noisy places. The first one that finds the track wins.
       let earlyHit = false;
-      const earlyTimer = window.setTimeout(async () => {
+      const tryNow = async () => {
         try {
-          if (mr.state === "inactive" || !chunksRef.current.length) return;
+          if (earlyHit || mr.state === "inactive" || !chunksRef.current.length) return;
           const blob = new Blob(chunksRef.current.slice(), { type: mime });
           const data = await recognizeAudio(blob, mime, await getRegion(), { early: true });
           const mapped = mapRecognizeResult(data);
-          if (!mapped.success || mr.state === "inactive") return;
+          if (!mapped.success || earlyHit || mr.state === "inactive") return;
           earlyHit = true;
           setTitle(mapped.title); setSubtitle(mapped.subtitle); setTag(mapped.tag); setScanId((data as any)?.scan_id ?? null);
           setBeatportUrl(mapped.beatportUrl); setSpotifyUrl(mapped.spotifyUrl);
@@ -403,9 +403,10 @@ export default function Home() {
           vib([18, 60, 18, 60, 80]);
           stopRecording();
         } catch {}
-      }, 6_000);
+      };
+      const earlyTimers = [3_000, 5_500, 8_500].map((ms) => window.setTimeout(tryNow, ms));
 
-      mr.start(1000);   // 1 s chunks so the quick try can read what's recorded so far
+      mr.start(500);    // half-second chunks so each quick try reads everything recorded so far
       timerRef.current = window.setTimeout(() => stopRecording(), 12_000);
     } catch {
       stopMeters();
