@@ -277,7 +277,11 @@ export async function POST(req: Request) {
       region: region || null,
       score: scoreOf == null || !isFinite(scoreOf) ? null : Math.round(scoreOf),
       early,
-      candidate: !mappedPrivate && !mappedWorld && best ? `${best.k}: ${best.t} (${Math.round(best.s)})`.slice(0, 200) : null,
+      // nothing found: what was proposed, or the recogniser's own status (e.g. a quota or audio error)
+      candidate: !mappedPrivate && !mappedWorld
+        ? (best ? `${best.k}: ${best.t} (${Math.round(best.s)})`
+          : `acr world ${worldResult.payload?.status?.code ?? worldResult.status} ${worldResult.payload?.status?.msg || ""} · custom ${privateResult.payload?.status?.code ?? privateResult.status} ${privateResult.payload?.status?.msg || ""} · ${arrayBuffer.byteLength} bytes ${mimeType}`).slice(0, 200)
+        : null,
     };
 
 
