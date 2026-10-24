@@ -215,13 +215,13 @@ export async function POST(req: Request) {
 
     const mappedWorld = mapWorldRecognition(worldResult.payload, country, early);
     const mappedPrivate = mapPrivateRecognition(privateResult.payload, country, early);
+    const mappedMelody = !mappedPrivate && !mappedWorld ? (mapMelodyRecognition(worldResult.payload, country) || mapMelodyRecognition(privateResult.payload, country)) : null;
     // what the recogniser proposed, even below the bar — to tune the bar with the admins' ✓ / ✗
     const cTop = privateResult.payload?.metadata?.custom_files?.[0], wTop = worldResult.payload?.metadata?.music?.[0];
     const cScore = cTop ? Number(cTop.score ?? 100) : -1, wScore = wTop ? Number(wTop.score ?? 0) : -1;
     const best = cScore >= wScore ? (cTop ? { t: `${cTop.artist || ""} - ${cTop.title}`, s: cScore, k: "custom" } : null) : (wTop ? { t: `${wTop.artists?.[0]?.name || ""} - ${wTop.title}`, s: wScore, k: "world" } : null);
     const scoreOf = mappedPrivate ? cScore : mappedWorld ? wScore : mappedMelody ? mappedMelody.score : best ? best.s : null;
     // no exact recording found → the melody (remix / edit / cover of a known song)
-    const mappedMelody = !mappedPrivate && !mappedWorld ? (mapMelodyRecognition(worldResult.payload, country) || mapMelodyRecognition(privateResult.payload, country)) : null;
     const mapped: any = mappedPrivate || mappedWorld || mappedMelody || mapNotFound(country);
 
     const responsePayload = mappedPrivate
