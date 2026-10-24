@@ -389,11 +389,11 @@ export default function Home() {
       // Like Shazam: a first try after 3 s, then 5.5 s and 8.5 s with more audio each time, and the
       // last one with the full 12 s for noisy places. The first one that finds the track wins.
       let earlyHit = false;
-      const tryNow = async () => {
+      const tryNow = async (quick = false) => {
         try {
           if (earlyHit || mr.state === "inactive" || !chunksRef.current.length) return;
           const blob = new Blob(chunksRef.current.slice(), { type: mime });
-          const data = await recognizeAudio(blob, mime, await getRegion(), { early: true });
+          const data = await recognizeAudio(blob, mime, await getRegion(), { early: true, quick });
           const mapped = mapRecognizeResult(data);
           if (!mapped.success || earlyHit || mr.state === "inactive") return;
           earlyHit = true;
@@ -401,6 +401,7 @@ export default function Home() {
           setBeatportUrl(mapped.beatportUrl); setSpotifyUrl(mapped.spotifyUrl);
           setSnippetPath(mapped.snippetPath); setAllowPreview(mapped.allowPreview);
           setSuccess(true);
+          setStatus("idle");   // straight onto the page, no "Identifying…"
           vib([18, 60, 18, 60, 80]);
           stopRecording();
         } catch {}
@@ -408,7 +409,11 @@ export default function Home() {
       // back to what worked before tonight: one quick try at 6 s, then the full 12 s
       // Keep listening instead of making you scan again: tries at 6, 11 and 16 s, last one at 20 s.
       // Stops as soon as one finds the track (most are found at 6 s).
-      const earlyTimers = [6_000, 11_000, 16_000].map((ms) => window.setTimeout(tryNow, ms));
+      // 3 s and 4.5 s: only shown if BANGER is very sure (like Shazam); then 6, 11, 16 s, last at 20 s
+      const earlyTimers = [
+        ...[3_000, 4_500].map((ms) => window.setTimeout(() => tryNow(true), ms)),
+        ...[6_000, 11_000, 16_000].map((ms) => window.setTimeout(() => tryNow(false), ms)),
+      ];
       const longer = window.setTimeout(() => { if (!earlyHit && mr.state !== "inactive") setStatus("listening-more"); }, 11_000);
       earlyTimers.push(longer);
 

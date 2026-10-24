@@ -45,13 +45,14 @@ function clean(v: unknown) {
  * sample can look like another track, and a wrong answer is worse than waiting 3 more seconds.
  */
 // From the admins' ✓ / ✗ (24 Oct): right answers scored 52, 63, 66 · wrong ones 19, 22. Bar between the two.
-const MIN_SCORE = { world: { early: 50, final: 40 }, custom: { early: 40, final: 30 } };
+const MIN_SCORE = { world: { quick: 75, early: 50, final: 40 }, custom: { quick: 60, early: 40, final: 30 } };
+type Stage = "quick" | "early" | "final";
 
-function mapPrivateRecognition(payload: any, fallbackCountry = "", early = false) {
+function mapPrivateRecognition(payload: any, fallbackCountry = "", stage: Stage = "final") {
   const custom = payload?.metadata?.custom_files?.[0] || null;
   const score = Number(custom?.score ?? 100);
 
-  if (!custom?.title || score < (early ? MIN_SCORE.custom.early : MIN_SCORE.custom.final)) return null;
+  if (!custom?.title || score < MIN_SCORE.custom[stage]) return null;
 
   return {
     result_type: "recognized_unreleased",
@@ -62,11 +63,11 @@ function mapPrivateRecognition(payload: any, fallbackCountry = "", early = false
   };
 }
 
-function mapWorldRecognition(payload: any, fallbackCountry = "", early = false) {
+function mapWorldRecognition(payload: any, fallbackCountry = "", stage: Stage = "final") {
   const music = payload?.metadata?.music?.[0] || null;
   const score = Number(music?.score || 0);
 
-  if (!music?.title || score < (early ? MIN_SCORE.world.early : MIN_SCORE.world.final)) return null;
+  if (!music?.title || score < MIN_SCORE.world[stage]) return null;
 
   return {
     result_type: "recognized_world",
@@ -196,7 +197,9 @@ export async function POST(req: Request) {
     const country = clean(incoming.get("country"));
     const region = clean(incoming.get("region"));
     const noLog = clean(incoming.get("no_log")) === "1"; // Set mode logs each track once itself
-    const early = clean(incoming.get("early")) === "1";  // first quick try of a scan
+    const early = clean(incoming.get("early")) === "1";  // a try before the end of the scan
+    const quick = clean(incoming.get("quick")) === "1";  // 3–4.5 s of audio
+    const stage: Stage = quick ? "quick" : early ? "early" : "final";
 
 
     if (!(file instanceof File)) {
@@ -213,9 +216,9 @@ export async function POST(req: Request) {
     ]);
 
 
-    const mappedWorld = mapWorldRecognition(worldResult.payload, country, early);
-    const mappedPrivate = mapPrivateRecognition(privateResult.payload, country, early);
-    const mappedMelody = !mappedPrivate && !mappedWorld ? (mapMelodyRecognition(worldResult.payload, country) || mapMelodyRecognition(privateResult.payload, country)) : null;
+    const mappedWorld = mapWorldRecognition(worldResult.payload, country, stage);
+    const mappedPrivate = mapPrivateRecognition(privateResult.payload, country, stage);
+    const mappedMelody = !mappedPrivate && !mappedWorld && stage !== "quick" ? (mapMelodyRecognition(worldResult.payload, country) || mapMelodyRecognition(privateResult.payload, country)) : null;
     // what the recogniser proposed, even below the bar — to tune the bar with the admins' ✓ / ✗
     const cTop = privateResult.payload?.metadata?.custom_files?.[0], wTop = worldResult.payload?.metadata?.music?.[0];
     const cScore = cTop ? Number(cTop.score ?? 100) : -1, wScore = wTop ? Number(wTop.score ?? 0) : -1;

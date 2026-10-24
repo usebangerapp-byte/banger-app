@@ -19,12 +19,13 @@ type RecognizeResult = {
   };
 };
 
-export async function recognizeAudio(blob: Blob, mimeType: string, region: string, opts?: { noLog?: boolean; early?: boolean }) {
+export async function recognizeAudio(blob: Blob, mimeType: string, region: string, opts?: { noLog?: boolean; early?: boolean; quick?: boolean }) {
   const fd = new FormData();
   fd.append("audio", blob, "sample.webm");
   fd.append("region", region);
   if (opts?.noLog) fd.append("no_log", "1");
-  if (opts?.early) fd.append("early", "1");   // quick first try: only logged if it finds something
+  if (opts?.early) fd.append("early", "1");
+  if (opts?.quick) fd.append("quick", "1");   // 3–4.5 s of audio: only a very sure answer counts   // quick first try: only logged if it finds something
 
   try {
     // Shared client + local session: no extra network round-trip before each scan
