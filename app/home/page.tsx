@@ -362,10 +362,11 @@ export default function Home() {
         } catch (e) {
           console.error("home recognize failed", e);
 
-          const message =
-            e instanceof Error && e.message
-              ? e.message
-              : "Server error";
+          const raw = e instanceof Error && e.message ? e.message : "";
+          // say WHY it failed: no network outside is not "this track doesn't exist"
+          const message = raw === "NO_CONNECTION" ? "No connection. Check your signal and try again."
+            : raw === "NETWORK" ? "Weak connection. Try again closer to Wi-Fi or with better signal."
+            : raw || "Server error";
 
           setTitle("Not found");
           setBeatportUrl(null);

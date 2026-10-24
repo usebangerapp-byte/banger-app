@@ -39,10 +39,18 @@ export async function recognizeAudio(blob: Blob, mimeType: string, region: strin
   }
 
 
-  const res = await fetch("/api/recognize", {
-    method: "POST",
-    body: fd,
-  });
+  // Outside, the network drops for a second: try again twice before giving up
+  let res: Response | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      res = await fetch("/api/recognize", { method: "POST", body: fd, signal: AbortSignal.timeout(25_000) });
+      if (res.status < 500 || attempt === 2) break;
+    } catch (e) {
+      if (attempt === 2) throw new Error(typeof navigator !== "undefined" && navigator.onLine === false ? "NO_CONNECTION" : "NETWORK");
+    }
+    await new Promise((r) => setTimeout(r, 1200 * (attempt + 1)));
+  }
+  if (!res) throw new Error("NETWORK");
 
   const json = (await res.json().catch(() => null)) as RecognizeResult | null;
 

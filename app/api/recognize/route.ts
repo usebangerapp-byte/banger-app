@@ -266,10 +266,12 @@ export async function POST(req: Request) {
     };
 
 
-    // Insert non-bloquant
-    if (!noLog && !(early && effectiveResultType === "not_found")) supabase.from("scan_events").insert(row).then(({ error }) => {
+    // Logged BEFORE answering: on a serverless host, work left running after the response can be
+    // frozen and lost (scans were missing from the stats). The insert takes a few milliseconds.
+    if (!noLog && !(early && effectiveResultType === "not_found")) {
+      const { error } = await supabase.from("scan_events").insert(row);
       if (error) console.error("scan_events insert failed", error);
-    });
+    }
 
 
 
