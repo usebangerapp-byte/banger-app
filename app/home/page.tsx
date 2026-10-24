@@ -23,7 +23,7 @@ import { recognizeAudio } from "@/lib/scan/recognizeAudio";
 
 
 
-type Status = "idle" | "listening" | "recognizing";
+type Status = "idle" | "listening" | "listening-more" | "recognizing";
 type Tag = "UNRELEASED" | "RELEASED" | "NOT FOUND";
 
 type ScanWindow = Window & typeof globalThis & {
@@ -151,7 +151,7 @@ export default function Home() {
     };
   }, []);
   const [pressed, setPressed] = useState(false);
-  const listening = status === "listening";
+  const listening = status === "listening" || status === "listening-more";
   const recognizing = status === "recognizing";
 
   useEffect(() => {
@@ -406,10 +406,14 @@ export default function Home() {
         } catch {}
       };
       // back to what worked before tonight: one quick try at 6 s, then the full 12 s
-      const earlyTimers = [6_000].map((ms) => window.setTimeout(tryNow, ms));
+      // Keep listening instead of making you scan again: tries at 6, 11 and 16 s, last one at 20 s.
+      // Stops as soon as one finds the track (most are found at 6 s).
+      const earlyTimers = [6_000, 11_000, 16_000].map((ms) => window.setTimeout(tryNow, ms));
+      const longer = window.setTimeout(() => { if (!earlyHit && mr.state !== "inactive") setStatus("listening-more"); }, 11_000);
+      earlyTimers.push(longer);
 
       mr.start(1000);   // 1 s chunks (the size that always worked on iPhone); each quick try reads all recorded so far
-      timerRef.current = window.setTimeout(() => stopRecording(), 12_000);
+      timerRef.current = window.setTimeout(() => stopRecording(), 20_000);
     } catch {
       stopMeters();
       setStatus("idle");
@@ -609,6 +613,7 @@ export default function Home() {
               touchAction: "manipulation", WebkitTapHighlightColor: "transparent", color: "#fff" }}>
             {status === "idle" ? "Tap to scan" : null}
             {status === "listening" ? "Listening…" : null}
+            {status === "listening-more" ? "Still listening…" : null}
             {status === "recognizing" ? "Identifying…" : null}
           </button>
 
