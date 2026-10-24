@@ -31,6 +31,7 @@ async function compute(): Promise<Response> {
     .from("scan_events")
     .select("track_title,track_subtitle,result_type")
     .in("result_type", ["recognized_unreleased", "recognized_world"])
+    .or("admin_verdict.is.null,admin_verdict.neq.wrong")   // scans an admin marked wrong don't count
     .order("created_at", { ascending: false })
     .limit(5000)
 

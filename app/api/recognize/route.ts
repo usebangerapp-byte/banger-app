@@ -268,9 +268,11 @@ export async function POST(req: Request) {
 
     // Logged BEFORE answering: on a serverless host, work left running after the response can be
     // frozen and lost (scans were missing from the stats). The insert takes a few milliseconds.
+    let scanId: number | string | null = null;
     if (!noLog && !(early && effectiveResultType === "not_found")) {
-      const { error } = await supabase.from("scan_events").insert(row);
+      const { data: ins, error } = await supabase.from("scan_events").insert(row).select("id").single();
       if (error) console.error("scan_events insert failed", error);
+      scanId = (ins as any)?.id ?? null;   // admins can then say if the result was right
     }
 
 
@@ -278,6 +280,7 @@ export async function POST(req: Request) {
     return Response.json(
       {
         ...responsePayload,
+        scan_id: scanId,
         result_type: effectiveResultType,
         track_title: mapped.track_title,
         track_subtitle: finalSubtitle,

@@ -11,6 +11,7 @@ import { startOAuth } from "@/lib/oauth";
 import { ui, C, glass, tag as tagStyle, TAG_TEXT } from "@/lib/ui";
 import MarqueeText from "@/components/MarqueeText";
 import { useTrackState, FollowButton } from "@/components/TrackRow";
+import { useIsAdmin } from "@/components/AdminTrackSheet";
 import { PreviewButton, trackHref } from "@/lib/preview";
 import WooferSVG from "@/components/WooferSVG";
 import Link from "next/link";
@@ -113,6 +114,7 @@ export default function Home() {
   const [tag, setTag] = useState<Tag>("NOT FOUND");
 
   const [success, setSuccess] = useState(false);
+  const [scanId, setScanId] = useState<string | number | null>(null);   // admins: say if the result was right
   const [failPulse, setFailPulse] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
   const [kick, setKick] = useState(0);
@@ -352,6 +354,7 @@ export default function Home() {
           setSnippetPath(mapped.snippetPath);
           setAllowPreview(mapped.allowPreview);
           setSuccess(mapped.success);
+          setScanId((data as any)?.scan_id ?? null);
 
           if (mapped.success) {
             vib([18, 60, 18, 60, 80]);  // double pulse succès
@@ -393,7 +396,7 @@ export default function Home() {
           const mapped = mapRecognizeResult(data);
           if (!mapped.success || mr.state === "inactive") return;
           earlyHit = true;
-          setTitle(mapped.title); setSubtitle(mapped.subtitle); setTag(mapped.tag);
+          setTitle(mapped.title); setSubtitle(mapped.subtitle); setTag(mapped.tag); setScanId((data as any)?.scan_id ?? null);
           setBeatportUrl(mapped.beatportUrl); setSpotifyUrl(mapped.spotifyUrl);
           setSnippetPath(mapped.snippetPath); setAllowPreview(mapped.allowPreview);
           setSuccess(true);
@@ -609,7 +612,7 @@ export default function Home() {
 
           {/* ── RESULT ── */}
           {title !== "—" && status === "idle" && (
-            <ScanResult key={title} title={title} subtitle={subtitle} tag={tag}
+            <ScanResult key={title + String(scanId)} title={title} subtitle={subtitle} tag={tag} scanId={scanId}
               snippet={allowPreview !== false ? snippetPath : null} />
           )}
         </div>{/* end center */}
@@ -620,9 +623,10 @@ export default function Home() {
 }
 
 /** Scan result card: ▶ preview · title / artist / status, then Follow · Info · Share on one line. */
-function ScanResult({ title, subtitle, tag, snippet }: {
-  title: string; subtitle: string; tag: string; snippet: string | null;
+function ScanResult({ title, subtitle, tag, snippet, scanId }: {
+  title: string; subtitle: string; tag: string; snippet: string | null; scanId?: string | number | null;
 }) {
+  const isAdmin = useIsAdmin();
   const [sharing, setSharing] = useState(false);
   const [ready, setReady] = useState<File | null>(null);   // story already built → the tap shares instantly
   const [needsTap, setNeedsTap] = useState(false);           // iOS: built too late for the first tap
@@ -693,6 +697,39 @@ function ScanResult({ title, subtitle, tag, snippet }: {
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 14v6h14v-6" /></svg>
             {sharing ? "Preparing…" : needsTap ? "Tap to share" : "Share"}
           </button>
+        </div>
+      )}
+      {isAdmin && scanId != null && <ScanVerdict scanId={scanId} found={found} />}
+    </div>
+  );
+}
+
+/** Admins only: was this scan right? A wrong one stops counting in Charts / Radar; a note says what it really was. */
+function ScanVerdict({ scanId, found }: { scanId: string | number; found: boolean }) {
+  const [v, setV] = useState<"right" | "wrong" | null>(null);
+  const [note, setNote] = useState("");
+  const [saved, setSaved] = useState("");
+  async function send(verdict: "right" | "wrong", withNote?: string) {
+    setV(verdict);
+    const sb = createSupabaseBrowser();
+    const token = (await sb?.auth.getSession())?.data?.session?.access_token;
+    const r = await fetch("/api/admin/scan-verdict", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token || ""}` },
+      body: JSON.stringify({ scan_id: scanId, verdict, ...(withNote !== undefined ? { note: withNote } : {}) }) }).catch(() => null);
+    setSaved(r?.ok ? (withNote !== undefined ? "Noted ✓" : verdict === "right" ? "Marked right ✓" : "Marked wrong") : "Couldn't save");
+  }
+  const btn = (on: boolean): CSSProperties => ({ ...ui.pillSmall, padding: "6px 12px", ...(on ? { color: C.goldInk, background: C.goldGrad, border: "1px solid transparent" } : {}) });
+  return (
+    <div style={{ display: "grid", gap: 8, borderTop: `1px solid ${C.lineSoft}`, paddingTop: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 12, color: C.text3 }}>Admin · {found ? "right track?" : "missed one?"}</span>
+        {found && <button onClick={() => send("right")} style={btn(v === "right")}>✓ Right</button>}
+        <button onClick={() => send("wrong")} style={btn(v === "wrong")}>{found ? "✗ Wrong" : "✗ It was a track"}</button>
+        {saved && <span style={{ fontSize: 12, color: C.gold }}>{saved}</span>}
+      </div>
+      {v === "wrong" && (
+        <div style={{ display: "flex", gap: 6 }}>
+          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="What was it? Artist - Title" style={{ ...ui.input, padding: "8px 12px", fontSize: 14, borderRadius: 999 }} />
+          <button onClick={() => send("wrong", note)} disabled={!note.trim()} style={{ ...ui.pillSmall, padding: "8px 12px" }}>Save</button>
         </div>
       )}
     </div>

@@ -27,7 +27,7 @@ export async function GET(req: Request) {
 
   // scans of this track (any version spelling that normalises to the same title)
   const { data: raw } = await sb.from("scan_events").select("created_at,user_id,region,country,track_title,result_type")
-    .ilike("track_title", `%${core}%`).neq("result_type", "not_found").order("created_at", { ascending: true }).limit(5000);
+    .ilike("track_title", `%${core}%`).neq("result_type", "not_found").or("admin_verdict.is.null,admin_verdict.neq.wrong").order("created_at", { ascending: true }).limit(5000);
   const scans = ((raw || []) as any[]).filter((s) => titleKey(s.track_title) === key);
   const ov = await loadOverrides(sb);
   const shown = shownScans(ovFor(ov, title), scans.length);
@@ -50,7 +50,7 @@ export async function GET(req: Request) {
   let hotRank: number | null = null;
   try {
     const since = new Date(Date.now() - 7 * 86400000).toISOString();
-    const { data: week } = await sb.from("scan_events").select("track_title,user_id,created_at").gte("created_at", since).neq("result_type", "not_found").limit(10000);
+    const { data: week } = await sb.from("scan_events").select("track_title,user_id,created_at").gte("created_at", since).neq("result_type", "not_found").or("admin_verdict.is.null,admin_verdict.neq.wrong").limit(10000);
     const people = new Map<string, Set<string>>();
     for (const s of (week || []) as any[]) {
       const k = titleKey(s.track_title); if (!k || k === "unknown") continue;
@@ -81,7 +81,7 @@ export async function GET(req: Request) {
     // DJs who scanned this also scanned… (needs 2+ different people in common)
     const users = [...new Set(scans.map((s) => s.user_id).filter(Boolean))].slice(0, 300) as string[];
     if (users.length >= 2) {
-      const { data: theirs } = await sb.from("scan_events").select("track_title,track_subtitle,user_id").in("user_id", users).neq("result_type", "not_found").limit(10000);
+      const { data: theirs } = await sb.from("scan_events").select("track_title,track_subtitle,user_id").in("user_id", users).neq("result_type", "not_found").or("admin_verdict.is.null,admin_verdict.neq.wrong").limit(10000);
       const co = new Map<string, { title: string; artist: string; people: Set<string> }>();
       for (const s of (theirs || []) as any[]) {
         const k = titleKey(s.track_title); if (!k || k === key || k === "unknown" || ov.get(k)?.hidden) continue;

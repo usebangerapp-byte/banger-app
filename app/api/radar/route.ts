@@ -23,6 +23,7 @@ async function compute(): Promise<Response> {
     .select(`track_id, created_at, track_title, track_subtitle, result_type, user_id,
       bpro_tracks!scan_events_track_id_fkey(id, title, artist, release_status, is_released)`)
     .not("track_id", "is", null)
+    .or("admin_verdict.is.null,admin_verdict.neq.wrong")
     .gte("created_at", monthAgo)
     .order("created_at", { ascending: false })
     .limit(10000)
