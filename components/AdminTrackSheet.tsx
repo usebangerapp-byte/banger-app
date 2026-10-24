@@ -7,17 +7,22 @@ import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { isAdminEmail } from "@/lib/admins";
 import { ui, C, glass } from "@/lib/ui";
 
-/* ── Is the signed-in user a BANGER admin? (checked once per session) ── */
+/* ── Is the signed-in user a BANGER admin? (cached, re-checked when the account changes) ── */
 let adminP: Promise<boolean> | null = null;
+let adminWatch = false;
 export function useIsAdmin() {
   const [is, setIs] = useState(false);
   useEffect(() => {
-    if (!adminP) adminP = (async () => {
-      const sb = createSupabaseBrowser();
+    const sb = createSupabaseBrowser();
+    const check = () => (adminP = (async () => {
       const { data } = (await sb?.auth.getSession()) || { data: null as any };
       return isAdminEmail(data?.session?.user?.email);
-    })().catch(() => false);
-    adminP.then(setIs);
+    })().catch(() => false));
+    // a "no" decided before the session was ready must not stick: sign-in / sign-out re-checks
+    if (sb && !adminWatch) { adminWatch = true; sb.auth.onAuthStateChange(() => { adminP = null; }); }
+    let alive = true;
+    (adminP || check()).then((v) => { if (alive) setIs(v); if (!v) setTimeout(() => { if (alive) check().then((w) => alive && setIs(w)); }, 1500); });
+    return () => { alive = false; };
   }, []);
   return is;
 }

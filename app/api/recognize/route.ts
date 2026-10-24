@@ -39,10 +39,17 @@ function clean(v: unknown) {
   return typeof v === "string" ? v.trim() : "";
 }
 
-function mapPrivateRecognition(payload: any, fallbackCountry = "") {
-  const custom = payload?.metadata?.custom_files?.[0] || null;
+/**
+ * Confidence needed before showing a result. A quick try (3 s of audio) is stricter: a short or noisy
+ * sample can look like another track, and a wrong answer is worse than waiting 3 more seconds.
+ */
+const MIN_SCORE = { world: { early: 85, final: 60 }, custom: { early: 75, final: 50 } };
 
-  if (!custom?.title) return null;
+function mapPrivateRecognition(payload: any, fallbackCountry = "", early = false) {
+  const custom = payload?.metadata?.custom_files?.[0] || null;
+  const score = Number(custom?.score ?? 100);
+
+  if (!custom?.title || score < (early ? MIN_SCORE.custom.early : MIN_SCORE.custom.final)) return null;
 
   return {
     result_type: "recognized_unreleased",
@@ -53,11 +60,11 @@ function mapPrivateRecognition(payload: any, fallbackCountry = "") {
   };
 }
 
-function mapWorldRecognition(payload: any, fallbackCountry = "") {
+function mapWorldRecognition(payload: any, fallbackCountry = "", early = false) {
   const music = payload?.metadata?.music?.[0] || null;
   const score = Number(music?.score || 0);
 
-  if (!music?.title || score < 20) return null;
+  if (!music?.title || score < (early ? MIN_SCORE.world.early : MIN_SCORE.world.final)) return null;
 
   return {
     result_type: "recognized_world",
@@ -184,8 +191,10 @@ export async function POST(req: Request) {
     ]);
 
 
-    const mappedWorld = mapWorldRecognition(worldResult.payload, country);
-    const mappedPrivate = mapPrivateRecognition(privateResult.payload, country);
+    const mappedWorld = mapWorldRecognition(worldResult.payload, country, early);
+    const mappedPrivate = mapPrivateRecognition(privateResult.payload, country, early);
+    const scoreOf = mappedPrivate ? Number(privateResult.payload?.metadata?.custom_files?.[0]?.score ?? 100)
+      : mappedWorld ? Number(worldResult.payload?.metadata?.music?.[0]?.score ?? 0) : null;
     const mapped = mappedPrivate || mappedWorld || mapNotFound(country);
 
     const responsePayload = mappedPrivate
@@ -263,6 +272,8 @@ export async function POST(req: Request) {
       country: mapped.country,
       user_id: userId || null,
       region: region || null,
+      score: scoreOf == null || !isFinite(scoreOf) ? null : Math.round(scoreOf),
+      early,
     };
 
 
@@ -270,7 +281,11 @@ export async function POST(req: Request) {
     // frozen and lost (scans were missing from the stats). The insert takes a few milliseconds.
     let scanId: number | string | null = null;
     if (!noLog && !(early && effectiveResultType === "not_found")) {
-      const { data: ins, error } = await supabase.from("scan_events").insert(row).select("id").single();
+      let { data: ins, error } = await supabase.from("scan_events").insert(row).select("id").single();
+      if (error && /score|early|column/i.test(error.message)) {   // columns not created yet
+        const { score: _s, early: _e, ...base } = row as any;
+        ({ data: ins, error } = await supabase.from("scan_events").insert(base).select("id").single());
+      }
       if (error) console.error("scan_events insert failed", error);
       scanId = (ins as any)?.id ?? null;   // admins can then say if the result was right
     }

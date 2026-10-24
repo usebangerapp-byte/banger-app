@@ -700,13 +700,13 @@ function ScanResult({ title, subtitle, tag, snippet, scanId }: {
           </button>
         </div>
       )}
-      {isAdmin && scanId != null && <ScanVerdict scanId={scanId} found={found} />}
+      {isAdmin && <ScanVerdict scanId={scanId ?? null} title={found ? title : null} found={found} />}
     </div>
   );
 }
 
 /** Admins only: was this scan right? A wrong one stops counting in Charts / Radar; a note says what it really was. */
-function ScanVerdict({ scanId, found }: { scanId: string | number; found: boolean }) {
+function ScanVerdict({ scanId, title, found }: { scanId: string | number | null; title: string | null; found: boolean }) {
   const [v, setV] = useState<"right" | "wrong" | null>(null);
   const [note, setNote] = useState("");
   const [saved, setSaved] = useState("");
@@ -715,7 +715,7 @@ function ScanVerdict({ scanId, found }: { scanId: string | number; found: boolea
     const sb = createSupabaseBrowser();
     const token = (await sb?.auth.getSession())?.data?.session?.access_token;
     const r = await fetch("/api/admin/scan-verdict", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token || ""}` },
-      body: JSON.stringify({ scan_id: scanId, verdict, ...(withNote !== undefined ? { note: withNote } : {}) }) }).catch(() => null);
+      body: JSON.stringify({ scan_id: scanId, title, verdict, ...(withNote !== undefined ? { note: withNote } : {}) }) }).catch(() => null);
     setSaved(r?.ok ? (withNote !== undefined ? "Noted ✓" : verdict === "right" ? "Marked right ✓" : "Marked wrong") : "Couldn't save");
   }
   const btn = (on: boolean): CSSProperties => ({ ...ui.pillSmall, padding: "6px 12px", ...(on ? { color: C.goldInk, background: C.goldGrad, border: "1px solid transparent" } : {}) });
